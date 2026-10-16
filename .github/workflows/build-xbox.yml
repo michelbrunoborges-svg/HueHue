@@ -55,18 +55,42 @@ jobs:
             if (-not (Get-ChildItem "$vs\VC\Tools\MSVC\*\lib\x64\store" -ErrorAction SilentlyContinue)) { throw "Store CRT continua ausente" }
           }
 
-      - name: Ferramentas (NASM, glslang; Perl ja vem no runner)
+      - name: NASM (para o OpenSSL)
         shell: pwsh
         run: |
-          choco install nasm -y --no-progress
+          if (-not (Test-Path "C:\Program Files\NASM\nasm.exe")) { choco install nasm -y --no-progress }
+          if (-not (Test-Path "C:\Program Files\NASM\nasm.exe")) { throw "NASM nao instalou" }
+          & "C:\Program Files\NASM\nasm.exe" -v
+          exit 0
+
+      - name: glslang (shaders do video_core)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Descobre o zip Windows do release continuo do glslang pelo nome, que muda entre versoes.
+          $rel = Invoke-RestMethod -Headers @{ Authorization = "Bearer $env:GH_TOKEN" } "https://api.github.com/repos/KhronosGroup/glslang/releases/tags/main-tot"
+          $asset = $rel.assets | Where-Object { $_.name -match 'windows' -and $_.name -match 'Release' -and $_.name -like '*.zip' } | Select-Object -First 1
+          if (-not $asset) { $rel.assets.name; throw "zip Windows do glslang nao encontrado" }
+          Write-Host "glslang: $($asset.name)"
           $zip = "$env:RUNNER_TEMP\glslang.zip"
-          Invoke-WebRequest "https://github.com/KhronosGroup/glslang/releases/download/main-tot/glslang-master-windows-Release.zip" -OutFile $zip
-          Expand-Archive $zip -DestinationPath C:\glslang -Force
-          if (-not (Test-Path C:\glslang\bin\glslangValidator.exe)) {
-            Copy-Item C:\glslang\bin\glslang.exe C:\glslang\bin\glslangValidator.exe
-          }
+          Invoke-WebRequest $asset.browser_download_url -OutFile $zip
+          Expand-Archive $zip -DestinationPath C:\glslang-x -Force
+          $exe = Get-ChildItem C:\glslang-x -Recurse -Include glslangValidator.exe, glslang.exe | Select-Object -First 1
+          if (-not $exe) { throw "glslang.exe nao esta no zip" }
+          New-Item -ItemType Directory -Force C:\glslang\bin | Out-Null
+          Copy-Item (Join-Path $exe.DirectoryName '*') C:\glslang\bin -Recurse -Force
+          if (-not (Test-Path C:\glslang\bin\glslangValidator.exe)) { Copy-Item C:\glslang\bin\glslang.exe C:\glslang\bin\glslangValidator.exe }
           & C:\glslang\bin\glslangValidator.exe --version
+          exit 0
+
+      - name: Perl nativo (Strawberry)
+        shell: pwsh
+        run: |
           if (-not (Test-Path C:\Strawberry\perl\bin\perl.exe)) { choco install strawberryperl -y --no-progress }
+          if (-not (Test-Path C:\Strawberry\perl\bin\perl.exe)) { throw "Strawberry Perl ausente" }
+          & C:\Strawberry\perl\bin\perl.exe -v | Select-Object -First 2
+          exit 0
 
       - uses: actions/setup-python@v5
         with:
@@ -83,8 +107,9 @@ jobs:
         run: |
           $dll = "${{ github.workspace }}\..\mesa-build\build-uwp\src\microsoft\spirv_to_dxil\spirv_to_dxil.dll"
           if (Test-Path $dll) { Write-Host "Mesa em cache"; exit 0 }
-          powershell -ExecutionPolicy Bypass -File tools\xbox\build-spirv-to-dxil.ps1
-          if (-not (Test-Path $dll)) { throw "spirv_to_dxil.dll nao foi gerado" }
+          & .github\scripts\run-logged.ps1 -Name mesa -Command "powershell -ExecutionPolicy Bypass -File tools\xbox\build-spirv-to-dxil.ps1"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          if (-not (Test-Path $dll)) { Write-Host "::error::spirv_to_dxil.dll nao foi gerado"; exit 1 }
 
       - name: Cache das dependencias (CPM)
         uses: actions/cache@v4
@@ -93,18 +118,18 @@ jobs:
           key: cpm-${{ hashFiles('cpmfile.json', '**/cpmfile.json') }}
 
       - name: Configurar (CMake, preset uwp-x64)
-        shell: cmd
-        run: tools\xbox\build-env.bat cmake --preset uwp-x64
+        shell: pwsh
+        run: .github\scripts\run-logged.ps1 -Name configure -Command "tools\xbox\build-env.bat cmake --preset uwp-x64"
 
       - name: Compilar o app (eden-uwp)
-        shell: cmd
-        run: tools\xbox\build-env.bat cmake --build --preset uwp-x64 --target eden-uwp
+        shell: pwsh
+        run: .github\scripts\run-logged.ps1 -Name build -Command "tools\xbox\build-env.bat cmake --build --preset uwp-x64 --target eden-uwp"
 
       - name: Empacotar e assinar o .appx
         shell: pwsh
         run: |
-          powershell -ExecutionPolicy Bypass -File tools\xbox\package-appx.ps1 -Library -BootCfg jit_prewarm=1
-          if ($LASTEXITCODE) { throw "package-appx falhou" }
+          & .github\scripts\run-logged.ps1 -Name package -Command "powershell -ExecutionPolicy Bypass -File tools\xbox\package-appx.ps1 -Library -BootCfg jit_prewarm=1"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
           Get-ChildItem build-uwp\package -Filter *.appx
           Get-ChildItem build-uwp\package -Filter *.cer
 
@@ -143,4 +168,5 @@ jobs:
             build-uwp/CMakeFiles/CMakeOutput.log
             build-uwp/CMakeFiles/CMakeError.log
             build-uwp/CMakeFiles/CMakeConfigureLog.yaml
+            *.log
           if-no-files-found: ignore
