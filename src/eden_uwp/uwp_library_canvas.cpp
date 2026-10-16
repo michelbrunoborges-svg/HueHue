@@ -1,0 +1,903 @@
+// SPDX-FileCopyrightText: Copyright 2026 JulianDr14
+// SPDX-License-Identifier: GPL-3.0-or-later
+#include "eden_uwp/uwp_library_canvas.h"
+#include "eden_uwp/pro_controller_geometry.h"
+
+#include <algorithm>
+#include <array>
+#include <unordered_map>
+#include <d3d11.h>
+#include <d2d1_1.h>
+#include <dwrite.h>
+#include <dxgi1_2.h>
+#include <wrl/client.h>
+#include <wincodec.h>
+#include <winrt/Windows.Gaming.Input.h>
+#include <winrt/Windows.ApplicationModel.h>
+#include <winrt/Windows.Storage.h>
+#include "eden_uwp/cheats/cheats_view.h"
+#include "eden_uwp/game_library.h"
+#include "eden_uwp/game_options_page.h"
+#include "eden_uwp/content/content_view.h"
+#include "eden_uwp/mods/mods_view.h"
+#include "eden_uwp/localization.h"
+#include "eden_uwp/ui_painter.h"
+#include "eden_uwp/text_entry_panel.h"
+#include "eden_uwp/ui_text.h"
+#include "eden_uwp/uwp_input.h"
+
+namespace EdenXbox {
+using Microsoft::WRL::ComPtr;
+using I18n::Tr;
+using T = I18n::Text;
+// The launcher owns a small D3D11/Direct2D surface only while selecting a game.
+// Release every reference (including the swapchain) before D3D12 starts.
+struct LibraryCanvas::Impl : UiPainter {
+public:
+    Impl(void* window, unsigned width, unsigned height) {
+        ComPtr<ID3D11Device> device;
+        winrt::check_hresult(D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr,
+            D3D11_CREATE_DEVICE_BGRA_SUPPORT, nullptr, 0, D3D11_SDK_VERSION,
+            &device, nullptr, &context));
+        ComPtr<IDXGIDevice> dxgi;
+        winrt::check_hresult(device.As(&dxgi));
+        ComPtr<IDXGIAdapter> adapter;
+        winrt::check_hresult(dxgi->GetAdapter(&adapter));
+        ComPtr<IDXGIFactory2> factory;
+        winrt::check_hresult(adapter->GetParent(IID_PPV_ARGS(&factory)));
+        DXGI_SWAP_CHAIN_DESC1 desc{};
+        desc.Width = std::max(1U, width);
+        desc.Height = std::max(1U, height);
+        desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+        desc.SampleDesc.Count = 1;
+        desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+        desc.BufferCount = 2;
+        desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+        winrt::check_hresult(factory->CreateSwapChainForCoreWindow(device.Get(),
+            static_cast<IUnknown*>(window), &desc, nullptr, &swapchain));
+        ComPtr<ID2D1Factory1> d2d;
+        winrt::check_hresult(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED,
+                                              IID_PPV_ARGS(&d2d)));
+        ComPtr<ID2D1Device> d2d_device;
+        winrt::check_hresult(d2d->CreateDevice(dxgi.Get(), &d2d_device));
+        winrt::check_hresult(d2d_device->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE,
+                                                           &target));
+        ComPtr<IDXGISurface> backbuffer;
+        winrt::check_hresult(swapchain->GetBuffer(0, IID_PPV_ARGS(&backbuffer)));
+        const auto properties = D2D1::BitmapProperties1(
+            D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
+            D2D1::PixelFormat(desc.Format, D2D1_ALPHA_MODE_IGNORE));
+        ComPtr<ID2D1Bitmap1> bitmap;
+        winrt::check_hresult(target->CreateBitmapFromDxgiSurface(backbuffer.Get(),
+                                                                &properties, &bitmap));
+        target->SetTarget(bitmap.Get());
+        ComPtr<IDWriteFactory> factory_write;
+        winrt::check_hresult(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED,
+            __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(factory_write.GetAddressOf())));
+        Attach(target.Get(), factory_write.Get());
+        winrt::check_hresult(CoCreateInstance(CLSID_WICImagingFactory, nullptr,
+            CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&wic)));
+        // Cache the installed version so the footer follows manifest updates
+        // without a second version constant or per-frame WinRT calls.
+        const auto version = winrt::Windows::ApplicationModel::Package::Current().Id().Version();
+        const auto version_text = L"v" + std::to_wstring(version.Major) + L"." +
+            std::to_wstring(version.Minor) + L"." + std::to_wstring(version.Build) +
+            L"." + std::to_wstring(version.Revision);
+        ComPtr<IDWriteTextFormat> version_format;
+        winrt::check_hresult(write->CreateTextFormat(L"Segoe UI", nullptr,
+            DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
+            12, L"en", &version_format));
+        winrt::check_hresult(write->CreateTextLayout(version_text.data(),
+            static_cast<UINT32>(version_text.size()), version_format.Get(), 180, 18,
+            &version_layout));
+        winrt::check_hresult(version_layout->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
+        try {
+            asset_root = std::filesystem::path{
+                winrt::Windows::ApplicationModel::Package::Current().InstalledLocation().Path().c_str()} / L"Assets";
+            logo = LoadAssetBitmap(L"HueHueLogo.png");
+        } catch (const winrt::hresult_error&) { /* Wordmark remains available. */ }
+        CreateHueBackdrop();
+        const float scale = std::min(width / 1280.0f, height / 720.0f);
+        target->SetTransform(D2D1::Matrix3x2F::Scale(std::max(scale, 0.01f), std::max(scale, 0.01f)) *
+            D2D1::Matrix3x2F::Translation((width - 1280 * scale) / 2, (height - 720 * scale) / 2));
+    }
+    ~Impl() {
+        target->SetTarget(nullptr);
+        target.Reset();
+        swapchain.Reset();
+        context->ClearState();
+        context->Flush();
+    }
+    void Draw(const LibraryView& view) {
+        const auto& scan = view.scan;
+        const auto& options = view.options;
+        const auto& panel = view.panel;
+        const auto& configuration = view.configuration;
+        const size_t selected = view.selected;
+        SyncLanguage();
+        prompt_family = PromptFamily::Keyboard;
+        if (panel.xbox) prompt_family = PromptFamily::Xbox;
+        else if (const auto index = SelectController(panel.devices, options.controller_id))
+            prompt_family = panel.devices[*index].pro ? PromptFamily::Nintendo : PromptFamily::Xbox;
+        swap_prompt_faces = false;
+        if (const auto active = SelectController(panel.devices, options.controller_id))
+            swap_prompt_faces = SwapControllerFaceButtons(panel.devices[*active], options.swap_face_buttons);
+        target->BeginDraw();
+        target->Clear(D2D1::ColorF(Palette::Backdrop));
+        DrawHueBackdrop();
+        if (logo) target->DrawBitmap(logo.Get(), D2D1::RectF(50, 38, 104, 92), 1,
+                                     D2D1_INTERPOLATION_MODE_LINEAR);
+        const float tag_x = DrawHueWordmark(118, 40);
+        Text(Tr(T::LibraryHeading), tag_x + 34, 54, 16, Palette::Text, 220, 30, true);
+        Round(tag_x + 34, 80, MeasureText(Tr(T::LibraryHeading), 16, true), 3, 1.5f, Palette::Accent);
+        Round(839, 43, 225, 44, 14, 0x17181c);
+        ControlPrompt(Navigation::AddFolder, Tr(T::SettingsTitle), 849, 49, 174);
+        Round(1080, 43, 146, 44, 14, 0x17181c);
+        ControlPrompt(Navigation::Settings, Tr(T::Controller), 1090, 49, 100);
+        Round(50, 111, 60, 3, 0, HueColor::Green);
+        Round(110, 111, 60, 3, 0, HueColor::Yellow);
+        Round(170, 111, 60, 3, 0, HueColor::Blue);
+        Round(230, 112, 996, 1, 0, 0x232429);
+        if (view.loading) {
+            Text(Tr(T::LoadingTitle), 64, 192, 40, 0xf4f4f6, 1000, 64, true);
+            Text(Tr(T::LoadingBody), 64, 266, 24, 0xa3a3ad, 1000);
+        } else if (scan.entries.empty()) {
+            Text(Tr(T::EmptyTitle), 64, 192, 40, 0xf4f4f6, 1100, 70, true);
+            Text(Tr(T::EmptyBody), 64, 278, 24, 0xa3a3ad, 1120);
+        } else {
+            const auto& game = scan.entries[selected];
+            Cover(game, 64, 148, 220);
+            Text(Tr(configuration.status.keys_ready ? T::ReadyToPlay : T::ImportKeysFirst),
+                 320, 149, 16, 0xc8f31d, 700);
+            if (!game.display_version.empty())
+                Text(L"v" + game.display_version, 990, 149, 19, Palette::Accent, 200, 30, true);
+            Text(game.name, 320, 184, 42, 0xf4f4f6, 866, 110, true, true);
+            Text((game.developer.empty() ? std::wstring{Tr(T::PersonalLibrary)} : game.developer) +
+                 (game.source_name.empty() ? L"" : L" · " + game.source_name),
+                 320, 292, 23, 0xa3a3ad, 850);
+            Round(320, 334, 184, 46, 14, 0xc8f31d);
+            Round(331, 341, 34, 32, 8, 0x10140a);
+            ControlPrompt(Navigation::Play, Tr(T::Play), 332, 340, 100, 0x0b0b0d);
+            Round(520, 334, 200, 46, 14, Palette::Panel);
+            ControlPrompt(Navigation::Options, Tr(T::Options), 530, 341, 170, Palette::Text);
+            Text(game.relative_path.extension().wstring().substr(1), 744, 344, 18, 0xa3a3ad, 380);
+            if (!game.pulse_saved.empty())
+                Text(I18n::Format(T::PulseBadge, {game.pulse_saved}), 810, 344, 18,
+                     game.pulse_current ? Palette::Accent : Palette::TextSecondary, 400);
+            Text(Tr(T::YourGames), 64, 402, 24, 0xeaeaee, 950, 36, true);
+            Text(std::to_wstring(selected + 1) + L" / " + std::to_wstring(scan.entries.size()),
+                 1100, 405, 19, 0xa3a3ad, 120);
+            const size_t first = selected / 5 * 5;
+            for (size_t i = first; i < std::min(first + 5, scan.entries.size()); ++i) {
+                const float x = 64 + static_cast<float>(i - first) * 232;
+                Round(x - 6, 444, 220, 191, 16, i == selected ? 0xc8f31d : 0x17181c);
+                Round(x - 3, 447, 214, 185, 13, i == selected ? 0x1a2008 : 0x141519);
+                Cover(scan.entries[i], x + 39, 454, 124);
+                Text(scan.entries[i].name, x + 3, 586, 19, 0xf4f4f6, 197, 25, true);
+                const auto& tile = scan.entries[i];
+                std::wstring under = tile.display_version.empty() ? L"" : L"v" + tile.display_version;
+                if (!tile.pulse_saved.empty()) under += under.empty() ? L"Pulse" : L" · Pulse";
+                if (!under.empty()) Text(under, x + 3, 611, 14, Palette::Accent, 197, 19);
+            }
+        }
+        ControlPrompt(Navigation::Play, Tr(T::Play), 64, 654, 130);
+        ControlPrompt(Navigation::Explore, Tr(T::Browse), 236, 654, 130);
+        ControlPrompt(Navigation::Options, Tr(T::Options), 448, 654, 130);
+        ControlPrompt(Navigation::Refresh, Tr(T::Refresh), 620, 654, 130);
+        ControlPrompt(Navigation::Settings, Tr(T::Controller), 792, 654, 130);
+        ControlPrompt(Navigation::Back, Tr(T::Exit), 1000, 654, 130);
+        brush->SetColor(D2D1::ColorF(0x6e6e78));
+        target->DrawTextLayout(D2D1::Point2F(1046, 690), version_layout.Get(), brush.Get(),
+                               D2D1_DRAW_TEXT_OPTIONS_CLIP);
+        if (!view.notice.empty()) Text(view.notice, 320, 316, 15, 0xe4bb83, 860, 22);
+        if (view.controller_panel) DrawControllerPanel(view);
+        if (panel.keyboard.open) DrawKeyboard(panel.keyboard);
+        if (configuration.open && !view.controller_panel) {
+            if (view.system.open) DrawSystemPage(view.system);
+            else DrawConfiguration(configuration);
+            if (view.system.open && view.system.name_editor) DrawNameEditor(view.system);
+        }
+        if (view.game_options.game || view.game_options.content) DrawGameOptions(view.game_options);
+        if (view.missing_content) Content::DrawMissingContent(*this);
+        winrt::check_hresult(target->EndDraw());
+        winrt::check_hresult(swapchain->Present(1, 0));
+    }
+    void InvalidateCovers() { covers.clear(); pictures.clear(); }
+private:
+    // --- Tema HueHue -------------------------------------------------------------------------
+    // Fundo: "HUE RA HUE RA HUEHUE" repetido na diagonal, quase invisivel, e uma vinheta escura
+    // atras do jogo em destaque para o texto continuar legivel. Tudo criado uma vez no canvas;
+    // a biblioteca so repinta quando o estado muda, entao o custo por quadro e irrelevante.
+    void CreateHueBackdrop() {
+        winrt::check_hresult(write->CreateTextFormat(L"Segoe UI", nullptr, DWRITE_FONT_WEIGHT_BLACK,
+            DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, 46, L"pt-BR", &pattern_format));
+        pattern_format->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
+        const D2D1_GRADIENT_STOP stops[] = {
+            {0.0f, D2D1::ColorF(0x0b0b0d, 0.92f)},
+            {0.6f, D2D1::ColorF(0x0b0b0d, 0.55f)},
+            {1.0f, D2D1::ColorF(0x0b0b0d, 0.0f)},
+        };
+        ComPtr<ID2D1GradientStopCollection> collection;
+        // Chamada pela interface base: ID2D1DeviceContext tem outra sobrecarga com o mesmo nome.
+        winrt::check_hresult(static_cast<ID2D1RenderTarget*>(target.Get())->CreateGradientStopCollection(
+            stops, 3, &collection));
+        winrt::check_hresult(target->CreateRadialGradientBrush(
+            D2D1::RadialGradientBrushProperties(D2D1::Point2F(380, 300), D2D1::Point2F(0, 0), 760, 420),
+            collection.Get(), &vignette));
+    }
+    void DrawHueBackdrop() {
+        static constexpr std::wstring_view row =
+            L"HUE RA HUE RA HUEHUE HUE RA HUE RA HUEHUE HUE RA HUE RA HUEHUE HUE RA";
+        D2D1_MATRIX_3X2_F base;
+        target->GetTransform(&base);
+        target->SetTransform(D2D1::Matrix3x2F::Rotation(-9.0f, D2D1::Point2F(640, 360)) *
+                             *D2D1::Matrix3x2F::ReinterpretBaseType(&base));
+        brush->SetColor(D2D1::ColorF(1, 1, 1, 0.05f));
+        for (int i = 0; i < 16; ++i) {
+            const float x = (i % 2 == 0) ? -260.0f : -110.0f;
+            const float y = -190.0f + static_cast<float>(i) * 66.0f;
+            target->DrawText(row.data(), static_cast<UINT32>(row.size()), pattern_format.Get(),
+                             D2D1::RectF(x, y, x + 2600, y + 70), brush.Get(),
+                             D2D1_DRAW_TEXT_OPTIONS_CLIP);
+        }
+        target->SetTransform(base);
+        if (vignette) target->FillRectangle(D2D1::RectF(0, 0, 1280, 720), vignette.Get());
+    }
+    // "HUEHUE" letra a letra nas cores do Brasil e a etiqueta SWITCH em verde-limao.
+    // Devolve onde a etiqueta termina, para o titulo da secao vir logo depois.
+    float DrawHueWordmark(float x, float y) {
+        static constexpr std::array<unsigned, 6> colors{HueColor::Green, HueColor::Blue, HueColor::Yellow,
+                                                        HueColor::Green, HueColor::Blue, HueColor::Yellow};
+        static constexpr std::wstring_view word = L"HUEHUE";
+        for (size_t i = 0; i < word.size(); ++i) {
+            const std::wstring_view letter = word.substr(i, 1);
+            Text(letter, x, y, 34, colors[i], 40, 48, true);
+            x += MeasureText(letter, 34, true);
+        }
+        x += 10;
+        const float tag_w = MeasureText(L"SWITCH", 13, true) + 16;
+        Round(x, 54, tag_w, 24, 6, Palette::Accent);
+        Text(L"SWITCH", x, 54, 13, Palette::OnAccent, tag_w, 24, true, false, true);
+        return x + tag_w;
+    }
+
+    void DrawControllerPanel(const LibraryView& view) {
+        const auto& options = view.options;
+        const auto& panel = view.panel;
+        brush->SetColor(D2D1::ColorF(0, 0, 0, 0.72f));
+        target->FillRectangle(D2D1::RectF(0, 0, 1280, 720), brush.Get());
+        Round(620, 133, 586, 487, 24, 0x17181c);
+        Text(Tr(T::ControllerTitle), 658, 168, 34, 0xf4f4f6, 490, 55, true);
+        Text(Tr(T::ControllerSubtitle), 658, 227, 21, 0xa3a3ad, 490);
+        const unsigned offset = panel.xbox ? 0 : 1;
+        const auto active = SelectController(panel.devices, options.controller_id);
+        const bool nintendo = active && panel.devices[*active].nintendo;
+        for (unsigned row = 0; row < 3 + offset; ++row) {
+            const float y = ControllerRowTop + row * ControllerRowHeight;
+            Round(648, y, 530, 56, 14, row == view.controller_row ? 0x2a3510 : 0x141519);
+            const bool device = offset && row == 0;
+            const bool type = row == offset;
+            const bool face = row == offset + 1;
+            Text(Tr(device ? T::ControllerDevice : type ? T::ControllerSeenAs :
+                    face ? T::FaceButtons : T::DeadZone),
+                 669, y + 2, 19, 0xf4f4f6, 400, 28, true);
+            if (device || type)
+                Text(device ? L"v" : L"<  >", 1080, y + 2, 19, 0xf4f4f6, 80, 28, true, false, false, true);
+            std::wstring value;
+            if (device) {
+                const auto label = ControllerLabel(panel.devices, options.controller_id);
+                value = options.controller_id.empty() ? I18n::Format(T::AutomaticValue, {label}) : label;
+            } else if (type) {
+                value = Tr(ControllerStyleText(options.style));
+            } else if (face) {
+                value = Tr(nintendo ? T::NintendoFaceButtons :
+                           options.swap_face_buttons ? T::ByPosition : T::ByLetter);
+            } else {
+                value = std::to_wstring(static_cast<int>(options.deadzone * 100)) + L"%";
+            }
+            Text(value, 669, y + 28, 18, 0xc8f31d, 460, 26);
+        }
+        if (!panel.xbox) {
+            Round(648, 510, 530, 34, 10, view.controller_row == 4 ? 0x2a3510 : 0x141519);
+            Text(std::wstring{Tr(T::SetUpKeyboard)} + L"   >", 669, 512, 19, 0xc8f31d, 460, 30, true);
+        }
+        ControlPrompt(Navigation::Explore, Tr(T::Select), 658, 551, 90);
+        ControlPrompt(Navigation::Play, Tr(T::Change), 838, 551, 100);
+        ControlPrompt(Navigation::Back, Tr(T::Back), 1018, 551, 100);
+        if (!panel.notice.empty()) Text(panel.notice, 658, 594, 16, 0xc8f31d, 515, 25);
+        if (panel.expanded) {
+            const size_t first = ControllerChoiceFirst(panel);
+            const size_t count = panel.devices.size() + 2;
+            const size_t end = std::min(count, first + ControllerVisibleChoices);
+            Round(648, ControllerChoiceTop - 4, 530,
+                  (end - first) * ControllerChoiceHeight + 8, 12, 0x34353c);
+            for (size_t i = first; i < end; ++i) {
+                const float y = ControllerChoiceTop + (i - first) * ControllerChoiceHeight;
+                Round(652, y, 522, 40, 8, i == panel.choice ? 0x2a3510 : 0x141519);
+                const bool session = i >= 2 && panel.devices[i - 2].id.starts_with(L"session:");
+                const bool supported = i < 2 || (bool(panel.devices[i - 2]) && !session);
+                std::wstring label;
+                if (i == 0) label = Tr(T::AutoFirstController);
+                else if (i == 1) label = Tr(T::Keyboard);
+                else label = panel.devices[i - 2].name + L" · " +
+                    std::wstring{Tr(supported ? (panel.devices[i - 2].wireless ? T::Wireless : T::Usb) :
+                                    session ? T::AutomaticOnly : T::NoCompatibleMapping)};
+                Text(label, 665, y + 6, 18, supported ? 0xf4f4f6 : 0xa3a3ad, 480, 30);
+            }
+            ScrollIndicator(1187, ControllerChoiceTop, ControllerVisibleChoices * ControllerChoiceHeight,
+                            first, ControllerVisibleChoices, count);
+        }
+    }
+    void DrawKeyboard(const KeyboardEditor& editor) {
+        brush->SetColor(D2D1::ColorF(0, 0, 0, 0.86f));
+        target->FillRectangle(D2D1::RectF(0, 0, 1280, 720), brush.Get());
+        Round(80, 88, 1120, 584, 22, 0x121216);
+        Text(Tr(T::KeyboardTitle), 120, 118, 28, 0xf4f4f6, 900, 44, true);
+        Text(Tr(T::KeyboardSubtitle), 120, 166, 17, 0x9a9aa4, 650, 30);
+        Round(1120, 112, 48, 40, 10, 0x1d1e23);
+        brush->SetColor(D2D1::ColorF(0xc9c9d1));
+        target->DrawLine(D2D1::Point2F(1137, 125), D2D1::Point2F(1151, 139), brush.Get(), 2);
+        target->DrawLine(D2D1::Point2F(1151, 125), D2D1::Point2F(1137, 139), brush.Get(), 2);
+        Round(120, 210, 480, 342, 16, 0x18191d);
+        Text(Tr(T::ControllerView), 143, 225, 13, 0x9a9aa4, 220, 24, true);
+        // Reuse Eden Qt's original Pro Controller contours and button coordinates.
+        // Create paths once; fills/strokes/highlights share cached GPU resources.
+        if (!controller_paths[0]) {
+            using namespace ProControllerGeometry;
+            ComPtr<ID2D1Factory> factory; target->GetFactory(&factory);
+            auto polygon = [&](size_t index, const auto& points, bool mirror, bool symmetric) {
+                winrt::check_hresult(factory->CreatePathGeometry(&controller_paths[index]));
+                ComPtr<ID2D1GeometrySink> sink;
+                winrt::check_hresult(controller_paths[index]->Open(&sink));
+                auto point = [&](size_t i, bool reflected) {
+                    const float x = points[i * 2] * (reflected ? -1.0f : 1.0f);
+                    return D2D1::Point2F(350 + x, 390 + points[i * 2 + 1]);
+                };
+                sink->BeginFigure(point(0, mirror), D2D1_FIGURE_BEGIN_FILLED);
+                for (size_t i = 1; i < points.size() / 2; ++i) sink->AddLine(point(i, mirror));
+                if (symmetric)
+                    for (size_t i = points.size() / 2; i-- > 0;) sink->AddLine(point(i, !mirror));
+                sink->EndFigure(D2D1_FIGURE_END_CLOSED);
+                winrt::check_hresult(sink->Close());
+            };
+            polygon(0, pro_body, false, true);
+            polygon(1, pro_left_handle, false, false); polygon(2, pro_left_handle, true, false);
+            polygon(3, pro_left_trigger, false, false); polygon(4, pro_left_trigger, true, false);
+        }
+        auto path = [&](size_t i, unsigned color) {
+            brush->SetColor(D2D1::ColorF(color)); target->FillGeometry(controller_paths[i].Get(), brush.Get());
+            brush->SetColor(D2D1::ColorF(0x55565f)); target->DrawGeometry(controller_paths[i].Get(), brush.Get(), 1.2f);
+        };
+        const size_t action = editor.selected;
+        path(1, 0x26272d); path(2, 0x26272d); path(0, 0x1d1e23);
+        path(3, action == 6 ? 0xc8f31d : 0x35363d); path(4, action == 7 ? 0xc8f31d : 0x35363d);
+        auto circle = [&](float x, float y, float radius, const wchar_t* label, bool active, float font = 16) {
+            const auto shape = D2D1::Ellipse(D2D1::Point2F(x, y), radius, radius);
+            brush->SetColor(D2D1::ColorF(active ? 0xc8f31dU : 0x141519U)); target->FillEllipse(shape, brush.Get());
+            brush->SetColor(D2D1::ColorF(active ? 0xe0fa85U : 0x62636dU)); target->DrawEllipse(shape, brush.Get(), 1.4f);
+            Text(label, x - radius, y - radius, font, active ? 0x0b0b0d : 0xe6e6eb,
+                 radius * 2, radius * 2, true, false, true);
+        };
+        auto stick = [&](float x, float y, const wchar_t* label, bool active) {
+            circle(x, y, 32, L"", active);
+            circle(x, y, 22, label, false, 12);
+        };
+        stick(239, 335, L"L3", action == 4 || (action >= 20 && action < 24));
+        stick(401, 390, L"R3", action == 5 || action >= 24);
+        circle(486, 334, 15, L"A", action == 0); circle(455, 365, 15, L"B", action == 1);
+        circle(455, 303, 15, L"X", action == 2); circle(424, 334, 15, L"Y", action == 3);
+        Round(278, 359, 22, 62, 4, 0x131318); Round(258, 379, 62, 22, 4, 0x131318);
+        for (size_t i = 12; i <= 15; ++i) {
+            const auto tile = KeyboardDiagramTile(i);
+            Round(tile.x, tile.y, tile.w, tile.h, 3, action == i ? 0xc8f31d : 0x33343b);
+        }
+        circle(300, 304, 10, L"-", action == 11, 14); circle(400, 304, 10, L"+", action == 10, 14);
+        circle(379, 334, 10, L"", action == 18);
+        brush->SetColor(D2D1::ColorF(action == 18 ? 0x0b0b0dU : 0xc9c9d1U));
+        target->DrawLine(D2D1::Point2F(374, 334), D2D1::Point2F(379, 330), brush.Get(), 1.4f);
+        target->DrawLine(D2D1::Point2F(379, 330), D2D1::Point2F(384, 334), brush.Get(), 1.4f);
+        target->DrawRectangle(D2D1::RectF(376, 334, 382, 339), brush.Get(), 1.2f);
+        Round(314, 327, 14, 14, 3, action == 19 ? 0xc8f31d : 0x131318);
+        brush->SetColor(D2D1::ColorF(0x9a9aa4));
+        target->DrawEllipse(D2D1::Ellipse(D2D1::Point2F(321, 334), 4, 4), brush.Get(), 1.2f);
+        for (const auto i : {size_t{8}, size_t{9}}) {
+            const auto tile = KeyboardDiagramTile(i);
+            Round(tile.x, tile.y, tile.w, tile.h, 8, action == i ? 0xc8f31d : 0x26272d);
+            Text(i == 8 ? L"ZL" : L"ZR", tile.x, tile.y, 14, action == i ? 0x0b0b0d : 0xc9c9d1,
+                 tile.w, tile.h, true, false, true);
+        }
+        Text(L"L", 220, 252, 14, action == 6 ? 0x0b0b0d : 0xc9c9d1, 60, 22, true, false, true);
+        Text(L"R", 450, 252, 14, action == 7 ? 0x0b0b0d : 0xc9c9d1, 40, 22, true, false, true);
+        Round(120, 564, 480, 67, 12, 0x1f280c);
+        Text(Tr(T::SelectedBinding), 140, 574, 11, 0xa8b86a, 300, 19, true);
+        Text(KeyboardActionName(action), 140, 594, 20, 0xf4f6ee, 285, 30, true);
+        Round(436, 579, 142, 38, 8, 0x12160a);
+        Text(editor.capturing ? std::wstring{Tr(T::PressAKey)} : KeyboardKeyName(editor.bindings[action]),
+             436, 579, 16, 0xc8f31d, 142, 38, true, false, true);
+        const std::array<std::wstring_view, 3> pages{Tr(T::KeyPageButtons), Tr(T::KeyPageSystem), Tr(T::KeyPageSticks)};
+        for (unsigned page = 0; page < pages.size(); ++page) {
+            const float x = 635 + page * 174.0f;
+            Round(x, 203, 166, 36, 9, page == editor.page ? 0x2a3510 : 0x1b1c21);
+            Text(pages[page], x, 203, 15, page == editor.page ? 0xd6f75a : 0xb0b0b9,
+                 166, 36, true, false, true);
+        }
+        for (const size_t i : KeyboardPageActions(editor.page)) {
+            const auto tile = KeyboardTileFor(i);
+            Round(tile.x, tile.y, tile.w, tile.h, 9, i == action ? 0x222c0e : 0x1a1b20);
+            Text(KeyboardActionName(i), tile.x + 14, tile.y, 15, 0xc9c9d1, 136, tile.h, false, false, true);
+            Round(tile.x + 153, tile.y + 9, 86, 27, 6, 0x131318);
+            Text(i == action && editor.capturing ? std::wstring{L"..."} : KeyboardKeyName(editor.bindings[i]),
+                 tile.x + 153, tile.y + 9, 14, i == action ? 0xc8f31d : 0xb0b0b9, 86, 27, true, false, true);
+        }
+        Round(635, 603, 155, 36, 8, 0x1b1c21); Text(Tr(T::ClearBinding), 635, 603, 15, 0xc9c9d1, 155, 36, false, false, true);
+        Round(806, 603, 170, 36, 8, 0x1b1c21); Text(Tr(T::RestoreDefaults), 806, 603, 15, 0xc9c9d1, 170, 36, false, false, true);
+        if (!editor.notice.empty()) Text(editor.notice, 990, 609, 13, 0xa8b86a, 172, 30);
+        Text(Tr(editor.capturing ? T::WaitingForKey : T::KeyboardHelp),
+             120, 644, 13, 0x80808a, prompt_family == PromptFamily::Keyboard ? 1030.0f : 860.0f, 22);
+        if (prompt_family != PromptFamily::Keyboard)
+            ControlPrompt(Navigation::Back, Tr(T::Back), 1010, 637, 100);
+    }
+    ComPtr<ID2D1Bitmap1> LoadAssetBitmap(const std::filesystem::path& relative) {
+        ComPtr<ID2D1Bitmap1> bitmap;
+        if (asset_root.empty()) return bitmap;
+        try {
+            ComPtr<IWICBitmapDecoder> decoder;
+            const auto path = asset_root / relative;
+            winrt::check_hresult(wic->CreateDecoderFromFilename(path.c_str(), nullptr, GENERIC_READ,
+                WICDecodeMetadataCacheOnDemand, &decoder));
+            ComPtr<IWICBitmapFrameDecode> frame;
+            winrt::check_hresult(decoder->GetFrame(0, &frame));
+            ComPtr<IWICFormatConverter> converter;
+            winrt::check_hresult(wic->CreateFormatConverter(&converter));
+            winrt::check_hresult(converter->Initialize(frame.Get(), GUID_WICPixelFormat32bppPBGRA,
+                WICBitmapDitherTypeNone, nullptr, 0, WICBitmapPaletteTypeCustom));
+            winrt::check_hresult(target->CreateBitmapFromWicBitmap(converter.Get(), nullptr, &bitmap));
+        } catch (const winrt::hresult_error&) {}
+        return bitmap;
+    }
+    enum class PromptFamily : unsigned { Keyboard, Xbox, Nintendo };
+    /// Space is Y on a pad; it has no packaged glyph and is drawn natively like AddFolder (X).
+    /// The first five have packaged glyphs; the others are drawn natively (UiPainter::ButtonGlyph).
+    enum class Navigation : unsigned { Play, Explore, Settings, Options, Back, AddFolder, Space, Refresh, Tabs };
+    using ConfigurationIcon = UiIcon;
+    void DrawConfiguration(const ConfigurationPanel& panel) {
+        Round(0, 0, 1280, 720, 0, 0x0b0b0d);
+        const auto layout = GetConfigurationLayout(panel);
+        if (panel.files) {
+            Round(90, 80, 1100, 590, 24, 0x17181c);
+            Round(130, 108, 48, 48, 12, 0x2a3510);
+            Icon(ConfigurationIcon::Folder, 138, 116, 0xc8f31d);
+            Text(Tr(T::FileManager), 194, 108, 32, 0xf4f4f6, 850, 50, true);
+            Text(std::wstring{Tr(panel.status.keys_ready ? T::KeysReady : T::KeysMissing)} + L"  ·  " +
+                 I18n::Format(T::FirmwareFiles, {std::to_wstring(panel.status.firmware_files)}),
+                 130, 168, 18, 0xc8f31d, 950);
+            Text(Tr(T::FilesSubtitle), 130, 201, 16, 0xa3a3ad, 950);
+        } else {
+            Round(140, 100, 1000, 540, 24, 0x17181c);
+            PageHeader(180, 131, ConfigurationIcon::Settings, Tr(T::SettingsTitle), Tr(T::SettingsSubtitle));
+        }
+        const auto count = ConfigurationRowCount(panel);
+        const auto first = ConfigurationFirstRow(panel);
+        for (size_t i = first; i < std::min(first + 5, count); ++i) {
+            const float y = layout.top + static_cast<float>(i - first) * layout.stride;
+            const bool active = i == panel.selected;
+            ConfigurationIcon icon;
+            std::wstring title, hint;
+            if (!panel.files) {
+                icon = i == HomeFiles ? ConfigurationIcon::Folder :
+                       i == HomeControllers ? ConfigurationIcon::Controller : ConfigurationIcon::Language;
+                title = Tr(i == HomeFiles ? T::FileManager : i == HomeControllers ? T::ControllersAndKeyboard : T::System);
+                hint = Tr(i == HomeFiles ? T::FileManagerHint : i == HomeControllers ? T::ControllersHint : T::SystemHint);
+            } else {
+                icon = i == 0 ? ConfigurationIcon::Folder : i == 1 ? ConfigurationIcon::Key :
+                       i == 2 ? ConfigurationIcon::Firmware : i < 5 ? ConfigurationIcon::Folder : ConfigurationIcon::Remove;
+                if (i == 0) title = Tr(T::AddGamesFolder);
+                else if (i == 1) title = Tr(T::ImportKeys);
+                else if (i == 2) title = Tr(T::ImportFirmware);
+                else if (i == 3) title = Tr(T::ContentUpdates);
+                else if (i == 4) title = Tr(T::ContentDlc);
+                else title = I18n::Format(T::RemoveFolder, {panel.status.sources[i - 5].name});
+            }
+            RowFrame(layout.x, y, layout.width, layout.row_height, active, icon);
+            Text(title, layout.x + 72, y + (panel.files ? 10.0f : 12.0f), panel.files ? 20.0f : 22.0f,
+                 0xf4f4f6, layout.width - 135, 32, !panel.files);
+            if (!hint.empty()) Text(hint, layout.x + 72, y + 44, 16, 0xbcbcc5, layout.width - 135, 26);
+            Chevron(layout.x + layout.width - 28, y + layout.row_height / 2, active ? 0xc8f31d : 0xa3a3ad);
+        }
+        ScrollIndicator(layout.x + layout.width + 14, layout.top,
+                        5 * layout.stride - (layout.stride - layout.row_height), first,
+                        5, count);
+        if (!panel.files) {
+            Text(Tr(T::EmulatorData), 180, 511, 12, 0xa3a3ad, 190, 26, true);
+            Text(Tr(panel.status.keys_ready ? T::KeysReady : T::KeysMissing), 380, 506, 16,
+                 panel.status.keys_ready ? 0xc8f31d : 0xf3ba6a, 260);
+            Text(I18n::Format(T::FirmwareFiles, {std::to_wstring(panel.status.firmware_files)}),
+                 680, 506, 16, 0xa3a3ad, 350);
+        }
+        if (panel.busy) Text(I18n::Format(T::Importing, {std::to_wstring(panel.completed), std::to_wstring(panel.total)}),
+                             130, 565, 18, 0xc8f31d, 990);
+        else Text(panel.notice, layout.x + 4, panel.files ? 561.0f : 538.0f, 16, 0xf3ba6a,
+                  layout.width - 20, panel.files ? 40.0f : 28.0f, false, true);
+        ControlPrompt(Navigation::Explore, Tr(T::Select), layout.x + 4, layout.footer, 110);
+        ControlPrompt(Navigation::Play, Tr(T::Open), layout.x + 380, layout.footer, 110);
+        ControlPrompt(Navigation::Back, Tr(panel.busy ? T::Cancel : T::Back),
+                      layout.x + layout.width - 230, layout.footer, 150);
+    }
+    void DrawSystemPage(const SystemPage& page) {
+        using L = SystemPageLayout;
+        Round(0, 0, 1280, 720, 0, 0x0b0b0d);
+        Round(L::PanelX, L::PanelY, L::PanelWidth, L::PanelHeight, 24, 0x17181c);
+        PageHeader(L::RowX, 99, ConfigurationIcon::Language, Tr(T::SystemTitle), Tr(T::SystemSubtitle));
+        static constexpr std::array<ConfigurationIcon, SystemPage::RowCount> icons{
+            ConfigurationIcon::User, ConfigurationIcon::Language, ConfigurationIcon::Controller,
+            ConfigurationIcon::Region, ConfigurationIcon::Mods, ConfigurationIcon::Settings, ConfigurationIcon::Archive,
+            ConfigurationIcon::Cache};
+        for (size_t i = 0; i < SystemPage::RowCount; ++i) {
+            const auto row = static_cast<SystemPage::Row>(i);
+            const float y = L::RowTop + static_cast<float>(i) * L::RowStride;
+            const bool active = i == page.selected;
+            RowFrame(L::RowX, y, L::RowWidth, L::RowHeight, active, icons[i]);
+            Text(Tr(SystemRowTitle(row)), L::RowX + 72, y + 4, 20, 0xf4f4f6, 420, 30, true);
+            Text(Tr(SystemRowHint(row)), L::RowX + 72, y + 28, 15, 0xbcbcc5, 440, 22);
+            const unsigned accent = active ? 0xc8f31d : 0xa3a3ad;
+            const float right = L::RowX + L::RowWidth - 28;
+            const float middle = y + L::RowHeight / 2;
+            const bool choice = row == SystemPage::InterfaceLanguage || row == SystemPage::GameLanguage ||
+                                row == SystemPage::Region || row == SystemPage::AdultMods || row == SystemPage::PerformanceStats ||
+                                row == SystemPage::PulseSessions;
+            if (choice) {
+                // "< value >": arrows say left/right changes it, as in the controller panel.
+                Chevron(L::RowX + 486, middle, accent, true);
+                Chevron(right, middle, accent);
+            } else {
+                Chevron(right, middle, accent);
+            }
+            const auto value = SystemRowValue(page, row);
+            if (!value.empty())
+                Text(value, L::RowX + 500, y + (L::RowHeight - 30) / 2, 19, active ? 0xf4f4f6 : 0xdadae0,
+                     right - 22 - (L::RowX + 500), 30, active, false, false, true);
+        }
+        if (!page.notice.empty()) Text(page.notice, L::RowX + 4, L::Notice, 16, 0xc8f31d, L::RowWidth - 20, 28);
+        ControlPrompt(Navigation::Explore, Tr(T::Select), L::RowX + 4, L::Footer, 110);
+        ControlPrompt(Navigation::Play, Tr(T::Change), L::RowX + 380, L::Footer, 110);
+        ControlPrompt(Navigation::Back, Tr(T::Back), L::RowX + L::RowWidth - 230, L::Footer, 150);
+    }
+    void DrawNameEditor(const SystemPage& page) {
+        using L = SystemPageLayout;
+        using K = TextEntryPanelLayout;
+        brush->SetColor(D2D1::ColorF(0, 0, 0, 0.86f));
+        target->FillRectangle(D2D1::RectF(0, 0, 1280, 720), brush.Get());
+        Round(L::EditorX, L::EditorY, K::Width, K::Height, 22, 0x121216);
+        DrawTextEntryPanel(*this, {*page.name_editor, Tr(T::UserName), Tr(T::NameEditorHint), page.editor_notice},
+                           L::EditorX, L::EditorY);
+        const float left = L::EditorX + K::Left;
+        const float footer = L::EditorY + K::Footer;
+        if (prompt_family == PromptFamily::Keyboard) {
+            Text(Tr(T::NameEditorKeyboardHelp), left, footer + 6, 15, 0x80808a, K::BoxWidth, 24);
+        } else {
+            ControlPrompt(Navigation::Play, Tr(T::TypeKey), left, footer, 140);
+            ControlPrompt(Navigation::AddFolder, Tr(T::DeleteKey), left + 190, footer, 140);
+            ControlPrompt(Navigation::Space, Tr(T::SpaceKey), left + 380, footer, 140);
+            ControlPrompt(Navigation::Options, Tr(T::DoneKey), left + 570, footer, 140);
+            ControlPrompt(Navigation::Back, Tr(T::Cancel), left + 760, footer, 140);
+        }
+    }
+    void ControlPrompt(Navigation action, std::wstring_view label, float x, float y,
+                       float width, unsigned color = 0xa3a3ad) {
+        // An empty fallback means "use the translated name".
+        struct Glyph { const wchar_t* asset; std::wstring_view fallback; T name; };
+        static constexpr std::array<Glyph, 5> keyboard{{
+            {L"keyboard_enter", L"Enter", {}}, {L"keyboard_arrows", {}, T::Arrows},
+            {L"keyboard_f1", L"F1", {}}, {L"keyboard_f2", L"F2", {}}, {L"keyboard_escape", L"Esc", {}}}};
+        static constexpr std::array<Glyph, 5> xbox{{
+            {L"xbox_a", L"A", {}}, {L"xbox_dpad", {}, T::DPad}, {L"xbox_view", L"View", {}},
+            {L"xbox_menu", L"Menu", {}}, {L"xbox_b", L"B", {}}}};
+        const auto index = static_cast<unsigned>(action);
+        if (prompt_family == PromptFamily::Keyboard &&
+            (action == Navigation::AddFolder || action == Navigation::Refresh)) {
+            const bool add = action == Navigation::AddFolder;
+            AssetPrompt(add ? L"keyboard_o" : L"keyboard_r", label, add ? L"O" : L"R", x, y, width, color);
+            return;
+        }
+        if (action >= Navigation::AddFolder) {
+            // Remaining buttons use native glyphs when no packaged image is available.
+            const bool pad = prompt_family != PromptFamily::Keyboard;
+            const bool colored = prompt_family == PromptFamily::Xbox;
+            const auto key = [&](std::wstring_view letter, float left) {
+                Round(left, y, 32, 32, 6, 0x141519);
+                Text(letter, left, y, 18, 0xf4f4f6, 32, 32, true, false, true);
+            };
+            float glyphs = 40;
+            switch (action) {
+            case Navigation::AddFolder:
+                if (pad) ButtonGlyph(swap_prompt_faces ? L"Y" : L"X", x, y, colored ? (swap_prompt_faces ? ButtonColor::Y : ButtonColor::X) : ButtonColor::Neutral);
+                else key(L"O", x);
+                break;
+            case Navigation::Space:
+            case Navigation::Refresh:
+                if (pad) ButtonGlyph(swap_prompt_faces ? L"X" : L"Y", x, y, colored ? (swap_prompt_faces ? ButtonColor::X : ButtonColor::Y) : ButtonColor::Neutral);
+                else key(action == Navigation::Space ? L"Y" : L"R", x);
+                break;
+            default: // Tabs
+                if (pad) {
+                    const bool nintendo = prompt_family == PromptFamily::Nintendo;
+                    ButtonGlyph(nintendo ? L"L" : L"LB", x, y, ButtonColor::Neutral);
+                    ButtonGlyph(nintendo ? L"R" : L"RB", x + 44, y, ButtonColor::Neutral);
+                } else {
+                    key(L"Q", x);
+                    key(L"E", x + 38);
+                }
+                glyphs = pad ? 90.0f : 78.0f;
+                break;
+            }
+            Text(label, x + glyphs, y + 3, 19, color, width);
+            return;
+        }
+        if (prompt_family != PromptFamily::Keyboard && action == Navigation::Explore) {
+            // Neutral monochrome d-pad for both controller families. The old
+            // bitmap was Kenney's red color variant, not an application state.
+            Round(x + 11, y + 3, 10, 26, 2, 0xf4f4f6);
+            Round(x + 3, y + 11, 26, 10, 2, 0xf4f4f6);
+            brush->SetColor(D2D1::ColorF(0xf4f4f6));
+            target->DrawEllipse(D2D1::Ellipse(D2D1::Point2F(x + 56, y + 16), 13, 13), brush.Get(), 2);
+            Text(L"L", x + 40, y, 16, 0xf4f4f6, 32, 32, true, false, true);
+            Text(label, x + 80, y + 3, 19, color, width);
+            return;
+        }
+        if (prompt_family == PromptFamily::Nintendo) {
+            // Native D2D glyphs match Nintendo's monochrome A/B and minus/plus.
+            // They reuse cached text formats and allocate no bitmap or path.
+            brush->SetColor(D2D1::ColorF(0xf4f4f6));
+            const auto center = D2D1::Point2F(x + 16, y + 16);
+            if (action == Navigation::Play || action == Navigation::Back) {
+                target->DrawEllipse(D2D1::Ellipse(center, 13, 13), brush.Get(), 2);
+                Text(action == Navigation::Play ? L"A" : L"B", x, y, 18, 0xf4f4f6, 32, 32, true, false, true);
+            } else {
+                target->DrawLine(D2D1::Point2F(x + 7, y + 16), D2D1::Point2F(x + 25, y + 16), brush.Get(), 3);
+                if (action == Navigation::Options)
+                    target->DrawLine(D2D1::Point2F(x + 16, y + 7), D2D1::Point2F(x + 16, y + 25), brush.Get(), 3);
+            }
+            Text(label, x + 40, y + 3, 19, color, width);
+            return;
+        }
+        const auto physical_index = swap_prompt_faces && action == Navigation::Play
+            ? static_cast<unsigned>(Navigation::Back)
+            : swap_prompt_faces && action == Navigation::Back
+                ? static_cast<unsigned>(Navigation::Play) : index;
+        const auto& glyph = prompt_family == PromptFamily::Keyboard ? keyboard[index] : xbox[physical_index];
+        AssetPrompt(glyph.asset, label, glyph.fallback.empty() ? Tr(glyph.name) : glyph.fallback, x, y, width, color);
+    }
+    /// The game's options, and the option page open over them.
+    void DrawGameOptions(const GameOptionsView& view) {
+        if (view.content) { Content::DrawContentPanel(*this, *view.content, view.game ? view.game->name : Tr(T::ContentOverview)); return; }
+        const LibraryEntry& game = *view.game;
+        Round(0, 0, 1280, 720, 0, Palette::Backdrop);
+        if (view.page.page == GameOption::Cheats && view.cheats) {
+            using L = Cheats::CheatsLayout;
+            constexpr float x = (1280 - L::Width) / 2, y = 30;
+            Cheats::DrawCheatsPanel(*this, {*view.cheats, view.cheats_page, game.name, view.notice, false}, x, y);
+            const float footer = y + L::Footer;
+            ControlPrompt(Navigation::Play, Tr(T::ToggleCheat), x + L::Margin, footer, 120);
+            ControlPrompt(Navigation::AddFolder, Tr(T::AllCheats), x + L::Margin + 170, footer, 110);
+            float next = x + L::Margin + 330;
+            if (Cheats::CheatTabCount(view.cheats->Catalog()) > 1) {
+                ControlPrompt(Navigation::Tabs, Tr(T::Category), next, footer, 140);
+                next += 250;
+            }
+            ControlPrompt(Navigation::Refresh, Tr(T::Refresh), next, footer, 130);
+            ControlPrompt(Navigation::Back, Tr(T::Back), x + L::Width - L::Margin - 150, footer, 120);
+            return;
+        }
+        if (view.page.page == GameOption::Mods && view.mods && view.mods_page) {
+            using L = Mods::ModsLayout;
+            using Button = Mods::ModsPrompt::Button;
+            constexpr float x = (1280 - L::Width) / 2, y = 30;
+            Mods::DrawModsPanel(*this, {*view.mods, *view.mods_page, game.name, view.notice}, x, y);
+            const float footer = y + L::Footer;
+            float next = x + L::Margin;
+            for (const auto& prompt : Mods::ModsPrompts(*view.mods, *view.mods_page)) {
+                const auto label = Tr(prompt.label);
+                // B, the way out, always sits at the right end.
+                if (prompt.button == Button::B) {
+                    ControlPrompt(Navigation::Back, label, x + L::Width - L::Margin - 170, footer, 140);
+                    continue;
+                }
+                const Navigation action = prompt.button == Button::A      ? Navigation::Play
+                                          : prompt.button == Button::X    ? Navigation::AddFolder
+                                          : prompt.button == Button::Y    ? Navigation::Refresh
+                                          : prompt.button == Button::Menu ? Navigation::Options
+                                                                          : Navigation::Tabs;
+                const float width = MeasureText(label, 19, false) + 8;
+                ControlPrompt(action, label, next, footer, width);
+                next += width + (action == Navigation::Tabs ? 120 : 64);
+            }
+            return;
+        }
+        using L = GameOptionsLayout;
+        Round(L::PanelX, L::PanelY, L::PanelWidth, L::PanelHeight, 24, Palette::Panel);
+        PageHeader(L::RowX, 99, UiIcon::Game, Tr(T::GameOptionsTitle),
+                   I18n::Format(T::GameOptionsSubtitle, {game.name}));
+        Cover(game, L::RowX + L::RowWidth - 72, 92, 72);
+        const auto options = GameOptions();
+        for (std::size_t i = 0; i < options.size(); ++i) {
+            const float y = L::RowTop + static_cast<float>(i) * L::RowStride;
+            const bool active = i == view.page.selected;
+            RowFrame(L::RowX, y, L::RowWidth, L::RowHeight, active, GameOptionIcon(options[i]));
+            Text(Tr(GameOptionTitle(options[i])), L::RowX + 72, y + 6, 22, Palette::Text, L::RowWidth - 135, 32, true);
+            std::wstring hint{Tr(GameOptionHint(options[i]))};
+            if (options[i] == GameOption::Pulse && !game.pulse_saved.empty())
+                hint = I18n::Format(game.pulse_current ? T::PulseSavedOn : T::PulseSavedOther, {game.pulse_saved});
+            Text(hint, L::RowX + 72, y + 36, 16, Palette::TextHint, L::RowWidth - 135, 26);
+            Chevron(L::RowX + L::RowWidth - 28, y + L::RowHeight / 2, active ? Palette::Accent : Palette::TextSecondary);
+        }
+        if (!view.notice.empty()) Text(view.notice, L::RowX + 4, L::Footer - 44, 16, Palette::Warning, L::RowWidth - 20, 28);
+        ControlPrompt(Navigation::Explore, Tr(T::Select), L::RowX + 4, L::Footer, 110);
+        ControlPrompt(Navigation::Play, Tr(T::Open), L::RowX + 380, L::Footer, 110);
+        ControlPrompt(Navigation::Back, Tr(T::Back), L::RowX + L::RowWidth - 230, L::Footer, 150);
+    }
+    void AssetPrompt(const wchar_t* asset, std::wstring_view label, std::wstring_view fallback,
+                float x, float y, float width, unsigned color = 0xa3a3ad) {
+        auto found = prompts.find(asset);
+        if (found == prompts.end()) {
+            auto bitmap = LoadAssetBitmap(std::filesystem::path{L"InputPrompts"} /
+                                          (std::wstring{asset} + L".png"));
+            found = prompts.emplace(asset, std::move(bitmap)).first;
+        }
+        if (found->second) {
+            target->DrawBitmap(found->second.Get(), D2D1::RectF(x, y, x + 32, y + 32), 1,
+                               D2D1_INTERPOLATION_MODE_LINEAR);
+            Text(label, x + 40, y + 3, 19, color, width);
+        } else {
+            Text(std::wstring{fallback} + L"  " + std::wstring{label}, x, y + 3, 19, color, width + 40);
+        }
+    }
+    void Cover(const LibraryEntry& entry, float x, float y, float size) {
+        Round(x, y, size, size, 12, 0x28292f);
+        // The launch path is unique; relative paths repeat across internal and USB sources.
+        auto found = covers.find(entry.launch_path);
+        if (found == covers.end() && !entry.icon.empty()) {
+            ComPtr<ID2D1Bitmap1> bitmap;
+            try {
+                ComPtr<IWICStream> stream;
+                winrt::check_hresult(wic->CreateStream(&stream));
+                winrt::check_hresult(stream->InitializeFromMemory(const_cast<BYTE*>(entry.icon.data()),
+                                                                 static_cast<DWORD>(entry.icon.size())));
+                ComPtr<IWICBitmapDecoder> decoder;
+                winrt::check_hresult(wic->CreateDecoderFromStream(stream.Get(), nullptr,
+                    WICDecodeMetadataCacheOnDemand, &decoder));
+                ComPtr<IWICBitmapFrameDecode> frame;
+                winrt::check_hresult(decoder->GetFrame(0, &frame));
+                UINT w, h;
+                winrt::check_hresult(frame->GetSize(&w, &h));
+                if (w == 0 || h == 0 || w > 4096 || h > 4096)
+                    winrt::throw_hresult(E_INVALIDARG);
+                ComPtr<IWICBitmapScaler> scaler;
+                winrt::check_hresult(wic->CreateBitmapScaler(&scaler));
+                winrt::check_hresult(scaler->Initialize(frame.Get(), 256, 256, WICBitmapInterpolationModeFant));
+                ComPtr<IWICFormatConverter> converter;
+                winrt::check_hresult(wic->CreateFormatConverter(&converter));
+                winrt::check_hresult(converter->Initialize(scaler.Get(), GUID_WICPixelFormat32bppPBGRA,
+                    WICBitmapDitherTypeNone, nullptr, 0, WICBitmapPaletteTypeCustom));
+                winrt::check_hresult(target->CreateBitmapFromWicBitmap(converter.Get(), nullptr, &bitmap));
+            } catch (const winrt::hresult_error&) {}
+            // Three pages of 256x256 BGRA covers: the visible one and both neighbours, 256 KiB each.
+            if (covers.size() >= MaxCovers) covers.clear();
+            found = covers.emplace(entry.launch_path, std::move(bitmap)).first;
+        }
+        if (found != covers.end() && found->second) {
+            // Geometries are cached by size; transform places the rounded mask
+            // without reallocating it on each selection or focus redraw.
+            auto& mask = masks[static_cast<unsigned>(size)];
+            if (!mask) {
+                ComPtr<ID2D1Factory> factory;
+                target->GetFactory(&factory);
+                winrt::check_hresult(factory->CreateRoundedRectangleGeometry(
+                    D2D1::RoundedRect(D2D1::RectF(0, 0, size, size), 12, 12), &mask));
+            }
+            D2D1_LAYER_PARAMETERS1 layer{};
+            layer.contentBounds = D2D1::RectF(x, y, x + size, y + size);
+            layer.geometricMask = mask.Get();
+            layer.maskAntialiasMode = D2D1_ANTIALIAS_MODE_PER_PRIMITIVE;
+            layer.maskTransform = D2D1::Matrix3x2F::Translation(x, y);
+            layer.opacity = 1;
+            target->PushLayer(&layer, nullptr);
+            target->DrawBitmap(found->second.Get(), D2D1::RectF(x, y, x + size, y + size), 1,
+                               D2D1_INTERPOLATION_MODE_LINEAR);
+            target->PopLayer();
+        } else {
+            Text(L"HUEHUE", x + size * 0.12f, y + size * 0.32f, size > 150 ? 34.0f : 20.0f,
+                 0xc8f31d, size * 0.85f, 54, true);
+            Text(entry.relative_path.extension().wstring().substr(1), x + size * 0.12f,
+                 y + size * 0.58f, 16, 0xa3a3ad, size * 0.85f);
+        }
+    }
+    /// The mods store's pictures (UiPainter::Picture): decoded once, at most 640 px wide.
+    bool Picture(const std::filesystem::path& file, float x, float y, float w, float h) override {
+        if (file.empty() || w < 1 || h < 1) return false;
+        auto found = pictures.find(file.native());
+        if (found == pictures.end()) {
+            if (pictures.size() >= MaxPictures) pictures.clear();
+            found = pictures.emplace(file.native(), DecodePicture(file, 640)).first;
+        }
+        const auto& bitmap = found->second;
+        if (!bitmap) return false;
+        // Cropped around the middle to the rectangle's shape.
+        const auto size = bitmap->GetSize();
+        float crop_w = size.width, crop_h = size.height;
+        if (crop_w / crop_h > w / h) crop_w = crop_h * w / h;
+        else crop_h = crop_w * h / w;
+        const auto source = D2D1::RectF((size.width - crop_w) / 2, (size.height - crop_h) / 2,
+                                        (size.width + crop_w) / 2, (size.height + crop_h) / 2);
+        auto& mask = picture_masks[(static_cast<unsigned>(w) << 16) | static_cast<unsigned>(h)];
+        if (!mask) {
+            ComPtr<ID2D1Factory> factory;
+            target->GetFactory(&factory);
+            if (FAILED(factory->CreateRoundedRectangleGeometry(
+                    D2D1::RoundedRect(D2D1::RectF(0, 0, w, h), 12, 12), &mask)))
+                return false;
+        }
+        D2D1_LAYER_PARAMETERS1 layer{};
+        layer.contentBounds = D2D1::RectF(x, y, x + w, y + h);
+        layer.geometricMask = mask.Get();
+        layer.maskAntialiasMode = D2D1_ANTIALIAS_MODE_PER_PRIMITIVE;
+        layer.maskTransform = D2D1::Matrix3x2F::Translation(x, y);
+        layer.opacity = 1;
+        target->PushLayer(&layer, nullptr);
+        target->DrawBitmap(bitmap.Get(), D2D1::RectF(x, y, x + w, y + h), 1, D2D1_INTERPOLATION_MODE_LINEAR,
+                           &source);
+        target->PopLayer();
+        return true;
+    }
+    ComPtr<ID2D1Bitmap1> DecodePicture(const std::filesystem::path& file, unsigned max_width) {
+        ComPtr<ID2D1Bitmap1> bitmap;
+        try {
+            ComPtr<IWICBitmapDecoder> decoder;
+            winrt::check_hresult(wic->CreateDecoderFromFilename(file.c_str(), nullptr, GENERIC_READ,
+                WICDecodeMetadataCacheOnDemand, &decoder));
+            ComPtr<IWICBitmapFrameDecode> frame;
+            winrt::check_hresult(decoder->GetFrame(0, &frame));
+            UINT w, h;
+            winrt::check_hresult(frame->GetSize(&w, &h));
+            if (w == 0 || h == 0 || w > 8192 || h > 8192) winrt::throw_hresult(E_INVALIDARG);
+            const UINT width = std::min(w, max_width);
+            const UINT height = std::max(1U, static_cast<UINT>(static_cast<unsigned long long>(h) * width / w));
+            ComPtr<IWICBitmapScaler> scaler;
+            winrt::check_hresult(wic->CreateBitmapScaler(&scaler));
+            winrt::check_hresult(scaler->Initialize(frame.Get(), width, height, WICBitmapInterpolationModeFant));
+            ComPtr<IWICFormatConverter> converter;
+            winrt::check_hresult(wic->CreateFormatConverter(&converter));
+            winrt::check_hresult(converter->Initialize(scaler.Get(), GUID_WICPixelFormat32bppPBGRA,
+                WICBitmapDitherTypeNone, nullptr, 0, WICBitmapPaletteTypeCustom));
+            winrt::check_hresult(target->CreateBitmapFromWicBitmap(converter.Get(), nullptr, &bitmap));
+        } catch (const winrt::hresult_error&) {
+            bitmap.Reset(); // Not a picture WIC reads: the placeholder stays.
+        }
+        return bitmap;
+    }
+    static constexpr size_t MaxCovers = 32;
+    /// Two screens of the grid and a mod's gallery: 640 px wide at most, ~0.6 MiB each.
+    static constexpr size_t MaxPictures = 48;
+    ComPtr<ID3D11DeviceContext> context;
+    ComPtr<IDXGISwapChain1> swapchain;
+    ComPtr<ID2D1DeviceContext> target;
+    ComPtr<IWICImagingFactory> wic;
+    ComPtr<ID2D1Bitmap1> logo;
+    ComPtr<IDWriteTextFormat> pattern_format;
+    ComPtr<ID2D1RadialGradientBrush> vignette;
+    std::array<ComPtr<ID2D1PathGeometry>, 5> controller_paths;
+    PromptFamily prompt_family{PromptFamily::Keyboard};
+    bool swap_prompt_faces{};
+    std::filesystem::path asset_root;
+    std::unordered_map<std::wstring, ComPtr<ID2D1Bitmap1>> prompts;
+    std::unordered_map<unsigned, ComPtr<ID2D1RoundedRectangleGeometry>> masks;
+    ComPtr<IDWriteTextLayout> version_layout;
+    std::unordered_map<std::string, ComPtr<ID2D1Bitmap1>> covers;
+    std::unordered_map<std::wstring, ComPtr<ID2D1Bitmap1>> pictures;
+    std::unordered_map<unsigned, ComPtr<ID2D1RoundedRectangleGeometry>> picture_masks;
+};
+LibraryCanvas::LibraryCanvas(void* window, unsigned width, unsigned height)
+    : impl{std::make_unique<Impl>(window, width, height)} {}
+LibraryCanvas::~LibraryCanvas() = default;
+void LibraryCanvas::InvalidateCovers() { impl->InvalidateCovers(); }
+void LibraryCanvas::Draw(const LibraryView& view) { impl->Draw(view); }
+} // namespace EdenXbox

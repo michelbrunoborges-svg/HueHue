@@ -1,0 +1,146 @@
+# HueHue Switch: compila o app UWP para Xbox Series X|S (Dev Mode) e publica o .appx.
+#
+# Roda num runner Windows do GitHub (o build UWP exige Visual Studio 2022 + Store CRT).
+# Ao final, cria um Release com tudo que o Device Portal do Xbox pede:
+#   huehue-switch.appx, Microsoft.VCLibs.x64.14.00.appx (dependencia) e huehue-switch.cer.
+name: Build Xbox (appx)
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", "docs/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-xbox
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 360
+    env:
+      CPM_SOURCE_CACHE: ${{ github.workspace }}\..\cpm-cache
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Versao do pacote (cada build instala por cima da anterior)
+        shell: pwsh
+        run: |
+          $v = "0.3.${{ github.run_number }}.0"
+          $m = "dist\uwp\AppxManifest.xml"
+          # So o Version do <Identity> (MinVersion/MaxVersionTested ficam como estao).
+          $xml = Get-Content $m -Raw
+          $re = [regex]'(?s)(<Identity\b[^>]*?\sVersion=")[0-9.]+(")'
+          $new = $re.Replace($xml, { param($x) $x.Groups[1].Value + $v + $x.Groups[2].Value }, 1)
+          if ($new -eq $xml) { throw "nao achei Identity/@Version no manifesto" }
+          Set-Content $m $new -NoNewline -Encoding utf8
+          "APP_VERSION=$v" | Out-File $env:GITHUB_ENV -Append
+          Write-Host "versao: $v"
+
+      - name: Conferir Visual Studio com ferramentas UWP (Store CRT)
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
+          Write-Host "VS: $vs"
+          $store = Get-ChildItem "$vs\VC\Tools\MSVC\*\lib\x64\store" -ErrorAction SilentlyContinue
+          if (-not $store) {
+            Write-Host "Store CRT ausente: instalando o componente UWP do VS..."
+            $installer = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vs_installer.exe"
+            $p = Start-Process $installer -ArgumentList "modify --installPath `"$vs`" --add Microsoft.VisualStudio.ComponentGroup.UWP.VC --add Microsoft.VisualStudio.Component.UWP.VC.ARM64 --quiet --norestart --nocache" -Wait -PassThru
+            Write-Host "vs_installer saiu com $($p.ExitCode)"
+            if (-not (Get-ChildItem "$vs\VC\Tools\MSVC\*\lib\x64\store" -ErrorAction SilentlyContinue)) { throw "Store CRT continua ausente" }
+          }
+
+      - name: Ferramentas (NASM, glslang; Perl ja vem no runner)
+        shell: pwsh
+        run: |
+          choco install nasm -y --no-progress
+          $zip = "$env:RUNNER_TEMP\glslang.zip"
+          Invoke-WebRequest "https://github.com/KhronosGroup/glslang/releases/download/main-tot/glslang-master-windows-Release.zip" -OutFile $zip
+          Expand-Archive $zip -DestinationPath C:\glslang -Force
+          if (-not (Test-Path C:\glslang\bin\glslangValidator.exe)) {
+            Copy-Item C:\glslang\bin\glslang.exe C:\glslang\bin\glslangValidator.exe
+          }
+          & C:\glslang\bin\glslangValidator.exe --version
+          if (-not (Test-Path C:\Strawberry\perl\bin\perl.exe)) { choco install strawberryperl -y --no-progress }
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache do Mesa (spirv_to_dxil)
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}\..\mesa-build\build-uwp\src\microsoft\spirv_to_dxil\spirv_to_dxil.dll
+          key: mesa-s2d-${{ hashFiles('tools/xbox/build-spirv-to-dxil.ps1', 'tools/xbox/mesa/**', 'externals/spirv-to-dxil/include/**') }}
+
+      - name: Compilar spirv_to_dxil (Mesa) se nao estiver no cache
+        shell: pwsh
+        run: |
+          $dll = "${{ github.workspace }}\..\mesa-build\build-uwp\src\microsoft\spirv_to_dxil\spirv_to_dxil.dll"
+          if (Test-Path $dll) { Write-Host "Mesa em cache"; exit 0 }
+          powershell -ExecutionPolicy Bypass -File tools\xbox\build-spirv-to-dxil.ps1
+          if (-not (Test-Path $dll)) { throw "spirv_to_dxil.dll nao foi gerado" }
+
+      - name: Cache das dependencias (CPM)
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}\..\cpm-cache
+          key: cpm-${{ hashFiles('cpmfile.json', '**/cpmfile.json') }}
+
+      - name: Configurar (CMake, preset uwp-x64)
+        shell: cmd
+        run: tools\xbox\build-env.bat cmake --preset uwp-x64
+
+      - name: Compilar o app (eden-uwp)
+        shell: cmd
+        run: tools\xbox\build-env.bat cmake --build --preset uwp-x64 --target eden-uwp
+
+      - name: Empacotar e assinar o .appx
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File tools\xbox\package-appx.ps1 -Library -BootCfg jit_prewarm=1
+          if ($LASTEXITCODE) { throw "package-appx falhou" }
+          Get-ChildItem build-uwp\package -Filter *.appx
+          Get-ChildItem build-uwp\package -Filter *.cer
+
+      - name: Guardar o pacote (artefato do build)
+        uses: actions/upload-artifact@v4
+        with:
+          name: huehue-switch-${{ env.APP_VERSION }}
+          path: |
+            build-uwp/package/huehue-switch.appx
+            build-uwp/package/huehue-switch.cer
+            build-uwp/package/Microsoft.VCLibs.x64.14.00.appx
+          if-no-files-found: error
+
+      - name: Publicar Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.APP_VERSION }}
+          name: HueHue Switch ${{ env.APP_VERSION }}
+          body: |
+            Instale pelo Device Portal do Xbox (https://IP-DO-XBOX:11443) -> Add:
+            1. huehue-switch.appx
+            2. Em dependencias: Microsoft.VCLibs.x64.14.00.appx
+            3. Se pedir certificado: huehue-switch.cer
+            Depois: app em modo **Game**. Guia completo no README.
+          files: |
+            build-uwp/package/huehue-switch.appx
+            build-uwp/package/huehue-switch.cer
+            build-uwp/package/Microsoft.VCLibs.x64.14.00.appx
+
+      - name: Logs de falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-falha
+          path: |
+            build-uwp/CMakeFiles/CMakeOutput.log
+            build-uwp/CMakeFiles/CMakeError.log
+            build-uwp/CMakeFiles/CMakeConfigureLog.yaml
+          if-no-files-found: ignore
