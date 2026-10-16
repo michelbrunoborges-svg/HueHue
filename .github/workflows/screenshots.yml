@@ -1,0 +1,42 @@
+# Instala um Release do HueHue Switch num runner Windows e publica prints dos menus no branch
+# "screenshots" (rodar pela aba Actions -> Prints dos menus -> Run workflow).
+name: Prints dos menus
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release a fotografar (ex.: v0.3.9.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  shots:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Baixar o Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "${{ inputs.tag }}" -R "${{ github.repository }}" -D pkg
+
+      - name: Instalar, abrir e tirar os prints
+        shell: powershell
+        run: .github\scripts\screenshots.ps1 -Pkg pkg -Out shots
+
+      - name: Publicar no branch screenshots
+        if: always()
+        shell: pwsh
+        run: |
+          if (-not (Test-Path shots)) { New-Item -ItemType Directory shots | Out-Null }
+          "release ${{ inputs.tag }} / run ${{ github.run_id }} / ${{ job.status }}" | Set-Content shots\RUN.txt
+          Set-Location shots
+          git init -q -b screenshots
+          git config user.name "huehue-ci"; git config user.email "ci@users.noreply.github.com"
+          git add -A; git commit -q -m "prints ${{ inputs.tag }}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" screenshots
