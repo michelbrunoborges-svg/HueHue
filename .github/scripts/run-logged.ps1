@@ -6,7 +6,8 @@ param(
     [Parameter(Mandatory)] [string] $Command
 )
 $log = Join-Path $env:GITHUB_WORKSPACE "$Name.log"
-cmd /c "$Command" 2>&1 | Tee-Object -FilePath $log
+# stdin vem de NUL: nada pode ficar esperando entrada no runner.
+cmd /c "$Command < NUL" 2>&1 | Tee-Object -FilePath $log
 $code = $LASTEXITCODE
 if ($code -ne 0) {
     $lines = Select-String -Path $log -Pattern 'error|fatal|failed|MISSING|not found|cannot' -CaseSensitive:$false |

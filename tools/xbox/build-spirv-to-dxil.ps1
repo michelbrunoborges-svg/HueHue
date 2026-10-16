@@ -18,6 +18,9 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+# Windows PowerShell 5.1 desenha a barra de progresso a cada bloco e deixa o download do Mesa
+# extremamente lento (em CI parece travado). Sem barra, baixa em segundos.
+$ProgressPreference = "SilentlyContinue"
 New-Item -ItemType Directory -Force $WorkDir | Out-Null
 $WorkDir = (Resolve-Path $WorkDir).Path
 $src = Join-Path $WorkDir "mesa-$MesaVersion"
