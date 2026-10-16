@@ -1,0 +1,124 @@
+{
+  "version": "1.0.0",
+  "project": "huehue-labs",
+  "mode": "maximum_automation",
+  "timezone": "America/Sao_Paulo",
+  "radar": {
+    "cron": "0 8 * * *",
+    "search_topics": [
+      "emulation",
+      "retro-gaming",
+      "homebrew",
+      "xbox",
+      "android",
+      "ports",
+      "frontends"
+    ],
+    "thresholds": {
+      "watch": 0,
+      "draft": 50,
+      "fast_track": 80
+    },
+    "deduplicate_by": [
+      "source",
+      "repository",
+      "release_id",
+      "fingerprint"
+    ],
+    "github_external_sources": "poll",
+    "github_controlled_repositories": "signed_webhooks",
+    "min_evidence": [
+      "official_source_url",
+      "release_or_commit_reference"
+    ]
+  },
+  "studio": {
+    "formats": [
+      "short_9_16",
+      "video_16_9"
+    ],
+    "channels": [
+      {
+        "name": "FoxHitokiri",
+        "youtube_channel_id": null
+      },
+      {
+        "name": "RetroGames HueHue",
+        "youtube_channel_id": null
+      }
+    ],
+    "voice_provider": "elevenlabs",
+    "avatar_provider": "heygen",
+    "auto_publish": {
+      "enabled": false,
+      "enabled_after": [
+        "creator_identity_consent",
+        "provider_credentials",
+        "youtube_oauth_verified",
+        "private_upload_e2e_passed",
+        "rights_and_source_policy_tested",
+        "monthly_budget_approved"
+      ],
+      "max_per_channel_per_day": 1,
+      "minimum_score": 80,
+      "blocked_risk_flags": [
+        "rights_unknown",
+        "unconfirmed_claim",
+        "misleading",
+        "third_party_voice",
+        "unauthorized_assets",
+        "proprietary_source",
+        "content_policy_risk"
+      ],
+      "disclose_synthetic_media_when_applicable": true,
+      "privacy_on_unverified_setup": "private"
+    }
+  },
+  "ports": {
+    "allowed_targets": [
+      "xbox_dev_mode",
+      "android_test_apk"
+    ],
+    "auto_build_when_authorized": true,
+    "auto_release": false,
+    "require_manual_approval_for": [
+      "public_binary_distribution",
+      "store_submission",
+      "new_repository_license_exception"
+    ],
+    "block": [
+      "roms",
+      "bios",
+      "firmware_keys",
+      "drm_circumvention",
+      "third_party_proprietary_assets"
+    ]
+  },
+  "risk": {
+    "fail_closed": true,
+    "max_monthly_usd": null,
+    "allow_paid_generation": false,
+    "circuit_breaker": true,
+    "require_human_for": [
+      "high_risk_content",
+      "license_uncertain",
+      "releasing_port",
+      "increasing_budget",
+      "production_secrets"
+    ]
+  },
+  "audit": {
+    "enabled": true,
+    "events": [
+      "ingestion",
+      "source_verified",
+      "rights_verified",
+      "generation",
+      "approval",
+      "publication",
+      "distribution",
+      "error",
+      "cost"
+    ]
+  }
+}
