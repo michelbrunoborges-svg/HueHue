@@ -131,6 +131,33 @@ jobs:
           path: ${{ github.workspace }}\..\cpm-cache
           key: cpm-${{ hashFiles('cpmfile.json', '**/cpmfile.json') }}
 
+      - name: Restaurar compilacao anterior (cache)
+        id: buildcache
+        uses: actions/cache/restore@v4
+        with:
+          path: build-uwp
+          key: build-uwp-${{ github.sha }}
+          restore-keys: build-uwp-
+
+      - name: Ajustar datas para recompilar so o que mudou
+        if: steps.buildcache.outputs.cache-matched-key != ''
+        shell: pwsh
+        run: |
+          # O checkout deixa todos os fontes com a data de agora, o que faria o ninja recompilar tudo.
+          # Marca a compilacao restaurada como mais nova e so os arquivos alterados desde o commit
+          # que gerou o cache como mais novos ainda.
+          $old = (Get-Content build-uwp\.cached_sha -ErrorAction SilentlyContinue | Select-Object -First 1)
+          if (-not $old) { Write-Host "cache sem commit de origem: recompila tudo"; Remove-Item build-uwp -Recurse -Force; exit 0 }
+          git fetch -q --depth=1 origin $old
+          if ($LASTEXITCODE) { Write-Host "commit do cache indisponivel: recompila tudo"; Remove-Item build-uwp -Recurse -Force; exit 0 }
+          $now = Get-Date
+          Get-ChildItem build-uwp -Recurse -File | ForEach-Object { $_.LastWriteTime = $now }
+          $changed = git diff --name-only $old HEAD
+          $later = $now.AddMinutes(2)
+          foreach ($f in $changed) { if (Test-Path $f) { (Get-Item $f).LastWriteTime = $later } }
+          Write-Host "cache de $old; arquivos alterados desde entao: $(@($changed).Count)"
+          exit 0
+
       - name: Configurar (CMake, preset uwp-x64)
         shell: pwsh
         run: .github\scripts\run-logged.ps1 -Name configure -Command "tools\xbox\build-env.bat cmake --preset uwp-x64"
@@ -139,10 +166,26 @@ jobs:
         shell: pwsh
         run: .github\scripts\run-logged.ps1 -Name build -Command "tools\xbox\build-env.bat cmake --build --preset uwp-x64 --target eden-uwp"
 
+      - name: Guardar compilacao para o proximo build (cache)
+        if: success()
+        shell: pwsh
+        run: |
+          "${{ github.sha }}" | Set-Content build-uwp\.cached_sha
+          Get-ChildItem build-uwp -Recurse -Include *.pdb, *.ilk -File | Remove-Item -Force -ErrorAction SilentlyContinue
+          "{0:N1} GB" -f ((Get-ChildItem build-uwp -Recurse -File | Measure-Object Length -Sum).Sum / 1GB)
+
+      - uses: actions/cache/save@v4
+        if: success() && steps.buildcache.outputs.cache-hit != 'true'
+        with:
+          path: build-uwp
+          key: build-uwp-${{ github.sha }}
+
       - name: Empacotar e assinar o .appx
         shell: pwsh
         run: |
-          & .github\scripts\run-logged.ps1 -Name package -Command "powershell -ExecutionPolicy Bypass -File tools\xbox\package-appx.ps1 -Library -BootCfg jit_prewarm=1"
+          # O Windows PowerShell 5.1 chamado de dentro do pwsh 7 herda o PSModulePath do 7 e
+          # perde o drive Cert: (usado para assinar). Volta para os modulos dele.
+          & .github\scripts\run-logged.ps1 -Name package -Command "set PSModulePath=%SystemRoot%\system32\WindowsPowerShell\v1.0\Modules&& powershell -ExecutionPolicy Bypass -File tools\xbox\package-appx.ps1 -Library -BootCfg jit_prewarm=1"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           Get-ChildItem build-uwp\package -Filter *.appx
           Get-ChildItem build-uwp\package -Filter *.cer

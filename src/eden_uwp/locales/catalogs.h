@@ -7,4 +7,5 @@
 namespace EdenXbox::I18n {
 extern const Catalog EnglishCatalog;
 extern const Catalog SpanishCatalog;
+extern const Catalog PortugueseCatalog;
 } // namespace EdenXbox::I18n
