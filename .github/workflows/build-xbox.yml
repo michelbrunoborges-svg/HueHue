@@ -178,3 +178,24 @@ jobs:
             build-uwp/CMakeFiles/CMakeConfigureLog.yaml
             *.log
           if-no-files-found: ignore
+
+      - name: Publicar logs no branch ci-logs (sempre, para diagnostico)
+        if: always()
+        shell: pwsh
+        run: |
+          $dir = "$env:RUNNER_TEMP\ci-logs"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          Get-ChildItem $env:GITHUB_WORKSPACE -Filter *.log -File -ErrorAction SilentlyContinue | Copy-Item -Destination $dir
+          $meson = "${{ github.workspace }}\..\mesa-build\build-uwp\meson-logs\meson-log.txt"
+          if (Test-Path $meson) { Copy-Item $meson "$dir\meson-log.txt" }
+          foreach ($f in @("build-uwp\CMakeFiles\CMakeConfigureLog.yaml")) { if (Test-Path $f) { Copy-Item $f $dir } }
+          "run ${{ github.run_id }} / ${{ job.status }} / $(Get-Date -Format o)" | Set-Content "$dir\RUN.txt"
+          # Logs grandes: guarda so o final de cada um.
+          Get-ChildItem $dir -File | ForEach-Object { if ($_.Length -gt 400KB) { (Get-Content $_.FullName -Tail 4000) | Set-Content $_.FullName } }
+          Set-Location $dir
+          git init -q -b ci-logs
+          git config user.name "huehue-ci"; git config user.email "ci@users.noreply.github.com"
+          git add -A; git commit -q -m "logs run ${{ github.run_id }}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-logs
+          exit 0
+
