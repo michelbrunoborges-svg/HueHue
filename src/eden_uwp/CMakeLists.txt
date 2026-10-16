@@ -41,7 +41,6 @@ add_executable(eden-uwp WIN32
     locales/registry.cpp
     locales/en.cpp
     locales/es.cpp
-    locales/pt.cpp
     ui_text.h
     # Settings > System and the library's on-disk metadata cache.
     system_settings.h
