@@ -116,6 +116,11 @@ jobs:
           curl.exe -fsSL --retry 3 -o "$work\mesa-$ver.tar.xz" "https://archive.mesa3d.org/mesa-$ver.tar.xz"
           if ($LASTEXITCODE) { Write-Host "::error::download do Mesa $ver falhou"; exit 1 }
           Write-Host "Mesa $ver baixado: $((Get-Item "$work\mesa-$ver.tar.xz").Length) bytes"
+          # Extrai com Python (o tar.exe do Windows travava nos symlinks do pacote do Mesa).
+          # O script pula a extracao quando encontra o meson.build.
+          python -c "import tarfile,sys; t=tarfile.open(sys.argv[1]); t.extractall(sys.argv[2], members=[m for m in t.getmembers() if not (m.issym() or m.islnk())])" "$work\mesa-$ver.tar.xz" "$work"
+          if ($LASTEXITCODE -or -not (Test-Path "$work\mesa-$ver\meson.build")) { Write-Host "::error::extracao do Mesa falhou"; exit 1 }
+          Write-Host "Mesa extraido"
           & .github\scripts\run-logged.ps1 -Name mesa -Command "powershell -ExecutionPolicy Bypass -File tools\xbox\build-spirv-to-dxil.ps1"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           if (-not (Test-Path $dll)) { Write-Host "::error::spirv_to_dxil.dll nao foi gerado"; exit 1 }
