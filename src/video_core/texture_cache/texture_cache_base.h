@@ -157,6 +157,16 @@ class TextureCache : public VideoCommon::ChannelSetupCaches<TextureCacheChannelI
 public:
     explicit TextureCache(Runtime&, Tegra::MaxwellDeviceMemoryManager&);
 
+    /// What the Pulse capture downloads (DownloadMemory with modified_only), for its memory log.
+    struct CheckpointDownloads {
+        size_t images{};
+        u64 largest{};
+        u64 pooled{}; ///< the most the copies' transfer buffers held at once
+    } checkpoint_downloads;
+    [[nodiscard]] size_t SwizzleScratchBytes() const {
+        return swizzle_data_buffer.capacity();
+    }
+
     /// Notify the cache that a new frame has been queued
     void TickFrame();
 
@@ -208,8 +218,9 @@ public:
     /// Mark images in a range as modified from the CPU
     void WriteMemory(DAddr cpu_addr, size_t size);
 
-    /// Download contents of host images to guest memory in a region
-    void DownloadMemory(DAddr cpu_addr, size_t size);
+    /// Download contents of host images to guest memory in a region. modified_only keeps the
+    /// images the GPU wrote and the CPU has not overwritten since (Pulse's region fallback).
+    void DownloadMemory(DAddr cpu_addr, size_t size, bool modified_only = false);
 
     // Checkpoint-only, with mutex held and producers parked. Throws before reading any texture
     // if an authoritative image cannot be downloaded within the operation's scratch budget.

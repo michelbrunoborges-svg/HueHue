@@ -2,9 +2,10 @@
 
 Estado: fases 1–4 implementadas y fase 5 en curso. La biblioteca guarda la sesión
 al volver al inicio y la reanuda al elegir el juego (fase 4, abajo). Homebrew con
-vídeo, audio y archivos se reanuda. La fase 5 añade GPU, audren, HID y AM (abajo),
-pero aún sin probar en la Series; un juego que use un servicio sin serializador
-sigue **rechazándose con motivo**. No cambia el nombre del emulador. Sin commits
+vídeo, audio y archivos se reanuda. La fase 5 añade GPU, audren, HID, AM y los
+servicios de sistema (abajo): juegos comerciales de 64 y de 32 bits guardan y se
+reanudan en la Series y en PC (16 oct 2026). Un juego que use un
+servicio sin serializador sigue **rechazándose con motivo**. No cambia el nombre del emulador. Sin commits
 automáticos.
 
 ## Contrato de producto aprobado
@@ -140,8 +141,8 @@ Los errores IO/cuota están inyectados; no confundirlos con esos gates físicos.
 | 1: formato/storage | **Cerrada en PC**: harness de archivo/store PASS y cada ciclo de los gates de fase 2/3 publica y consume por `Store`. Riesgos residuales: corte eléctrico real y disco físico lleno (solo inyectados) |
 | 2: barrera/CPU/memoria/kernel/timing | **Cerrada**: gate de 100 ciclos PASS en la Series (0.2.87.12); fuga JIT por ciclo corregida y verificada en PC |
 | 3: servicios/FS/GPU/audio | **Cerrada para homebrew**: vi/nvnflinger, nvdrv, audout y fs serializados; banco de 100 ciclos PASS en la Series (0.2.87.16) |
-| 4: biblioteca/múltiples sesiones | **Implementada**: guardar al volver al inicio, reanudar al elegir, distintivo, descarte, ajuste. Pendiente validar en la Series (0.2.87.17) |
-| 5: compatibilidad/rendimiento | Pendiente |
+| 4: biblioteca/múltiples sesiones | **Cerrada**: guardar al volver al inicio, reanudar al elegir, distintivo, descarte, ajuste. Validada en la Series |
+| 5: compatibilidad/rendimiento | **En curso**: juegos comerciales de 64 y 32 bits guardan y se reanudan en la Series y en PC (0.2.91.20); un servicio sin serializador sigue rechazando |
 
 ## Fuentes y decisiones
 
@@ -199,6 +200,10 @@ Nada del archivo es puntero, handle host ni código JIT.
 | 0x70 | Exclusive | reservas del monitor exclusivo |
 | 0x80 | Timing | cola CoreTiming por nombre de evento y relojes; el temporizador hardware se rearma desde las esperas |
 
+Un hilo que ya salió (terminado y señalado) pero cuyo handle el guest aún no cerró se
+guarda como `Terminated` y se recrea así: terminado, señalado y sin correr nunca. Uno que
+aún está saliendo se rechaza como reintentable.
+
 Captura (sistema en pausa): un hilo dentro de un SVC (`is_calling_svc`, ahora
 mantenido por `Svc::Call`) o esperando IPC/un lock interno se rechaza como
 **reintentable**: el llamador hace Run unos ms y vuelve a capturar. Todo lo que no
@@ -206,7 +211,8 @@ tiene serializador se rechaza **sin reintento**: objetos distintos de los anteri
 servicios sin serializador, memoria compartida de un dueño no reconocido, memoria
 de transferencia de otro proceso, memoria física,
 estados de memoria fuera de código/heap/pila/TLS, eventos de timing con nombre
-repetido, suspensión de depurador o proceso, procesos de 32 bits.
+repetido, suspensión de depurador o proceso. Los procesos de 32 bits (A32) se
+capturan igual: comparten contexto, monitor exclusivo y resultados r0/r1 de las esperas.
 
 Restauración: secciones en orden; la última termina la reconstrucción dentro del
 callback de `Store::RestoreAndConsume`, así un fallo no consume la captura.
@@ -315,6 +321,12 @@ handlers y se señalan según el flag capturado.
 - **nvdrv**: nvmap y `nvhost-ctrl`. Este último guarda solo los eventos registrados
   y rechaza (reintentable) uno en uso. Los eventos se exportan con slot
   `fd << 8 | índice`.
+- **nvdec/vic/nvjpg**: nvmap fd, timeout, syncpoint del canal (el motor host1x se
+  reinicia sobre el capturado) y los búferes fijados por `MapBuffer`, que se vuelven a
+  fijar en su misma dirección host1x porque el guest la tiene en sus listas de
+  comandos. Con trabajo de vídeo en curso se rechaza (reintentable). Las referencias
+  del decodificador no se guardan: un vídeo reanudado a mitad puede verse con
+  artefactos hasta el siguiente fotograma clave.
 - **audout** (XAudio2 nativo) y **fs** (archivos abiertos, posición) por componente.
 
 Homebrew `tools/xbox/pulse_av` (libnx): capa stray con framebuffer y contador de
@@ -406,7 +418,7 @@ actualizado: faltaba la fila de estadísticas).
 ### Límites honestos (fase 5)
 
 - Un juego comercial aún puede rechazarse al volver al inicio si usa un servicio
-  sin serializador (set, time, acc, apm, pctl, friends…; ver fase 5). El motivo se
+  sin serializador (bcat, caps, ldn…; ver fase 5). El motivo se
   muestra y se sale sin sesión; el juego no se pierde porque las partidas normales
   no se tocan.
 - La reanudación tarda lo que la restauración (≈3 s en la Series) más la carga.
@@ -416,7 +428,7 @@ actualizado: faltaba la fila de estadísticas).
 ## Fase 5: servicios de juegos (12 oct 2026)
 
 Misma política que la fase 3: guardar solo lo que el juego observa y regenerar el
-resto. Compila para UWP; **no está probado en la Series**.
+resto. Probado con juegos comerciales de 64 y 32 bits en la Series y en PC.
 
 - **Memoria compartida (kind 7)**: nunca se guarda su contenido; se nombra al
   dueño (fuente de `pl:u`, IRS, time, hidbus, HID por aruid) y la restauración
@@ -429,7 +441,18 @@ resto. Compila para UWP; **no está probado en la Series**.
   memoria del guest. Se guardan el espacio de direcciones de `nvhost-as-gpu`
   (reservas, mapeos y remapeos por handle nvmap), los canales con su syncpoint y
   el estado de motores que dejó el juego, y los valores de syncpoint de host1x.
+  Al restaurar, un syncpoint sube hasta su máximo reservado: esos incrementos son de
+  trabajo GPU en vuelo al capturar, que no se restaura, y un fence del juego sobre
+  ellos esperaría para siempre.
   Las cachés del host (texturas, shaders, buffers) no se guardan: se reconstruyen.
+  Una textura que no se puede leer de vuelta exacta cae al volcado por región, que
+  solo baja las imágenes que la GPU escribió y la CPU no sobrescribió después
+  (bajar todas pisaba memoria que el juego reutilizó, p. ej. código de shaders con
+  píxeles viejos). Las imágenes convertidas en el host (ASTC decodificado…) se
+  omiten: su formato no es el del guest.
+- **Procesos de 32 bits (16 oct 2026)**: A32 y A64 comparten el contexto
+  (ArmDynarmic32 mapea r0–r15 y el CPSR sobre él), el monitor exclusivo y los
+  resultados r0/r1 de las esperas que completa la restauración.
 - **audren**: solo el estado lógico del renderer (parámetros, voces, mezclas,
   efectos, splitters); los buffers del backend se regeneran.
 - **HID**: estilos de npad soportados, asignaciones que fijó el juego (modo de
@@ -448,13 +471,74 @@ resto. Compila para UWP; **no está probado en la Series**.
 - **Rechazos reintentables**: un applet de biblioteca abierto (teclado, selector de
   usuario…), un accesor de `IStorage` abierto o el applet ocupado. El motivo se
   muestra y se puede volver a intentar al cerrarlo.
+- **Servicios de sistema (15 oct 2026)**, casi sin estado propio:
+  - `IStorage` de fs (RomFS): guarda cómo se abrió (proceso actual, data id o
+    índice de programa) y referencia el `fsp-srv` que lo abrió, que lo vuelve a
+    abrir. El RomFS abierto como sistema de archivos también se reabre.
+  - time: relojes de sistema (usuario, red, local, efímero) por su origen, reloj
+    estable y zona horaria; se exportan sus eventos de operación.
+  - set y set:sys: raíces sin estado.
+  - apm: las configuraciones de rendimiento de los modos normal y boost.
+  - lm: el destino del logger; los paquetes de log a medias se descartan.
+  - acc: `IProfile`/`IProfileEditor` (id de usuario), `IManagerForApplication` y
+    su contexto asíncrono (siempre completo; se exporta su evento).
+  - pctl: estados, ajustes, restricciones, pin y temporizador de juego de
+    `IParentalControlService`, con sus tres eventos.
+  - ns (`ns:am2` y sus interfaces hijas, salvo `IApplicationManagerInterface`),
+    prepo y spl/csrng: sin estado.
+  - aoc: la lista de DLC es del System; se exportan los eventos de cambio y de
+    compra.
+  - nfc/nfp: inicialización y detección por mando (se reinicia al restaurar) y
+    sus eventos. Un amiibo leído o montado rechaza con reintento.
+  - nifm: `IRequest` (estado de la solicitud; la conexión se vuelve a evaluar) e
+    `IScanRequest` (resultado del último escaneo), con sus eventos. Un escaneo en
+    curso rechaza con reintento.
+  - friends: `IFriendService` (su evento) e `INotificationService` (usuario,
+    notificaciones pendientes y evento).
+  - hwopus: cada decodificador se reabre con sus parámetros; el historial de Opus
+    empieza de cero, como un paquete con reset.
+  - bsd, sfdnsres, nsd: sin estado mientras no haya sockets. Un socket abierto
+    rechaza con reintento.
+  - ssl: `ISslContext` guarda su versión; una conexión TLS abierta rechaza con
+    reintento.
+  - vi: `ISystemDisplayService` e `IManagerDisplayService` sin estado propio.
+    Rechazan sin reintento si el juego usó capas compartidas o creó una capa
+    gestionada que sigue viva (ese estado no se captura).
+  - ectx:aw y sus `IContextRegistrar`, ngc:u y ngct:u: sin estado.
+  - mm:u: sesiones de reloj por módulo con su rango pedido y el siguiente id.
+  - mii:e y mii:u: sin estado; cada `IDatabaseService` guarda su metadata de sesión (la base de
+    datos vive en el save del sistema del host y se recarga al arrancar).
+  - Rechazos reintentables nuevos: `IDirectory`, `ISaveDataInfoReader` e
+    `IMultiCommitManager` de fs, y `nvhost-nvdec`, `nvhost-vic` y `nvhost-nvjpg`
+    (solo están abiertos mientras el juego decodifica).
+
+### Log propio
+
+Pulse escribe en `LocalState\eden_pulse.txt`, aparte de `eden_uwp_diag.txt`:
+guardado, reanudación, el motivo final de cada sesión no guardada y una línea
+`rejected:` por cada intento rechazado mientras reintenta (sin pila ni consumir
+el cupo de excepciones del diag). Un evento de servicio que ninguna interfaz
+exporta aparece con el nombre que le dio su servicio.
+
+Tras reanudar, el log anota durante 30 s los frames presentados en cada segundo
+(`resumed +N s: F frames`), para ver si el juego se detiene y cuándo. En
+`eden\log\eden_log.txt` quedan los syncpoints restaurados (mín., máx., guest y
+host) y cada espera de `nvhost-ctrl` que bloquea nvservices hasta un valor de
+syncpoint, con los valores de ese momento.
 
 ### Límites honestos (fase 5)
 
-- Sin evidencia en consola todavía: todo lo anterior compila, nada más.
-- Servicios sin serializador (set, time, acc, apm, pctl, friends, nifm…) siguen
-  rechazando sin reintento. Es probable que el siguiente rechazo de un juego real
-  venga de ahí.
+- Probado con juegos comerciales de 64 y 32 bits en la Series y en PC; un juego que no se probó
+  puede rechazar por un servicio sin serializador.
+- Servicios sin serializador (bcat, caps, ldn, npns, audin, psm,
+  `IApplicationManagerInterface` de ns…) siguen rechazando sin reintento. Es
+  probable que el siguiente rechazo de un juego real venga de ahí.
+- Un juego que mantiene un socket o una conexión TLS abiertos todo el tiempo no
+  llega a capturarse: el rechazo reintentable no se resuelve nunca.
+- Bloqueos del kernel: `svcMapPhysicalMemory`, los NRO cargados con `nn::ro`
+  (memoria `AliasCode`, sin serializador de ro) y la memoria de código del JIT.
+- Las opciones y certificados importados de un `ISslContext` no se guardan (son
+  stubs).
 - La memoria de transferencia que solo retiene un servicio, sin mapeo en el
   proceso, no se cubre.
 - IRS y hidbus se restauran sin estado; la vibración no se restaura.

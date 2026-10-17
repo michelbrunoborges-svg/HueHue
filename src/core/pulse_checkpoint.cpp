@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cstring>
 #include <functional>
@@ -12,10 +13,14 @@
 #include <unordered_set>
 #include <fmt/format.h>
 
+#include "common/host_memory.h"
 #include "common/logging.h"
+#include "common/pulse_diagnostics.h"
+#include "common/pulse_store.h"
 #include "core/arm/exclusive_monitor.h"
 #include "core/core.h"
 #include "core/core_timing.h"
+#include "core/device_memory.h"
 #include "core/hle/kernel/k_client_port.h"
 #include "core/hle/kernel/k_client_session.h"
 #include "core/hle/kernel/k_event.h"
@@ -36,6 +41,7 @@
 #include "core/hle/kernel/pulse_wait_graph.h"
 #include "core/hle/service/hid/hid_server.h"
 #include "core/hle/service/hle_ipc.h"
+#include "core/hle/service/kernel_helpers.h"
 #include "core/hle/service/ns/platform_service_manager.h"
 #include "core/hle/service/nvdrv/core/container.h"
 #include "core/hle/service/nvdrv/core/nvmap.h"
@@ -75,6 +81,40 @@ constexpr auto ServiceStartTimeout = std::chrono::seconds{5};
 
 [[noreturn]] void Invalid(const char* reason) {
     throw Failure{Error::Invalid, reason};
+}
+
+// The emulated DRAM commits a page on its first touch, and the kernel decommits the pages it
+// clears, so a game's mapped but unused memory costs the host nothing. Reading it would commit
+// it: the memory section stores those pages as zero without touching them, and a restore leaves
+// the zero pages it gets alone where the fresh boot never committed them either.
+class UntouchedPages {
+public:
+    bool Contains(const u8* host) {
+        if (!host) return false;
+        if (!region || host < region->begin || host >= region->end) {
+            region = Common::QueryDramRegion(host);
+        }
+        return region && region->untouched;
+    }
+    // A write commits the pages it lands on.
+    void Wrote() {
+        if (region && region->untouched) region.reset();
+    }
+
+private:
+    std::optional<Common::DramRegion> region;
+};
+
+bool IsZero(const u8* data, size_t size) {
+    for (size_t i = 0; i + sizeof(u64) <= size; i += sizeof(u64)) {
+        u64 word;
+        std::memcpy(&word, data + i, sizeof(word));
+        if (word) return false;
+    }
+    for (size_t i = size & ~(sizeof(u64) - 1); i < size; ++i) {
+        if (data[i]) return false;
+    }
+    return true;
 }
 [[noreturn]] void Incompatible(const std::string& reason) {
     throw Failure{Error::Incompatible, reason.c_str()};
@@ -133,6 +173,33 @@ u64 Physical(KProcess& process, u64 address) {
     }
     return GetInteger(physical);
 }
+
+// A set of DRAM pages, one bit each: a set of every page a game maps costs a few hundred KiB
+// where a hash set of them cost tens of MiB at the moment of the save.
+class PhysicalPages {
+public:
+    // False if the page was already in.
+    bool Insert(u64 physical) {
+        const u64 page = Index(physical);
+        if (page / 64 >= words.size()) words.resize(page / 64 + 1);
+        u64& word = words[page / 64];
+        const u64 bit = u64{1} << (page % 64);
+        if (word & bit) return false;
+        word |= bit;
+        return true;
+    }
+    bool Contains(u64 physical) const {
+        const u64 page = Index(physical);
+        return page / 64 < words.size() && (words[page / 64] >> (page % 64)) & 1;
+    }
+
+private:
+    static u64 Index(u64 physical) {
+        if (physical < Core::DramMemoryMap::Base) Reject(false, "guest page outside the DRAM");
+        return (physical - Core::DramMemoryMap::Base) / PageSize;
+    }
+    std::vector<u64> words;
+};
 
 // Identities of the objects a captured process reaches, assigned in discovery order. Never the
 // KAutoObject address: identities are graph references, not host pointers.
@@ -208,7 +275,12 @@ private:
         if (const auto found = ids.find(event); found != ids.end()) {
             return {found->second, ids.at(readable)};
         }
-        const auto kind = event->GetOwner() == process ? ObjectKind::Event : ObjectKind::ServiceEvent;
+        // An event its service already closed has no signaller left: the guest's handle is all
+        // that keeps it, so it is stored and rebuilt as an application event.
+        const auto kind = event->GetOwner() == process ||
+                                  Service::KernelHelpers::IsClosedServiceEvent(event)
+                              ? ObjectKind::Event
+                              : ObjectKind::ServiceEvent;
         const auto event_id = Add(event, kind, 0);
         return {event_id, Add(readable, ObjectKind::ReadableEvent, event_id)};
     }
@@ -256,7 +328,8 @@ namespace {
 // What the GPU wrote and the host caches still hold goes back to guest memory, which the
 // checkpoint stores; the caches themselves are rebuilt after a restore. The exact readback is
 // tried first; a texture it cannot read back exactly (rescaled, aliased...) falls back to the
-// renderer's own flush of every range the GPU can reach, which keeps what a CPU read would see.
+// renderer's flush of every range the GPU can reach, limited to the images the GPU wrote and
+// the CPU has not overwritten since.
 void FlushGpuWrites(Core::System& system) {
     std::vector<std::pair<DAddr, u64>> ranges;
     if (const auto nvdrv = system.ServiceManager().GetService<Service::Nvidia::NVDRV>("nvdrv:s",
@@ -274,7 +347,9 @@ void FlushGpuWrites(Core::System& system) {
             LOG_INFO(Core, "Pulse: GPU writes flushed by region ({})", inexact.what());
         }
         try {
-            for (const auto& [address, size] : ranges) rasterizer->FlushRegion(address, size);
+            for (const auto& [address, size] : ranges) {
+                rasterizer->FlushCheckpointRegion(address, size);
+            }
             rasterizer->FlushAll();
         } catch (const std::exception& error) {
             failure = error.what();
@@ -344,7 +419,11 @@ void PutLe(std::vector<u8>& out, u64 value, size_t width) {
 
 ProcessCheckpoint ProcessCheckpoint::CaptureAtBarrier(Core::System& system,
                                                     std::chrono::milliseconds budget,
-                                                    u32& retries) {
+                                                    u32& retries,
+                                                    const std::function<void(const char*)>& phase) {
+    const auto step = [&](const char* name) {
+        if (phase) phase(name);
+    };
     auto& kernel = system.Kernel();
     kernel.SetCheckpointBarrier(true);
     struct Lower {
@@ -361,8 +440,11 @@ ProcessCheckpoint ProcessCheckpoint::CaptureAtBarrier(Core::System& system,
         try {
             // With the guest parked nothing new is queued: the GPU finishes what it has, so the
             // channels are between command lists when nvdrv serializes them.
+            step("idle");
             system.GPU().WaitForIdle();
+            step("process");
             auto checkpoint = Capture(system);
+            step("gpu");
             FlushGpuWrites(system);
             return checkpoint;
         } catch (const CheckpointRejected& rejected) {
@@ -381,8 +463,10 @@ ProcessCheckpoint ProcessCheckpoint::Capture(Core::System& system) {
     if (!system.IsPaused()) Reject(false, "capture requires a paused system");
     auto& kernel = system.Kernel();
     auto* process = system.ApplicationProcess();
-    if (!process || !process->Is64Bit() || process->GetState() != KProcess::State::Running) {
-        Reject(false, "no running 64-bit application process");
+    // A32 and A64 share the context (ArmDynarmic32 maps r0-r15 and the CPSR onto it), the
+    // exclusive monitor and the r0/r1 results of the waits a restore completes.
+    if (!process || process->GetState() != KProcess::State::Running) {
+        Reject(false, "no running application process");
     }
 
     ProcessCheckpoint checkpoint;
@@ -399,7 +483,9 @@ ProcessCheckpoint ProcessCheckpoint::Capture(Core::System& system) {
         for (auto& thread : process->GetThreadList()) {
             if (threads.size() == MaxGuestThreads) Reject(false, "too many guest threads");
             const auto state = thread.GetState();
-            if (state == ThreadState::Terminated || thread.IsTerminationRequested()) {
+            // Exited and signaled is final; still unwinding (or asked to exit) settles soon.
+            const bool exited = state == ThreadState::Terminated && thread.IsSignaled(kernel);
+            if (!exited && (state == ThreadState::Terminated || thread.IsTerminationRequested())) {
                 Reject(true, "a guest thread is exiting");
             }
             // IsInExceptionHandler() is not checked: Eden sets it on every thread at creation and
@@ -422,6 +508,9 @@ ProcessCheckpoint ProcessCheckpoint::Capture(Core::System& system) {
                                      std::addressof(record.affinity)),
                   "Pulse: thread core mask");
             switch (state) {
+            case ThreadState::Terminated:
+                record.run = ThreadRun::Terminated;
+                break;
             case ThreadState::Initialized:
                 record.run = ThreadRun::Initialized;
                 break;
@@ -486,7 +575,7 @@ ProcessCheckpoint ProcessCheckpoint::Capture(Core::System& system) {
         }
     }
     std::unordered_map<u64, size_t> shared_by_physical; // physical start -> record index
-    std::unordered_set<u64> lent_pages;                 // physical pages of transfer memory
+    PhysicalPages lent_pages;                           // physical pages of transfer memory
     for (size_t i = 0; i < registry.Records().size(); ++i) {
         auto& record = registry.Records()[i];
         if (record.kind == ObjectKind::TransferMemory) {
@@ -499,7 +588,7 @@ ProcessCheckpoint ProcessCheckpoint::Capture(Core::System& system) {
             PutLe(record.payload, size, 8);
             PutLe(record.payload, static_cast<u32>(transfer->GetOwnerPermission()), 4);
             for (u64 page = 0; page < size; page += PageSize) {
-                lent_pages.insert(Physical(*process, address + page));
+                lent_pages.Insert(Physical(*process, address + page));
             }
         } else if (record.kind == ObjectKind::SharedMemory) {
             const auto* shared = static_cast<const Kernel::KSharedMemory*>(registry.Objects()[i]);
@@ -641,8 +730,15 @@ ProcessCheckpoint ProcessCheckpoint::Capture(Core::System& system) {
         const auto* event = static_cast<const Kernel::KEvent*>(registry.Objects()[i]);
         const auto found = exported.find(event);
         if (found == exported.end()) {
-            const auto* owner = event->GetOwner();
-            unexported.insert(owner ? owner->GetName() : "no process");
+            auto name = Service::KernelHelpers::EventName(event);
+            if (name.empty()) {
+                const auto* owner = event->GetOwner();
+                name = !owner             ? std::string{"unnamed event without owner"}
+                       : owner->GetName()[0] ? std::string{owner->GetName()}
+                                             : fmt::format("unnamed event of process {}",
+                                                           owner->GetProcessId());
+            }
+            unexported.insert(std::move(name));
             continue;
         }
         record.parent = found->second.first;
@@ -658,14 +754,20 @@ ProcessCheckpoint ProcessCheckpoint::Capture(Core::System& system) {
             reason += (reason.empty() ? "" : "; ") +
                       std::string{"events of service processes no interface exports: "} + Join(unexported);
         }
-        Reject(missing.empty() && unexported.empty() && refused_retryable, reason);
+        // A refused interface exports none of its events, so they only make the rejection final
+        // when nothing was refused.
+        Reject(missing.empty() && (unexported.empty() || !refused.empty()) && refused_retryable,
+               reason);
     }
 
     // Memory map: what the rebuilt skeleton must reproduce, and what to store.
     auto& table = process->GetPageTable();
-    if (table.GetBasePageTable().GetMappedPhysicalMemorySize()) {
-        Reject(false, "the application maps physical memory");
-    }
+    // svcMapPhysicalMemory memory: Normal blocks in the alias region, rebuilt by mapping the same
+    // ranges again. The layout needs no field for it; their total must match the kernel's.
+    const u64 alias_start = GetInteger(table.GetAliasRegionStart());
+    const u64 alias_end = alias_start + table.GetAliasRegionSize();
+    const u64 physical_size = table.GetBasePageTable().GetMappedPhysicalMemorySize();
+    u64 physical_found{};
     ProcessLayout layout;
     layout.program_id = process->GetProgramId();
     layout.process_id = process->GetProcessId();
@@ -678,11 +780,11 @@ ProcessCheckpoint ProcessCheckpoint::Capture(Core::System& system) {
     const u64 heap_end = layout.heap_start + layout.heap_size;
     const u64 main_stack_end = layout.main_stack_address + layout.main_stack_size;
     std::unordered_map<u64, u64> locked_sources; // physical page -> heap address
-    std::unordered_set<u64> stored;
+    PhysicalPages stored;
     auto& aliases = layout.aliases;
     auto& runs = layout.runs;
     const auto store_page = [&](u64 address) {
-        if (!stored.insert(Physical(*process, address)).second) return;
+        if (!stored.Insert(Physical(*process, address))) return;
         if (!runs.empty() && runs.back().address + runs.back().pages * PageSize == address) {
             ++runs.back().pages;
         } else {
@@ -700,21 +802,32 @@ ProcessCheckpoint ProcessCheckpoint::Capture(Core::System& system) {
                                      "(block {:#x}+{:#x} state {:#x} attribute {:#x})",
                                      block.address, block.size, block.state, block.attribute));
         }
-        // PermissionLocked (libnx locks its RELRO page) is replayed by the restore, DeviceShared by
-        // the nvdrv serializer re-sharing its nvmap handles; Uncached is not.
+        // PermissionLocked (libnx locks its RELRO page) and Uncached (svcSetMemoryAttribute on GPU
+        // buffers) are replayed by the restore, DeviceShared by the nvdrv serializer re-sharing its
+        // nvmap handles.
         if (True(attribute & ~(KMemoryAttribute::Locked | KMemoryAttribute::PermissionLocked |
-                               KMemoryAttribute::DeviceShared))) {
+                               KMemoryAttribute::DeviceShared | KMemoryAttribute::Uncached))) {
             Reject(false, fmt::format("memory attribute {:#x} has no serializer", block.attribute));
         }
         const bool normal = state == KMemoryState::Normal;
         if (True(attribute & KMemoryAttribute::DeviceShared) && !normal) {
-            Reject(false, "device-shared memory outside the heap");
+            Reject(false, fmt::format("device-shared memory outside the heap (block {:#x}+{:#x} "
+                                      "state {:#x})",
+                                      block.address, block.size, block.state));
         }
-        if (True(attribute & KMemoryAttribute::Locked) && !normal) {
-            Reject(false, "locked memory outside the heap");
+        // svcMapMemory (a thread stack) and transfer memory lock their source, which may be static
+        // data (.bss, CodeData) as well as the heap: the restore replays the same calls.
+        if (True(attribute & KMemoryAttribute::Locked) && !normal &&
+            state != KMemoryState::CodeData) {
+            Reject(false, fmt::format("locked memory outside the heap and static data (block "
+                                      "{:#x}+{:#x} state {:#x})",
+                                      block.address, block.size, block.state));
         }
         if (normal && (block.address < layout.heap_start || block.address + block.size > heap_end)) {
-            Reject(false, "normal memory outside the heap");
+            if (block.address < alias_start || block.address + block.size > alias_end) {
+                Reject(false, "normal memory outside the heap and the alias region");
+            }
+            physical_found += block.size;
         }
         if (state != KMemoryState::Code && state != KMemoryState::CodeData && !normal &&
             state != KMemoryState::Stack && state != KMemoryState::ThreadLocal &&
@@ -751,6 +864,10 @@ ProcessCheckpoint ProcessCheckpoint::Capture(Core::System& system) {
             }
         }
     }
+    if (physical_found != physical_size) {
+        Reject(false, fmt::format("physical memory mappings ({:#x}) differ from the kernel's ({:#x})",
+                                  physical_found, physical_size));
+    }
     for (const auto& block : layout.blocks) {
         const auto state = static_cast<KMemoryState>(block.state);
         if (state == KMemoryState::Shared) continue; // its owner refills it
@@ -776,7 +893,7 @@ ProcessCheckpoint ProcessCheckpoint::Capture(Core::System& system) {
     // A locked heap page with no readable alias cannot be read back: fail closed. Transfer memory
     // the guest cannot read is a service's work memory: rebuilt locked, its content not kept.
     for (const auto& [physical, address] : locked_sources) {
-        if (!stored.contains(physical) && !lent_pages.contains(physical)) {
+        if (!stored.Contains(physical) && !lent_pages.Contains(physical)) {
             Reject(false, "locked heap page with no readable mapping");
         }
     }
@@ -863,7 +980,27 @@ u64 ProcessCheckpoint::MaxEncodedSize() const {
 }
 
 void ProcessCheckpoint::Write(Common::Pulse::Writer& writer) const {
+    if (Common::Pulse::Diagnostics()) {
+        LOG_INFO(Core, "Pulse: GPU 0x400000000+256 KiB as written is {}",
+                 Common::DescribeWatchedPages());
+    }
     auto& memory = process->GetMemory();
+    // The writer reads several blocks at once, from its own threads; the game is paused.
+    std::atomic<u64> untouched_bytes{};
+    const auto read_guest = [&](u64 address, u8* out, size_t size) {
+        UntouchedPages untouched;
+        for (size_t done = 0; done < size;) {
+            const auto count = static_cast<size_t>(
+                std::min<u64>(size - done, PageSize - ((address + done) & (PageSize - 1))));
+            if (untouched.Contains(memory.GetPointerSilent(address + done))) {
+                std::memset(out + done, 0, count);
+                untouched_bytes.fetch_add(count, std::memory_order_relaxed);
+            } else if (!memory.ReadBlockUnsafe(address + done, out + done, count)) {
+                Invalid("Pulse: guest memory read failed");
+            }
+            done += count;
+        }
+    };
     const auto write_bytes = [&](const SectionBytes& entry) {
         writer.Add({static_cast<u32>(entry.id), ProcessSectionVersion, entry.bytes.size()},
                    [&](u64 offset, std::span<u8> block) {
@@ -882,10 +1019,8 @@ void ProcessCheckpoint::Write(Common::Pulse::Writer& writer) const {
                                const u64 within = offset - start;
                                const auto count = static_cast<size_t>(std::min<u64>(
                                    block.size() - position, runs[index].pages * PageSize - within));
-                               if (!memory.ReadBlockUnsafe(runs[index].address + within,
-                                                           block.data() + position, count)) {
-                                   Invalid("Pulse: guest memory read failed");
-                               }
+                               read_guest(runs[index].address + within, block.data() + position,
+                                          count);
                                position += count;
                                offset += count;
                                ++index;
@@ -894,6 +1029,8 @@ void ProcessCheckpoint::Write(Common::Pulse::Writer& writer) const {
         }
         write_bytes(entry);
     }
+    LOG_INFO(Core, "Pulse: {} of {} MiB of guest memory never committed, stored as zero",
+             untouched_bytes.load() >> 20, memory_size >> 20);
 }
 
 // ---------------------------------------------------------------------------------- restore
@@ -922,6 +1059,10 @@ void ProcessRestore::Consume(Common::Pulse::Section section, u64 offset, std::sp
         if (section.version != ProcessSectionVersion) Incompatible("Pulse: process section version");
         if (!section.size) Invalid("Pulse: empty process section");
         buffer.clear();
+        if (Common::Pulse::Diagnostics()) {
+            LOG_INFO(Core, "Pulse: restore section {} begins",
+                     static_cast<u32>(SectionOrder[next_section]));
+        }
         if (SectionOrder[next_section] == ProcessSection::Memory) {
             if (section.size != state->layout.ContentSize()) Invalid("Pulse: memory section size");
             VerifyLayout();
@@ -939,6 +1080,21 @@ void ProcessRestore::Consume(Common::Pulse::Section section, u64 offset, std::sp
     }
     if (id == ProcessSection::Memory) {
         auto& memory = process->GetMemory();
+        UntouchedPages untouched;
+        const auto write_guest = [&](u64 address, const u8* in, size_t size) {
+            for (size_t done = 0; done < size;) {
+                const auto count = static_cast<size_t>(
+                    std::min<u64>(size - done, PageSize - ((address + done) & (PageSize - 1))));
+                if (!IsZero(in + done, count) ||
+                    !untouched.Contains(memory.GetPointerSilent(address + done))) {
+                    if (!memory.WriteBlockUnsafe(address + done, in + done, count)) {
+                        Invalid("Pulse: guest memory write failed");
+                    }
+                    untouched.Wrote();
+                }
+                done += count;
+            }
+        };
         const auto& ends = state->run_ends;
         size_t index = std::upper_bound(ends.begin(), ends.end(), offset) - ends.begin();
         size_t position{};
@@ -948,10 +1104,7 @@ void ProcessRestore::Consume(Common::Pulse::Section section, u64 offset, std::sp
             const u64 within = cursor - start;
             const auto count = static_cast<size_t>(
                 std::min<u64>(data.size() - position, state->layout.runs[index].pages * PageSize - within));
-            if (!memory.WriteBlockUnsafe(state->layout.runs[index].address + within, data.data() + position,
-                                         count)) {
-                Invalid("Pulse: guest memory write failed");
-            }
+            write_guest(state->layout.runs[index].address + within, data.data() + position, count);
             position += count;
             cursor += count;
             ++index;
@@ -967,6 +1120,9 @@ void ProcessRestore::Consume(Common::Pulse::Section section, u64 offset, std::sp
             Complete(id, buffer);
         }
         buffer.clear();
+        if (Common::Pulse::Diagnostics()) {
+            LOG_INFO(Core, "Pulse: restore section {} done", static_cast<u32>(id));
+        }
         // The last section completes the rebuild here, inside the Store's rebuild callback, so a
         // failure leaves the published state unconsumed.
         if (++next_section == SectionOrder.size()) Finish();
@@ -1007,7 +1163,7 @@ void ProcessRestore::Complete(ProcessSection id, std::span<const u8> bytes) {
         if (system.ApplicationProcess()) Invalid("Pulse: restore requires a fresh system");
         load(layout.pin);
         process = system.ApplicationProcess();
-        if (!process || !process->IsRestoringCheckpoint() || !process->Is64Bit()) {
+        if (!process || !process->IsRestoringCheckpoint()) {
             Incompatible("Pulse: skeleton loader did not create a pinned process");
         }
         if (process->GetLayoutPin() != layout.pin || process->GetProgramId() != layout.program_id ||
@@ -1042,6 +1198,17 @@ void ProcessRestore::Complete(ProcessSection id, std::span<const u8> bytes) {
             Check(table.SetHeapSize(std::addressof(heap), layout.heap_size), "Pulse: heap rebuild failed");
             if (GetInteger(heap) != layout.heap_start) Incompatible("Pulse: rebuilt heap address differs");
         }
+        // Normal memory outside the heap was mapped with svcMapPhysicalMemory (checked at capture).
+        const u64 heap_end = layout.heap_start + layout.heap_size;
+        for (const auto& block : layout.blocks) {
+            if (static_cast<KMemoryState>(block.state) != KMemoryState::Normal ||
+                (block.address >= layout.heap_start && block.address + block.size <= heap_end)) {
+                continue;
+            }
+            // No guest thread runs here, so the owner is passed instead of the current process.
+            Check(table.MapPhysicalMemory(block.address, block.size, process->GetProcessId()),
+                  "Pulse: physical memory rebuild failed");
+        }
         for (const auto& alias : layout.aliases) {
             Check(table.MapMemory(alias.destination, alias.source, alias.size),
                   "Pulse: stack mapping rebuild failed");
@@ -1051,7 +1218,8 @@ void ProcessRestore::Complete(ProcessSection id, std::span<const u8> bytes) {
         for (const auto& block : layout.blocks) {
             const auto block_state = static_cast<KMemoryState>(block.state);
             if ((block_state != KMemoryState::CodeData && block_state != KMemoryState::Normal) ||
-                (block.attribute & ~static_cast<u32>(KMemoryAttribute::DeviceShared)) != 0) {
+                (block.attribute & ~static_cast<u32>(KMemoryAttribute::DeviceShared |
+                                                     KMemoryAttribute::Uncached)) != 0) {
                 continue;
             }
             for (u64 address = block.address; address < block.address + block.size;) {
@@ -1069,6 +1237,14 @@ void ProcessRestore::Complete(ProcessSection id, std::span<const u8> bytes) {
                 }
                 address = end;
             }
+        }
+        for (const auto& block : layout.blocks) {
+            if (False(static_cast<KMemoryAttribute>(block.attribute) & KMemoryAttribute::Uncached)) {
+                continue;
+            }
+            Check(table.SetMemoryAttribute(block.address, block.size, KMemoryAttribute::Uncached,
+                                           KMemoryAttribute::Uncached),
+                  "Pulse: uncached memory rebuild failed");
         }
         for (const auto& block : layout.blocks) {
             if (False(static_cast<KMemoryAttribute>(block.attribute) &
@@ -1232,6 +1408,22 @@ void ProcessRestore::Complete(ProcessSection id, std::span<const u8> bytes) {
                     }
                 } else {
                     rebuilt = context.root->PulseRestore(handler.kind, restore);
+                    // One server hosts several ports (audio...) and the capture names the first
+                    // it saw, not the one that made this interface: try the server's other ports,
+                    // those already open first.
+                    if (!rebuilt && context.server) {
+                        auto names = context.server->PulsePortNames();
+                        std::ranges::stable_partition(
+                            names, [&](const std::string& name) { return ports.contains(name); });
+                        for (const auto& name : names) {
+                            if (name == handler.port) continue;
+                            if (!ports.contains(name)) open_port(name);
+                            Service::Pulse::HandlerRestore retry{system, process, handler.state,
+                                                                 restore_handler};
+                            rebuilt = ports.at(name).root->PulseRestore(handler.kind, retry);
+                            if (rebuilt) break;
+                        }
+                    }
                 }
             } catch (const std::invalid_argument& error) {
                 Incompatible(error.what());
@@ -1388,11 +1580,18 @@ void ProcessRestore::Complete(ProcessSection id, std::span<const u8> bytes) {
             reservation.Commit();
             KThread::Register(kernel, thread);
             thread->GetContext() = context;
-            // Stopped until the caller runs the system, like every captured thread.
-            thread->RequestSuspend(kernel, Kernel::SuspendType::System);
-            if (record.flags & 1) thread->RequestSuspend(kernel, Kernel::SuspendType::Thread);
+            const bool terminated = record.run == ThreadRun::Terminated;
+            if (!terminated) {
+                // Stopped until the caller runs the system, like every captured thread.
+                thread->RequestSuspend(kernel, Kernel::SuspendType::System);
+                if (record.flags & 1) thread->RequestSuspend(kernel, Kernel::SuspendType::Thread);
+            }
             Check(thread->SetCoreMask(kernel, record.ideal_core, record.affinity),
                   "Pulse: thread core mask rebuild failed");
+            if (terminated) {
+                Kernel::KScopedSchedulerLock lock{kernel};
+                thread->RestoreTerminated(kernel);
+            }
             bind(record.id, thread);
             state->threads.emplace_back(thread, record.run);
         }
@@ -1515,6 +1714,22 @@ void ProcessRestore::Complete(ProcessSection id, std::span<const u8> bytes) {
 void ProcessRestore::Finish() {
     if (finished) return;
     if (next_section != SectionOrder.size() || !layout_verified) Invalid("Pulse: missing process sections");
+    if (Common::Pulse::Diagnostics()) {
+        // What each restored page holds before the guest runs, and the watch on the shader code.
+        Common::Pulse::ClearRestoredPages();
+        auto& memory = process->GetMemory();
+        UntouchedPages untouched;
+        for (const auto& run : state->layout.runs) {
+            for (u64 page = 0; page < run.pages; ++page) {
+                const u8* const host = memory.GetPointerSilent(run.address + page * PageSize);
+                if (!host) continue;
+                Common::Pulse::NoteRestoredPage(host, untouched.Contains(host));
+            }
+        }
+        LOG_INFO(Core, "Pulse: restored GPU 0x400000000+256 KiB is {}",
+                 Common::DescribeWatchedPages());
+        Common::ArmDramWriteWatch();
+    }
     auto& kernel = system.Kernel();
     for (const auto& [thread, run] : state->threads) {
         if (run == ThreadRun::Runnable) {

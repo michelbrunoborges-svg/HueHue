@@ -8,18 +8,18 @@
 #
 #   powershell -ExecutionPolicy Bypass -File tools\xbox\local-run.ps1 [-NoBuild] [-TimeoutSec 75]
 #       [-BootNro path\to\payload.nro] [-RunSeconds 20] [-DebugLayer]
-#       [-Keys dir] [-Firmware dir] [-Game path\to\game.nsp] [-MemoryLimitMiB 5120]
+#       [-Game path\to\game.nsp] [-MemoryLimitMiB 5120]
 #
 # -RunSeconds runs payloads without the sentinels (deko3d examples, ...) for that long, then exits.
 # -DebugLayer turns on the D3D12 debug layer; its errors and warnings land in eden_log.txt.
-# -Keys/-Firmware/-Game pass the user's own dumps through package-appx.ps1 (copied into LocalState
+# -Game passes the user's own game dump through package-appx.ps1 (copied into LocalState
 # on the first run; afterwards -Game with just the file name is enough).
 # The log is left in %LOCALAPPDATA%\Packages\<family>\LocalState\eden\log\eden_log.txt (path
 # printed at the end).
 
 param([int] $TimeoutSec = 75, [switch] $NoBuild, [string] $BootNro, [int] $RunSeconds = 0,
-      [switch] $DebugLayer, [string] $Keys, [string] $Firmware, [string] $Game, [string[]] $BootCfg = @(),
-      [ValidateRange(0, 1048576)] [int] $MemoryLimitMiB = 5120, [switch] $Library)
+      [switch] $DebugLayer, [string] $Game, [string[]] $BootCfg = @(),
+      [ValidateRange(0, 1048576)] [int] $MemoryLimitMiB = 5120, [switch] $Library, [switch] $AllowVersionDowngrade)
 $ErrorActionPreference = 'Stop'
 # Match package-appx's comma-separated -BootCfg handling before applying defaults.
 # Otherwise an explicit developer_hotkeys=0 later in the string gets overridden.
@@ -46,16 +46,17 @@ Get-Process -Name eden-uwp -ErrorAction SilentlyContinue | Stop-Process -Force
 Push-Location $r
 try {
     & "$r\tools\xbox\package-appx.ps1" -BootNro $BootNro -RunSeconds $RunSeconds `
-        -DebugLayer:$DebugLayer -Keys $Keys -Firmware $Firmware -Game $Game -BootCfg $BootCfg *> $null
+        -DebugLayer:$DebugLayer -Game $Game -BootCfg $BootCfg *> $null
 } finally {
     Pop-Location
 }
 # The layout is recreated on every package; a same-version re-register does not re-grant the
 # AppContainer read access, and the app then cannot open its own files (Load status 2).
 & icacls "$r\build-uwp\package\layout" /grant "*S-1-15-2-1:(OI)(CI)RX" /T /Q | Out-Null
-Add-AppxPackage -Register "$r\build-uwp\package\layout\AppxManifest.xml" -ForceApplicationShutdown
+Add-AppxPackage -Register "$r\build-uwp\package\layout\AppxManifest.xml" -ForceApplicationShutdown `
+    -ForceUpdateFromAnyVersion:$AllowVersionDowngrade
 
-$pkg = Get-AppxPackage -Name HueHue.HueHueSwitch
+$pkg = Get-AppxPackage -Name EdenEmuProject.EdenXbox
 $local = Join-Path $env:LOCALAPPDATA "Packages\$($pkg.PackageFamilyName)\LocalState"
 $diag = Join-Path $local 'eden_uwp_diag.txt'
 Remove-Item -LiteralPath $diag -ErrorAction SilentlyContinue

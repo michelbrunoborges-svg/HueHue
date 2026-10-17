@@ -113,4 +113,40 @@ std::string HostMemoryCommitStats();
 /// told apart, such as a file-backed section.
 std::optional<u64> EmulatedDramCommittedBytes();
 
+/// Xbox private DRAM backing: the run of host pages around `host` that share its commit state,
+/// clamped to the backing. `untouched` pages are reserved but never committed, and the guest reads
+/// them as zero. Empty outside such a backing (fastmem section, file, desktop).
+struct DramRegion {
+    const u8* begin{};
+    const u8* end{};
+    bool untouched{};
+};
+std::optional<DramRegion> QueryDramRegion(const void* host);
+
+/// Diagnostic: the commit state of the DRAM page at `host`, and the last kernel clear that
+/// decommitted it.
+std::string DescribeDramPage(const void* host);
+
+/// Diagnostic: queue a DRAM page whose first write after ArmDramWriteWatch is logged.
+void WatchDramPage(const void* host);
+
+/// Diagnostic: forget the queued pages.
+void ResetDramWatch();
+
+/// Diagnostic: each queued page as its nonzero word count, or 'r' when never committed.
+std::string DescribeWatchedPages();
+
+/// Diagnostic: write-protect the queued pages; each one logs its first writer and unprotects.
+void ArmDramWriteWatch();
+
+/// Diagnostic: names the kernel path whose DRAM clears follow, on this thread.
+class ScopedClearTag {
+public:
+    explicit ScopedClearTag(const char* tag);
+    ~ScopedClearTag();
+
+private:
+    const char* previous;
+};
+
 } // namespace Common

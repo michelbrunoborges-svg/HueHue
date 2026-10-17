@@ -64,15 +64,17 @@ struct CheckpointStats {
 // emulated RAM, so the system must stay paused from Capture until Write returns.
 class ProcessCheckpoint final {
 public:
-    // System paused; the application process is a 64-bit process created from metadata.
+    // System paused; the application process is created from metadata (A32 or A64).
     static ProcessCheckpoint Capture(Core::System& system);
 
     // The system running: raises the kernel checkpoint barrier, so threads entering an SVC park
     // before the call, and captures as soon as the in-flight calls have drained. Returns with
     // the system paused. Throws the last rejection once `budget` runs out or one is final, with
-    // the system running again. `retries` counts the rejected attempts.
+    // the system running again. `retries` counts the rejected attempts. `phase`, when set, hears
+    // each step of an attempt as it starts: "idle", "process", "gpu".
     static ProcessCheckpoint CaptureAtBarrier(Core::System& system,
-                                              std::chrono::milliseconds budget, u32& retries);
+                                              std::chrono::milliseconds budget, u32& retries,
+                                              const std::function<void(const char*)>& phase = {});
 
     void Write(Common::Pulse::Writer& writer) const;
     [[nodiscard]] u64 DecodedSize() const;

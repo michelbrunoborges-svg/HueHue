@@ -668,10 +668,20 @@ bool TextureCache<P>::IsDownloadable(const ImageBase& image) const noexcept {
 }
 
 template <class P>
-void TextureCache<P>::DownloadMemory(DAddr cpu_addr, size_t size) {
+void TextureCache<P>::DownloadMemory(DAddr cpu_addr, size_t size, bool modified_only) {
     boost::container::small_vector<ImageId, 16> images;
-    ForEachImageInRegion(cpu_addr, size, [this, &images](ImageId image_id, ImageBase& image) {
+    ForEachImageInRegion(cpu_addr, size, [&](ImageId image_id, ImageBase& image) {
         if (!IsDownloadable(image)) {
+            return;
+        }
+        if (modified_only && (False(image.flags & ImageFlagBits::GpuModified) ||
+                              True(image.flags & ImageFlagBits::CpuModified))) {
+            return;
+        }
+        // A converted image (ASTC decoded on the host...) holds another format than the guest
+        // layout: its texels do not fit the staging buffer sized for it, nor belong in guest memory.
+        if (modified_only && (True(image.flags & ImageFlagBits::Converted) ||
+                              IsPixelFormatASTC(image.info.format))) {
             return;
         }
         image.flags &= ~ImageFlagBits::GpuModified;
@@ -683,6 +693,33 @@ void TextureCache<P>::DownloadMemory(DAddr cpu_addr, size_t size) {
     std::ranges::sort(images, [this](ImageId lhs, ImageId rhs) {
         return slot_images[lhs].modification_tick < slot_images[rhs].modification_tick;
     });
+    if constexpr (requires { runtime.ReleaseCheckpointStaging(); }) {
+        if (modified_only) {
+            // A Pulse capture: one readback, the size of the largest image, serves every image in
+            // turn (each is finished before the next), and what the copies left behind is freed
+            // after each one, so the capture holds one image's worth instead of all of them.
+            u64 largest{};
+            for (const ImageId image_id : images) {
+                largest = (std::max)(largest, u64{slot_images[image_id].unswizzled_size_bytes});
+            }
+            checkpoint_downloads.images += images.size();
+            checkpoint_downloads.largest = (std::max)(checkpoint_downloads.largest, largest);
+            auto map = runtime.DownloadStagingBuffer(largest);
+            for (const ImageId image_id : images) {
+                Image& image = slot_images[image_id];
+                const auto copies = FixSmallVectorADL(FullDownloadCopies(image.info));
+                image.DownloadMemory(map, copies);
+                runtime.Finish();
+                SwizzleImage(*gpu_memory, image.gpu_addr, image.info, copies,
+                             map.mapped_span.first(image.unswizzled_size_bytes), swizzle_data_buffer);
+                checkpoint_downloads.pooled =
+                    (std::max)(checkpoint_downloads.pooled, runtime.TransferPoolBytes());
+                runtime.TrimCheckpointTransfers();
+            }
+            runtime.ReleaseCheckpointStaging();
+            return;
+        }
+    }
     for (const ImageId image_id : images) {
         Image& image = slot_images[image_id];
         auto map = runtime.DownloadStagingBuffer(image.unswizzled_size_bytes);

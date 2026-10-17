@@ -3,6 +3,7 @@
 #include "common/pulse_store.h"
 
 #include <algorithm>
+#include <chrono>
 #include <fstream>
 #include <streambuf>
 #include <string>
@@ -15,8 +16,18 @@
 #include <unistd.h>
 #endif
 
+#include "common/cityhash.h"
+#include "common/logging.h"
+#include <unordered_map>
+
 namespace Common::Pulse {
 namespace {
+long long MillisecondsSince(std::chrono::steady_clock::time_point start) {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() -
+                                                                 start)
+        .count();
+}
+
 class LimitedBuffer final : public std::streambuf {
 public:
     LimitedBuffer(std::streambuf* target_, std::uint64_t limit_) : target{target_}, remaining{limit_} {}
@@ -131,6 +142,8 @@ void Store::Publish(std::string_view key, const Identity& identity, std::uint64_
     if (!Fits(Used(), max_encoded, quota, std::filesystem::space(root).available))
         throw Failure{Error::Limit, "Pulse storage quota or free reserve exceeded"};
     try {
+        auto phase = std::chrono::steady_clock::now();
+        long long write_ms{}, verify_ms{};
         if (fault) fault(PublishStep::Write);
         {
             std::ofstream file{next, std::ios::binary | std::ios::trunc};
@@ -143,13 +156,20 @@ void Store::Publish(std::string_view key, const Identity& identity, std::uint64_
             file.close();
             if (!file) throw Failure{Error::Io, "Pulse temporary close failed"};
         }
+        write_ms = MillisecondsSince(phase);
+        phase = std::chrono::steady_clock::now();
         if (fault) fault(PublishStep::Verify);
         {
             std::ifstream input{next, std::ios::binary};
             Read(input, identity, max_decoded, {}, stop);
         }
+        verify_ms = MillisecondsSince(phase);
+        phase = std::chrono::steady_clock::now();
         if (fault) fault(PublishStep::Sync);
         if (!SyncFile(next)) throw Failure{Error::Io, "Pulse durable flush failed"};
+        LOG_INFO(Common, "Pulse: session written in {} ms, verified in {} ms, synced in {} ms ({} MiB)",
+                 write_ms, verify_ms, MillisecondsSince(phase),
+                 std::filesystem::file_size(next) >> 20);
         if (stop.stop_requested()) throw Failure{Error::Cancelled, "Pulse operation cancelled"};
         if (std::filesystem::space(root).available < FreeReserve)
             throw Failure{Error::Limit, "Pulse free reserve exhausted"};
@@ -241,5 +261,51 @@ void Store::Discard(std::string_view key) {
     const auto consumed = Path(key, ".consumed");
     RequireRegularOrAbsent(consumed);
     std::filesystem::remove(consumed);
+}
+namespace {
+constexpr std::uintptr_t ProbePage = 0x1000;
+constexpr std::uint64_t UntouchedHash = ~std::uint64_t{0};
+std::mutex probe_mutex;
+std::unordered_map<std::uintptr_t, std::uint64_t> restored_pages;
+
+std::uint64_t HashPage(std::uintptr_t page) {
+    return CityHash64(reinterpret_cast<const char*>(page), ProbePage);
+}
+} // namespace
+
+void ClearRestoredPages() {
+    std::scoped_lock lock{probe_mutex};
+    restored_pages = {};
+}
+
+void NoteRestoredPage(const void* host_page, bool untouched) {
+    const auto page = reinterpret_cast<std::uintptr_t>(host_page) & ~(ProbePage - 1);
+    const std::uint64_t hash = untouched ? UntouchedHash : HashPage(page);
+    std::scoped_lock lock{probe_mutex};
+    restored_pages[page] = hash;
+}
+
+std::string DescribeRestoredPages(const void* host, std::size_t size) {
+    if (!host || !size) return "no host memory";
+    const auto first = reinterpret_cast<std::uintptr_t>(host) & ~(ProbePage - 1);
+    const auto end = reinterpret_cast<std::uintptr_t>(host) + size;
+    std::size_t same{}, changed{}, untouched{}, unknown{};
+    std::scoped_lock lock{probe_mutex};
+    if (restored_pages.empty()) return "no restore recorded";
+    for (auto page = first; page < end; page += ProbePage) {
+        const auto it = restored_pages.find(page);
+        if (it == restored_pages.end()) {
+            ++unknown;
+        } else if (it->second == UntouchedHash) {
+            ++untouched;
+        } else if (it->second == HashPage(page)) {
+            ++same;
+        } else {
+            ++changed;
+        }
+    }
+    return fmt::format("pages {} as restored, {} changed since the restore, {} restored untouched, "
+                       "{} not restored",
+                       same, changed, untouched, unknown);
 }
 } // namespace Common::Pulse

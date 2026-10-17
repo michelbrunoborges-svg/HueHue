@@ -17,6 +17,7 @@
 // OutputDebugString, so observing this line is positive proof the JIT decoded + executed guest code.
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <charconv>
 #include <chrono>
@@ -41,10 +42,12 @@
 #include "common/fs/path_util.h"
 #include "common/host_memory.h"
 #include "common/logging.h"
+#include "common/pulse_diagnostics.h"
 #include "common/memory_ledger.h"
 #include "common/scm_rev.h"
 #include "common/settings.h"
 #include "common/thread.h"
+#include "common/windows/timed_wait_profile.h"
 #include "common/windows/sampling_profiler.h"
 #include "common/windows/timer_resolution.h"
 #include "core/arm/cpu_profile.h"
@@ -52,6 +55,7 @@
 #include "dynarmic/interface/code_memory.h"
 #include "core/arm/jit_prewarm.h"
 #include "core/core.h"
+#include "core/perf_stats.h"
 #include "core/cpu_manager.h"
 #include "video_core/host1x/host1x.h"
 #include "video_core/host1x/syncpoint_manager.h"
@@ -85,6 +89,7 @@
 #include "eden_uwp/headless_emu_window.h"
 #include "eden_uwp/prewarm_budget.h"
 #include "eden_uwp/pulse_gate.h"
+#include "eden_uwp/pulse_screen.h"
 #include "eden_uwp/pulse_sessions.h"
 #include "eden_uwp/pulse_store_gate.h"
 #include "eden_uwp/uwp_input.h"
@@ -132,6 +137,8 @@ void SetDredEnabled(bool enabled);         // d3d12_device.h
 void SetGpuBreadcrumbsEnabled(bool enabled); // d3d12_device.h
 void SetPipelineEviction(bool enabled);      // d3d12_pipeline_cache.h
 void SetDescriptorRemovalChecks(bool enabled); // d3d12_device.h
+void SetUniformUploadCopy(bool enabled);
+void SetDrawSamplerReuse(bool enabled);
 void SetAsyncRecording(bool enabled);          // d3d12_scheduler.h
 using AppMemoryQuery = bool (*)(u64& used, u64& limit); // d3d12_device.h
 void SetAppMemoryQuery(AppMemoryQuery query);            // d3d12_device.h
@@ -155,6 +162,7 @@ std::atomic<bool> g_can_fullscreen{};
 std::atomic<bool> g_fullscreen{};
 std::atomic<int> g_fullscreen_request{-1};
 void WriteDiag(const std::string& msg); // defined with the UWP entry point below
+void WritePulseLog(const std::string& msg); // eden_pulse.txt, defined next to WriteDiag
 std::string MemoryReport();             // likewise
 std::string MemoryOwners();             // likewise
 std::string GuestMemoryReport(Core::System& system); // likewise
@@ -311,9 +319,12 @@ struct BootConfig {
     /// Make the D3D12 command list calls on a thread of their own, so the GPU thread only records
     /// them ("async_record=1"). Off by default until it has been played through on the console.
     bool async_record{};
+    bool upload_copy{}; ///< Experimental short uniform copies; default off.
+    bool draw_sampler_reuse{}; ///< Experimental gather-local TSC resolution; default off.
     /// Host timing waits sleep on a high-resolution timer and wait only its lateness on the CPU
     /// ("timer_sleep=0" waits the last timer tick on the CPU, as before).
     bool timer_sleep{true};
+    bool timer_profile{}; ///< HostTiming waits only; opt-in, separate from draw profiling.
     /// File name of a game in LocalState\games to boot instead of boot.nro (package-appx.ps1 -Game).
     std::string game;
     /// Eden's log filter (e.g. "*:Info HW.GPU:Debug"); empty keeps the default.
@@ -418,6 +429,7 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
     Kernel::PhysicalCore::SetIdleSpinPolicy(config.idle_spin);
     // Read by the host timing thread's first wait.
     Common::SetPreciseTimerSleeps(config.timer_sleep);
+    Common::Windows::TimedWaitProfile::enabled.store(config.timer_profile, std::memory_order_relaxed);
     // Read by HostMemory when Core::System builds the DRAM, so it has to be set before that.
     // The 384-MiB Series experiment covered only 388 of 2637 MiB requested by Wonder (15%). The
     // resulting fastmem fault/recompile storm was markedly slower than the page table, so Auto
@@ -480,6 +492,8 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
     Settings::values.async_presentation.SetValue(config.async_present);
     if (config.upscaling) ApplyUpscaling(*config.upscaling); // before the renderer exists
     D3D12::SetAsyncRecording(config.async_record);
+    D3D12::SetUniformUploadCopy(config.upload_copy);
+    D3D12::SetDrawSamplerReuse(config.draw_sampler_reuse);
     if (config.debug_layer) {
         Settings::values.renderer_debug = true;
         D3D12::SetGpuBasedValidation(config.gpu_validation);
@@ -530,7 +544,11 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
     // Set only after a failed Load has returned from Core's own synchronous cleanup.
     // Other early Load failures still require the frontend to tear down the kernel.
     bool load_already_shutdown = false;
+    // Shown while Pulse saves or resumes a session (pulse_screen.h); it draws through the GPU
+    // thread, so it goes before anything is torn down.
+    std::optional<PulseScreen> pulse_screen;
     const auto shutdown = [&] {
+        pulse_screen.reset();
         Common::SamplingProfiler::Stop(); // writes the window in progress, if it runs
         if (config.gpu_failure_probe) WriteDiag("GPU recovery shutdown: input.Stop");
         input.Stop();
@@ -617,13 +635,13 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                                                             content.build_id);
             }
         } catch (const std::exception& e) {
-            WriteDiag(std::string("pulse: no identity: ") + e.what());
+            WritePulseLog(std::string("no identity: ") + e.what());
         }
     }
     Core::SystemResultStatus load_result{Core::SystemResultStatus::ErrorNotInitialized};
     bool gpu_started = false, resumed = false;
     if (pulse_identity && config.pulse_resume && PulseSessions::CanResume(*pulse_identity)) {
-        WriteDiag("pulse: resuming the kept session | " + MemoryReport());
+        WritePulseLog("resuming the kept session | " + MemoryReport());
         const auto resume_start = std::chrono::steady_clock::now();
         bool loaded = false;
         try {
@@ -640,15 +658,18 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                 system.GPU().Start();
                 system.GetCpuManager().OnGpuReady();
                 gpu_started = true;
+                std::string title;
+                void(system.GetAppLoader().ReadTitle(title));
+                pulse_screen.emplace(system, PulseScreen::Kind::Resume, Utf8ToUtf16(title));
             });
             resumed = true;
-            WriteDiag("pulse: session resumed in " +
+            WritePulseLog("session resumed in " +
                       std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
                                          std::chrono::steady_clock::now() - resume_start)
                                          .count()) +
                       " ms | " + MemoryReport());
         } catch (const std::exception& e) {
-            WriteDiag(std::string("pulse: resume failed: ") + e.what());
+            WritePulseLog(std::string("resume failed: ") + e.what());
             if (loaded) {
                 // This System holds a half-rebuilt process and is never run: a fresh one boots.
                 shutdown();
@@ -711,10 +732,13 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
         // later are appended to the file. The renderer shows the progress on screen.
         WriteDiag("step: building the disk shader cache | " + MemoryReport());
         VideoCore::RendererBase& renderer = system.Renderer();
+        if (pulse_screen) pulse_screen->ShadersStarting();
         renderer.ReadRasterizer()->LoadDiskResources(
             system.GetApplicationProcessProgramID(), std::stop_token{},
-            [&renderer](VideoCore::LoadCallbackStage, size_t done, size_t total) {
-                D3D12::ShowLoadProgress(renderer, done, total);
+            [&renderer, &pulse_screen](VideoCore::LoadCallbackStage, size_t done, size_t total) {
+                // A resume's screen shows the count itself; two presenters would race.
+                if (pulse_screen) pulse_screen->Shaders(done, total);
+                else D3D12::ShowLoadProgress(renderer, done, total);
             });
         WriteDiag("step: disk shader cache built | " + MemoryReport());
     }
@@ -749,6 +773,8 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                   " Hz, " + std::to_string(config.profile_window) + " s windows");
     }
     // Run the guest. CpuManager spins up guest threads; dynarmic compiles + executes their code.
+    // A resume's screen stays over it until the game presents.
+    if (pulse_screen) pulse_screen->GameStarting();
     void(system.Run());
     input.Start(system.HIDCore());
     if (config.gpu_failure_probe) {
@@ -805,6 +831,7 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
             return count;
         };
         const auto draw_menu = [&] {
+            pulse_screen.reset(); // The menu takes the screen.
             const auto screen = D3D12::GameMenuScreenSize(system.Renderer());
             D3D12::MenuImage image;
             try {
@@ -869,6 +896,9 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
         constexpr u64 LOW_HEADROOM_STEP = 50ULL << 20;
         u64 low_snapshot_headroom = ~u64{};
         u32 low_snapshot_tick = 0;
+        // Pulse: after a resume the presented frames are logged each second for 30 s, so a guest
+        // that freezes shows when it stopped.
+        u64 resume_frames = 0;
         for (u32 tick = 1;; ++tick) {
             std::this_thread::sleep_for(TICK);
             if (u64 used{}, limit{}; config.memory_audit && tick % 10 == 0 &&
@@ -902,6 +932,14 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                 WriteDiag("GPU command failed; shutting down game for library recovery | " + MemoryReport());
                 shutdown();
                 return 15;
+            }
+            if (resumed && tick % TICKS_PER_SECOND == 0 && tick <= 30 * TICKS_PER_SECOND) {
+                const u32 second = tick / TICKS_PER_SECOND;
+                const u64 frames = system.GetPerfStats().TotalGameFrames();
+                WritePulseLog("resumed +" + std::to_string(second) + " s: " +
+                              std::to_string(frames - resume_frames) + " frames" +
+                              (menu ? " (menu)" : ""));
+                resume_frames = frames;
             }
             if (EdenXbox::QuitRequested()) {
                 WriteDiag("step: Q pressed after " + std::to_string(tick / 50) +
@@ -995,21 +1033,69 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                     result == GameMenuResult::LibraryWithoutSession) {
                     if (result == GameMenuResult::Library && pulse_identity) {
                         // The only capture: when the player leaves, never while playing.
-                        WriteDiag("pulse: saving the session | " + MemoryReport());
+                        WritePulseLog("saving the session | " + MemoryReport() + " | " + MemoryOwners());
+                        pulse_screen.emplace(system, PulseScreen::Kind::Save, game_title);
                         const auto save_start = std::chrono::steady_clock::now();
-                        const std::string reason = PulseSessions::Save(system, *pulse_identity);
+                        // Samples the app memory while the save runs: the highest use of each
+                        // step against the use before it, so the step that peaks is known.
+                        constexpr std::array<const char*, 7> save_steps{
+                            "idle", "process", "gpu", "write", "verify", "sync", "replace"};
+                        std::array<std::atomic<u64>, save_steps.size()> step_peak{};
+                        std::atomic<int> step{-1};
+                        u64 save_base{}, save_limit{};
+                        QueryAppMemory(save_base, save_limit);
+                        std::string reason;
+                        {
+                            std::jthread sampler{[&](std::stop_token stop) {
+                                while (!stop.stop_requested()) {
+                                    const int at = step.load(std::memory_order_relaxed);
+                                    if (u64 used{}, limit{}; at >= 0 && QueryAppMemory(used, limit)) {
+                                        auto& peak = step_peak[at];
+                                        u64 seen = peak.load(std::memory_order_relaxed);
+                                        while (used > seen && !peak.compare_exchange_weak(seen, used)) {
+                                        }
+                                    }
+                                    std::this_thread::sleep_for(std::chrono::milliseconds{2});
+                                }
+                            }};
+                            reason = PulseSessions::Save(
+                                system, *pulse_identity,
+                                [] {
+                                    u64 used{}, limit{};
+                                    if (!QueryAppMemory(used, limit)) return ~u64{};
+                                    return limit > used ? limit - used : u64{};
+                                },
+                                [&](const char* name) {
+                                    pulse_screen->SaveStep(name);
+                                    for (int i = 0; i < static_cast<int>(save_steps.size()); ++i) {
+                                        if (std::string_view{name} == save_steps[i]) step.store(i);
+                                    }
+                                });
+                        }
+                        std::string peaks = "save peak over " + std::to_string(save_base >> 20) +
+                                            " MiB:";
+                        for (std::size_t i = 0; i < save_steps.size(); ++i) {
+                            const u64 peak = step_peak[i].load();
+                            if (peak == 0) continue;
+                            peaks += std::string{" "} + save_steps[i] + " " +
+                                     (peak >= save_base ? "+" + std::to_string((peak - save_base) >> 20)
+                                                        : "-" + std::to_string((save_base - peak) >> 20));
+                        }
+                        WritePulseLog(peaks + " MiB");
                         const auto save_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                                                  std::chrono::steady_clock::now() - save_start)
                                                  .count();
                         if (reason.empty()) {
-                            WriteDiag("pulse: session saved in " + std::to_string(save_ms) + " ms");
+                            WritePulseLog("session saved in " + std::to_string(save_ms) + " ms | " +
+                                          MemoryReport() + " | " + MemoryOwners());
                             PulseSessions::SetNotice(I18n::ToUtf8(I18n::Tr(I18n::Text::PulseKept)));
                         } else {
-                            WriteDiag("pulse: no session (" + reason + ") after " +
+                            WritePulseLog("no session (" + reason + ") after " +
                                       std::to_string(save_ms) + " ms");
                             PulseSessions::SetNotice(I18n::ToUtf8(
                                 I18n::Format(I18n::Text::PulseNotKept, {Utf8ToUtf16(reason)})));
                         }
+                        pulse_screen->Finish(reason.empty());
                     }
                     WriteDiag("menu: back to the library, shutting the game down | " +
                               MemoryReport());
@@ -1218,6 +1304,24 @@ namespace {
 // crash handlers below must not call into WinRT from a dying process.
 std::string g_diag_path;
 std::mutex g_diag_mutex;
+// Pulse's own log (eden_pulse.txt): saves, resumes and every rejection, apart from the diag.
+std::string g_pulse_path;
+std::mutex g_pulse_mutex;
+// A save retries for up to 3 s and throws the same rejection on every attempt: identical
+// consecutive rejections are counted under g_pulse_mutex and written as one line.
+std::string g_pulse_last_rejection;
+unsigned g_pulse_rejection_repeats = 0;
+
+// Under g_pulse_mutex: the line closing a run of repeated rejections (empty when there is none).
+std::string TakePulseRepeats() {
+    std::string line;
+    if (g_pulse_rejection_repeats != 0) {
+        line = "[pulse]   (repeated " + std::to_string(g_pulse_rejection_repeats) + " more times)\n";
+    }
+    g_pulse_last_rejection.clear();
+    g_pulse_rejection_repeats = 0;
+    return line;
+}
 
 unsigned long long ElapsedMs() {
     static const ULONGLONG start = GetTickCount64();
@@ -1238,6 +1342,23 @@ void WriteDiag(const std::string& msg) {
         f << line;
     } catch (...) {
         OutputDebugStringW(L"[eden-uwp] WriteDiag: could not write diag file\n");
+    }
+}
+
+void WritePulseLog(const std::string& msg) {
+    const std::string line = "[pulse] [+" + std::to_string(ElapsedMs()) + "ms] " + msg + "\n";
+    OutputDebugStringA(line.c_str());
+    try {
+        std::scoped_lock lock{g_pulse_mutex};
+        if (g_pulse_path.empty()) {
+            g_pulse_path =
+                winrt::to_string(Windows::Storage::ApplicationData::Current().LocalFolder().Path()) +
+                "\\eden_pulse.txt";
+        }
+        std::ofstream f(g_pulse_path, std::ios::app);
+        f << TakePulseRepeats() << line;
+    } catch (...) {
+        OutputDebugStringW(L"[eden-uwp] WritePulseLog: could not write pulse log\n");
     }
 }
 
@@ -1828,6 +1949,27 @@ void LogCxxThrow(const EXCEPTION_RECORD* rec) {
             what = reinterpret_cast<const std::exception*>(object + type[2])->what();
         }
     }
+    // Pulse rejects by throwing and retries for up to 3 s: each attempt is one line of its own log
+    // (the reason it waited on), never the diag's budget or a stack.
+    if (std::string_view{first_name}.find("@Pulse@") != std::string_view::npos) {
+        std::scoped_lock lock{g_pulse_mutex};
+        if (g_pulse_path.empty()) return;
+        if (g_pulse_last_rejection == what) {
+            ++g_pulse_rejection_repeats;
+            return;
+        }
+        const std::string repeats = TakePulseRepeats();
+        g_pulse_last_rejection = what;
+        char line[512];
+        std::snprintf(line, sizeof(line), "[pulse] [+%llums] rejected: %s | thread %lu\n",
+                      ElapsedMs(), what, GetCurrentThreadId());
+        if (std::FILE* const f = _fsopen(g_pulse_path.c_str(), "a", _SH_DENYNO)) {
+            std::fputs(repeats.c_str(), f);
+            std::fputs(line, f);
+            std::fclose(f);
+        }
+        return;
+    }
     // The platform throws dozens of _com_error at startup and handles them itself; they used up
     // the budget before anything interesting was thrown.
     if (std::string_view{first_name} == ".?AV_com_error@@" ||
@@ -2176,6 +2318,15 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                         } else if (line == "gpu_profile=1") {
                             config.gpu_profile = true;
                             WriteDiag("boot.cfg: detailed D3D12 GPU-thread profiling enabled");
+                        } else if (line == "upload_copy=1") {
+                            config.upload_copy = true;
+                            WriteDiag("boot.cfg: short uniform write-combined copy enabled");
+                        } else if (line == "draw_sampler_reuse=1") {
+                            config.draw_sampler_reuse = true;
+                            WriteDiag("boot.cfg: draw-local sampler resolution reuse enabled");
+                        } else if (line == "timer_profile=1") {
+                            config.timer_profile = true;
+                            WriteDiag("boot.cfg: HostTiming requested waits/sleeps/spin elapsed profiling enabled");
                         } else if (line == "cpu_profile=1") {
                             config.cpu_profile = true;
                         } else if (line == "profile=1") {
@@ -2436,6 +2587,9 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                         } else if (line == "memory_audit=1") {
                             config.memory_audit = true;
                             WriteDiag("boot.cfg: memory audit every minute of play");
+                        } else if (line == "pulse_diag=1") {
+                            Common::Pulse::SetDiagnostics(true);
+                            WriteDiag("boot.cfg: Pulse diagnostics on (GPU VA, shader code, page watch)");
                         } else if (line == "play=1") {
                             config.play = true;
                             WriteDiag("boot.cfg: played by hand, no time limit or frame dumps");
@@ -2483,7 +2637,7 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                     if (rc == EdenXbox::PULSE_RESUME_FAILED) {
                         EdenXbox::PulseSessions::SetNotice(EdenXbox::I18n::ToUtf8(
                             EdenXbox::I18n::Tr(EdenXbox::I18n::Text::PulseNotResumed)));
-                        WriteDiag("pulse: booting the game fresh after a failed resume");
+                        WritePulseLog("booting the game fresh after a failed resume");
                         config.pulse_resume = false;
                         rc = EdenXbox::RunHeadlessBoot(nro_path, surface, config);
                     }
