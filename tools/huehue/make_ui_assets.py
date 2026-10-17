@@ -98,10 +98,107 @@ def spray(im: Image.Image, rng: random.Random, cx, cy, radius, color, alpha, dot
                    y0 + length + width * 0.8), fill=rgba(color, 170))
 
 
-def background(width=1920, height=1080) -> Image.Image:
-    rng = random.Random(2026)
+def rough_mask(mask: Image.Image, rng: random.Random, amount=0.8) -> Image.Image:
+    """Borda de spray: a máscara borrada e cortada por ruído, sem linha reta."""
+    noise = Image.effect_noise(mask.size, 90).filter(ImageFilter.GaussianBlur(1.2))
+    soft = mask.filter(ImageFilter.GaussianBlur(3))
+    return ImageChops.multiply(soft, noise.point(lambda v: 255 if v > 255 * (1 - amount) else v))
+
+
+def brazil_flag(im: Image.Image, rng: random.Random, box, alpha):
+    """A bandeira em spray, torta e falhada, como pintada no muro."""
+    x0, y0, x1, y1 = box
+    w, h = x1 - x0, y1 - y0
+    layer = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    for shape, color in (("rect", BR_GREEN), ("diamond", BR_YELLOW), ("circle", (20, 70, 200))):
+        m = Image.new("L", im.size, 0)
+        d = ImageDraw.Draw(m)
+        if shape == "rect":
+            d.rectangle(box, fill=255)
+        elif shape == "diamond":
+            d.polygon([(x0 + w * 0.08, y0 + h / 2), (x0 + w / 2, y0 + h * 0.1), (x1 - w * 0.08, y0 + h / 2),
+                       (x0 + w / 2, y1 - h * 0.1)], fill=255)
+        else:
+            r = h * 0.25
+            d.ellipse((x0 + w / 2 - r, y0 + h / 2 - r, x0 + w / 2 + r, y0 + h / 2 + r), fill=255)
+        part = Image.new("RGBA", im.size, rgba(color))
+        part.putalpha(rough_mask(m, rng).point(lambda v: v * alpha // 255))
+        layer.alpha_composite(part)
+    im.alpha_composite(layer.rotate(-8, resample=Image.BICUBIC, center=((x0 + x1) / 2, (y0 + y1) / 2)))
+
+
+def skyline(im: Image.Image, rng: random.Random, base_y, color=(6, 6, 12), windows=(57, 255, 20)):
+    """Prédios recortados contra o muro, com janelas acesas aqui e ali."""
+    d = ImageDraw.Draw(im)
+    x = -20
+    while x < im.width:
+        w = rng.randint(50, 140)
+        h = rng.randint(50, 230)
+        d.rectangle((x, base_y - h, x + w, im.height), fill=rgba(color))
+        if rng.random() < 0.35:  # antena
+            d.rectangle((x + w // 2 - 2, base_y - h - rng.randint(20, 60), x + w // 2 + 2, base_y - h),
+                        fill=rgba(color))
+        for wy in range(base_y - h + 14, im.height - 10, 22):
+            for wx in range(x + 10, x + w - 10, 18):
+                if rng.random() < 0.045:
+                    c = windows if rng.random() < 0.6 else MAGENTA
+                    d.rectangle((wx, wy, wx + 5, wy + 7), fill=rgba(c, rng.randint(70, 160)))
+        x += w + rng.randint(-10, 8)
+
+
+def crown(size: int, color=(255, 214, 10), width=None) -> Image.Image:
+    """Coroa de traço, rabiscada como pichação."""
+    k = 4
+    s = size * k
+    im = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    lw = width or max(3, s // 18)
+    pts = [(s * 0.08, s * 0.78), (s * 0.12, s * 0.30), (s * 0.34, s * 0.55), (s * 0.5, s * 0.18),
+           (s * 0.66, s * 0.55), (s * 0.88, s * 0.30), (s * 0.92, s * 0.78)]
+    d.line(pts + [pts[0]], fill=rgba(color), width=lw, joint="curve")
+    d.line([(s * 0.1, s * 0.9), (s * 0.9, s * 0.9)], fill=rgba(color), width=lw)
+    for px, py in (pts[1], pts[3], pts[5]):
+        r = lw * 0.9
+        d.ellipse((px - r, py - r - lw, px + r, py + r - lw), fill=rgba(color))
+    return im.resize((size, size), Image.LANCZOS)
+
+
+def sparkle(size: int, color=NEON) -> Image.Image:
+    im = Image.new("RGBA", (size * 4, size * 4), (0, 0, 0, 0))
+    c = size * 2
+    ImageDraw.Draw(im).polygon([(c, 0), (c + size * 0.35, c - size * 0.35), (size * 4, c),
+                                (c + size * 0.35, c + size * 0.35), (c, size * 4),
+                                (c - size * 0.35, c + size * 0.35), (0, c), (c - size * 0.35, c - size * 0.35)],
+                               fill=rgba(color))
+    return im.resize((size, size), Image.LANCZOS)
+
+
+def tag(text: str, size: int, color, angle: float, font=MARKER) -> Image.Image:
+    """Uma frase pichada (marcador), com contorno escuro e brilho."""
+    k = 2
+    f = ImageFont.truetype(font, size * k)
+    lines = text.split("\n")
+    masks = [text_mask(line, f, 10 * k) for line in lines]
+    w = max(m.width for m in masks)
+    h = sum(m.height for m in masks) - (len(masks) - 1) * 18 * k
+    mask = Image.new("L", (w + 40 * k, h + 40 * k), 0)
+    y = 20 * k
+    for m in masks:
+        mask.paste(m, (20 * k + (w - m.width) // 2, y))
+        y += m.height - 18 * k
+    mask = mask.rotate(angle, resample=Image.BICUBIC, expand=True)
+    im = Image.new("RGBA", mask.size, (0, 0, 0, 0))
+    im.alpha_composite(glow(dilate(mask, 5 * k), (0, 0, 0), 3 * k, 2.0))
+    im.alpha_composite(glow(mask, color, 14 * k, 0.8))
+    body = Image.new("RGBA", mask.size, rgba(color))
+    body.putalpha(mask)
+    im.alpha_composite(body)
+    im = crop_alpha(im)
+    return im.resize((im.width // k, im.height // k), Image.LANCZOS)
+
+
+def wall(width, height, rng, tint=None):
     im = Image.new("RGBA", (width, height), rgba(WALL))
-    # Parede de tijolos bem apagada, com ruído, para o spray ter onde "pegar".
     bricks = Image.new("L", (width, height), 0)
     bd = ImageDraw.Draw(bricks)
     bw, bh = 132, 54
@@ -109,75 +206,124 @@ def background(width=1920, height=1080) -> Image.Image:
         off = (bw // 2) if row % 2 else 0
         for col in range(-1, width // bw + 2):
             x, y = col * bw + off, row * bh
-            shade = rng.randint(14, 30)
-            bd.rectangle((x + 3, y + 3, x + bw - 3, y + bh - 3), fill=shade)
+            bd.rectangle((x + 3, y + 3, x + bw - 3, y + bh - 3), fill=rng.randint(14, 30))
     noise = Image.effect_noise((width, height), 28).point(lambda v: max(0, v - 110) // 6)
     texture = ImageChops.add(bricks, noise).filter(ImageFilter.GaussianBlur(0.8))
     tex_layer = Image.new("RGBA", (width, height), (40, 40, 52, 255))
     tex_layer.putalpha(texture)
     im.alpha_composite(tex_layer)
-    # Vinheta: o centro mais aceso, as bordas no preto.
-    vignette = Image.new("L", (width, height), 0)
-    ImageDraw.Draw(vignette).ellipse((-width * 0.25, -height * 0.35, width * 1.25, height * 1.35),
-                                     fill=255)
-    vignette = vignette.filter(ImageFilter.GaussianBlur(220))
-    dark = Image.new("RGBA", (width, height), (0, 0, 0, 255))
-    dark.putalpha(vignette.point(lambda v: int((255 - v) * 0.85)))
+    if tint:
+        wash = Image.new("L", (width, height), 0)
+        ImageDraw.Draw(wash).ellipse((-width * 0.2, -height * 0.3, width * 1.2, height * 1.1), fill=tint[1])
+        im.alpha_composite(glow(wash, tint[0], 160))
+    return im
+
+
+def vignette(im: Image.Image, strength=0.85):
+    w, h = im.size
+    v = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(v).ellipse((-w * 0.25, -h * 0.35, w * 1.25, h * 1.35), fill=255)
+    v = v.filter(ImageFilter.GaussianBlur(220))
+    dark = Image.new("RGBA", (w, h), (0, 0, 0, 255))
+    dark.putalpha(v.point(lambda x: int((255 - x) * strength)))
     im.alpha_composite(dark)
-    # Spray: verde atrás do letreiro, magenta atrás do mascote, respingos pelos cantos.
-    spray(im, rng, 430, 200, 420, NEON, 62, dots=200, drips=3)
-    spray(im, rng, 1480, 560, 470, MAGENTA, 74, dots=240, drips=4)
-    spray(im, rng, 1820, 110, 180, NEON, 46, dots=70, drips=2)
-    spray(im, rng, 140, 980, 220, MAGENTA, 40, dots=80, drips=0)
-    spray(im, rng, 980, 1020, 160, NEON, 30, dots=40, drips=0)
-    # Fita nas cores do Brasil no canto de baixo à direita.
-    tape = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    td = ImageDraw.Draw(tape)
-    for i, color in enumerate((BR_GREEN, BR_YELLOW, BR_BLUE)):
-        y = 1010 + i * 16
-        td.polygon([(1460, y + 60), (1920, y - 120), (1920, y - 106), (1460, y + 74)],
-                   fill=rgba(color, 150))
-    im.alpha_composite(tape.filter(ImageFilter.GaussianBlur(0.6)))
+
+
+def background(width=1920, height=1080) -> Image.Image:
+    """O muro das telas: bandeira em spray, prédios, coroas, estrelas e respingos."""
+    rng = random.Random(2026)
+    im = wall(width, height, rng)
+    brazil_flag(im, rng, (1120, 30, 1880, 520), 165)
+    spray(im, rng, 420, 210, 430, NEON, 58, dots=160, drips=3)
+    spray(im, rng, 1500, 620, 480, MAGENTA, 70, dots=200, drips=4)
+    spray(im, rng, 160, 1000, 220, MAGENTA, 40, dots=60, drips=0)
+    skyline(im, rng, 1010)
+    vignette(im)
+    for (x, y, sz, ang) in ((1640, 40, 110, 12), (1770, 860, 80, -6)):
+        c = crown(sz).rotate(ang, resample=Image.BICUBIC, expand=True)
+        im.alpha_composite(c, (x, y))
+    for (x, y, sz) in ((40, 120, 46), (1020, 80, 30), (870, 470, 36), (1850, 380, 40), (640, 980, 28)):
+        im.alpha_composite(sparkle(sz), (x, y))
+    hh = tag("HUEHUE", 120, NEON, 78, font=WET)
+    im.alpha_composite(hh, (width - hh.width - 8, 140))
     return im.convert("RGB")
 
 
+def loading_background(width=1920, height=1080) -> Image.Image:
+    """O muro da tela de carregamento: mais magenta, prédios embaixo e a frase HUEHUE SEMPRE!."""
+    rng = random.Random(77)
+    im = wall(width, height, rng, tint=(MAGENTA, 70))
+    brazil_flag(im, rng, (40, 40, 700, 460), 90)
+    spray(im, rng, 960, 520, 560, MAGENTA, 90, dots=200, drips=3)
+    spray(im, rng, 300, 900, 240, NEON, 50, dots=70, drips=1)
+    skyline(im, rng, 1030, windows=NEON)
+    vignette(im, 0.7)
+    for (x, y, sz, ang) in ((1520, 760, 110, -12), (150, 520, 80, 10)):
+        im.alpha_composite(crown(sz).rotate(ang, resample=Image.BICUBIC, expand=True), (x, y))
+    t = tag("HUEHUE\nSEMPRE!", 92, (255, 214, 10), 14)
+    im.alpha_composite(t, (width - t.width - 60, height - t.height - 50))
+    return im.convert("RGB")
+
+
+def paint(mask: Image.Image, color, outline=(0, 0, 0), glow_color=None, glow_px=24, edge=6):
+    """Pinta uma máscara: brilho, contorno escuro e a cor por cima."""
+    im = Image.new("RGBA", mask.size, (0, 0, 0, 0))
+    if glow_color:
+        im.alpha_composite(glow(dilate(mask, edge), glow_color, glow_px, 1.2))
+    e = Image.new("RGBA", mask.size, rgba(outline))
+    e.putalpha(dilate(mask, edge))
+    im.alpha_composite(e)
+    body = Image.new("RGBA", mask.size, rgba(color))
+    body.putalpha(mask)
+    im.alpha_composite(body)
+    return im
+
+
 def logo() -> Image.Image:
-    """NX ZERO em tinta escorrendo, contorno verde-neon, e BR HUEHUE EDITION em marcador magenta."""
+    """NX branco de pincel + ZERO em spray magenta, coroa em cima, BR HUEHUE EDITION embaixo."""
     k = 2
-    big = ImageFont.truetype(WET, 230 * k)
-    sub = ImageFont.truetype(MARKER, 86 * k)
-    main = text_mask("NX ZERO", big, 40 * k)
-    tag = text_mask("BR HUEHUE EDITION", sub, 30 * k).rotate(-3, resample=Image.BICUBIC,
-                                                               expand=True)
-    w = max(main.width, tag.width + 60 * k) + 40 * k
-    h = main.height + tag.height - 70 * k
-    im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    mx, my = 20 * k, 0
-    full = Image.new("L", (w, h), 0)
-    full.paste(main, (mx, my))
-    outline = dilate(full, 7 * k)
-    im.alpha_composite(glow(outline, NEON, 28 * k, 1.3))
-    im.alpha_composite(glow(dilate(full, 3 * k), (0, 0, 0), 2 * k, 2.0))
-    stroke = Image.new("RGBA", (w, h), rgba(NEON))
-    stroke.putalpha(outline)
-    im.alpha_composite(stroke)
-    inner = Image.new("RGBA", (w, h), rgba(WHITE))
-    inner.putalpha(full)
-    im.alpha_composite(inner)
-    # A etiqueta em magenta, deslocada para a direita, com uma pincelada verde por baixo.
-    tx, ty = w - tag.width - 10 * k, main.height - 95 * k
-    swash = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    sd = ImageDraw.Draw(swash)
-    sd.rounded_rectangle((tx + 20 * k, ty + tag.height * 0.62, tx + tag.width - 10 * k,
-                          ty + tag.height * 0.62 + 22 * k), radius=11 * k, fill=rgba(NEON, 200))
-    im.alpha_composite(swash.rotate(-3, resample=Image.BICUBIC, center=(tx, ty)))
-    tag_full = Image.new("L", (w, h), 0)
-    tag_full.paste(tag, (tx, ty))
-    im.alpha_composite(glow(dilate(tag_full, 5 * k), (0, 0, 0), 4 * k, 2.2))
-    im.alpha_composite(glow(tag_full, MAGENTA, 18 * k, 1.1))
-    tl = Image.new("RGBA", (w, h), rgba(MAGENTA))
-    tl.putalpha(tag_full)
-    im.alpha_composite(tl)
+    nx_font = ImageFont.truetype(MARKER, 250 * k)
+    zero_font = ImageFont.truetype(WET, 230 * k)
+    sub_font = ImageFont.truetype(MARKER, 92 * k)
+    nx = text_mask("NX", nx_font, 30 * k)
+    zero = text_mask("ZERO", zero_font, 30 * k).rotate(4, resample=Image.BICUBIC, expand=True)
+    parts = [("BR ", WHITE), ("HUEHUE ", NEON), ("EDITION", WHITE)]
+    probe = ImageDraw.Draw(Image.new("L", (1, 1)))
+    sub_w = int(sum(probe.textlength(t, font=sub_font) for t, _ in parts)) + 60 * k
+    sub_h = int(sub_font.size * 1.5)
+    W = nx.width + zero.width - 40 * k
+    H = max(nx.height, zero.height) + sub_h
+    top = 110 * k  # room for the crown over the O
+    im = Image.new("RGBA", (max(W, sub_w + 120 * k), H + 40 * k + top), (0, 0, 0, 0))
+    full_nx = Image.new("L", im.size, 0)
+    full_nx.paste(nx, (0, 20 * k + top))
+    full_zero = Image.new("L", im.size, 0)
+    full_zero.paste(zero, (nx.width - 50 * k, 10 * k + top))
+    im.alpha_composite(paint(full_zero, MAGENTA, glow_color=MAGENTA, glow_px=26 * k, edge=6 * k))
+    im.alpha_composite(paint(full_nx, WHITE, glow_color=(255, 255, 255), glow_px=10 * k, edge=6 * k))
+    cr = crown(150 * k).rotate(-14, resample=Image.BICUBIC, expand=True)
+    im.alpha_composite(cr, (min(im.width - cr.width, nx.width + zero.width - 250 * k), 0))
+    sub = Image.new("L", (sub_w, sub_h), 0)
+    color_layer = Image.new("RGBA", (sub_w, sub_h), (0, 0, 0, 0))
+    x = 30 * k
+    for text, color in parts:
+        m = Image.new("L", (sub_w, sub_h), 0)
+        ImageDraw.Draw(m).text((x, 0), text, font=sub_font, fill=255)
+        sub = ImageChops.lighter(sub, m)
+        c = Image.new("RGBA", (sub_w, sub_h), rgba(color))
+        c.putalpha(m)
+        color_layer.alpha_composite(c)
+        x += probe.textlength(text, font=sub_font)
+    sub = sub.rotate(-3, resample=Image.BICUBIC, expand=True)
+    color_layer = color_layer.rotate(-3, resample=Image.BICUBIC, expand=True)
+    sx, sy = 70 * k, max(nx.height, zero.height) - 40 * k + top
+    full_sub = Image.new("L", im.size, 0)
+    full_sub.paste(sub, (sx, sy))
+    im.alpha_composite(glow(dilate(full_sub, 6 * k), (0, 0, 0), 3 * k, 2.4))
+    im.alpha_composite(glow(full_sub, NEON, 12 * k, 0.6))
+    im.alpha_composite(color_layer, (sx, sy))
+    for (px, py, sz) in ((10, 150, 40), (nx.width // k - 40, 130, 28)):
+        im.alpha_composite(sparkle(sz * k), (px * k, py * k))
     im = crop_alpha(im, 8 * k)
     return im.resize((im.width // k, im.height // k), Image.LANCZOS)
 
@@ -204,6 +350,8 @@ def mascot(height=900) -> Image.Image:
     im.alpha_composite(glow(dilate(mask, 10), MAGENTA, 46, 1.2))
     im.alpha_composite(glow(dilate(mask, 4), NEON, 16, 1.0))
     im.alpha_composite(st, (pad, pad))
+    cr = crown(int(st.width * 0.42)).rotate(-18, resample=Image.BICUBIC, expand=True)
+    im.alpha_composite(cr, (pad + int(st.width * 0.5), 0))
     return crop_alpha(im)
 
 
@@ -264,13 +412,12 @@ def icon(name: str, size=96) -> Image.Image:
     s = size * k
     im = Image.new("RGBA", (s, s), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
-    d.ellipse((0, 0, s - 1, s - 1), fill=(0, 0, 0, 120))
     c = s / 2
     W = rgba(WHITE)
     lw = int(s * 0.065)
     if name == "play":
-        d.polygon([(c - s * 0.13, c - s * 0.2), (c - s * 0.13, c + s * 0.2), (c + s * 0.22, c)],
-                  fill=W)
+        d.polygon([(c - s * 0.16, c - s * 0.26), (c - s * 0.16, c + s * 0.26), (c + s * 0.27, c)],
+                  outline=W, width=lw)
     elif name == "games":
         q = s * 0.12
         for dx in (-1, 1):
@@ -329,6 +476,20 @@ def icon(name: str, size=96) -> Image.Image:
         x, y = c + math.cos(a) * r, c + math.sin(a) * r
         d.polygon([(x - s * 0.1, y - s * 0.05), (x + s * 0.06, y - s * 0.12),
                    (x + s * 0.04, y + s * 0.08)], fill=W)
+    elif name == "star":
+        pts = []
+        for i in range(10):
+            a = math.radians(-90 + 36 * i)
+            r = s * 0.34 if i % 2 == 0 else s * 0.15
+            pts.append((c + math.cos(a) * r, c + math.sin(a) * r))
+        d.polygon(pts, outline=W, width=lw)
+    elif name == "star_on":
+        pts = []
+        for i in range(10):
+            a = math.radians(-90 + 36 * i)
+            r = s * 0.34 if i % 2 == 0 else s * 0.15
+            pts.append((c + math.cos(a) * r, c + math.sin(a) * r))
+        d.polygon(pts, fill=(255, 214, 10, 255))
     elif name == "search":
         r = s * 0.16
         d.ellipse((c - r - s * 0.05, c - r - s * 0.05, c + r - s * 0.05, c + r - s * 0.05),
@@ -406,25 +567,24 @@ def controller() -> Image.Image:
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
+    for old in OUT.glob("*"):
+        old.unlink()
     background().save(OUT / "Background.jpg", quality=88, optimize=True)
+    loading_background().save(OUT / "LoadingBackground.jpg", quality=88, optimize=True)
     logo().save(OUT / "Logo.png", optimize=True)
     mascot().save(OUT / "Mascot.png", optimize=True)
     controller().save(OUT / "Controller.png", optimize=True)
-    for key, (pt, en) in MENU.items():
-        label(pt, 64, WHITE).save(OUT / f"menu_{key}_pt.png", optimize=True)
-        label(en, 64, WHITE).save(OUT / f"menu_{key}_en.png", optimize=True)
-    for key, (pt, en) in TITLES.items():
-        label(pt, 80, NEON, glow_color=NEON_DEEP).save(OUT / f"title_{key}_pt.png", optimize=True)
-        label(en, 80, NEON, glow_color=NEON_DEEP).save(OUT / f"title_{key}_en.png", optimize=True)
+    tag("JOGAR EM\nQUALQUER\nLUGAR", 64, (190, 255, 60), 12).save(OUT / "tag_jogar.png", optimize=True)
+    tag("GAMES\nSEM LIMITES\nHUEHUE!", 70, NEON, 10).save(OUT / "tag_semlimites.png", optimize=True)
     for name in ("play", "games", "settings", "controls", "about", "system", "graphics",
-                 "account", "online", "sources", "updates", "search"):
+                 "account", "online", "sources", "updates", "search", "star", "star_on"):
         icon(name).save(OUT / f"icon_{name}.png", optimize=True)
-    # A splash do Xbox (1240x600, fundo #0A0A0F do manifesto): o letreiro sobre a parede.
-    wall = background().resize((1240, 698), Image.LANCZOS).crop((0, 49, 1240, 649)).convert("RGBA")
+    # A splash do Xbox (1240x600, fundo escuro do manifesto): o letreiro sobre o muro.
+    wall_im = background().resize((1240, 698), Image.LANCZOS).crop((0, 49, 1240, 649)).convert("RGBA")
     mark = logo()
-    mark = mark.resize((int(mark.width * 400 / mark.height), 400), Image.LANCZOS)
-    wall.alpha_composite(mark, ((1240 - mark.width) // 2, 100))
-    wall.convert("RGB").resize((620, 300), Image.LANCZOS).save(OUT.parent / "SplashScreen.png", optimize=True)
+    mark = mark.resize((int(mark.width * 440 / mark.height), 440), Image.LANCZOS)
+    wall_im.alpha_composite(mark, ((1240 - mark.width) // 2, 80))
+    wall_im.convert("RGB").resize((620, 300), Image.LANCZOS).save(OUT.parent / "SplashScreen.png", optimize=True)
     print("ok:", len(list(OUT.iterdir())), "arquivos em", OUT)
 
 

@@ -52,7 +52,7 @@ using I18n::Tr;
 using T = I18n::Text;
 
 /// Games per row of the grid; the metadata window is the visible page and both neighbours.
-constexpr size_t PageSize = 5;
+constexpr size_t PageSize = 6; // one row of the grid (two rows show at a time)
 /// Background batches stay short so a page change never waits long behind them: games opened
 /// through the loaders per fill batch, cache records read per names batch.
 constexpr size_t FillBatch = 6;
@@ -339,11 +339,15 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             }
         } else if (x >= 839 && x < 1064 && y >= 43 && y < 87) actions |= AddFolder;
         else if (x >= 1080 && x < 1226 && y >= 43 && y < 87) actions |= Panel;
-        else if (!loading && x >= 320 && x < 504 && y >= 334 && y < 380) actions |= Play;
-        else if (!loading && x >= 520 && x < 720 && y >= 334 && y < 380) actions |= Options;
-        else if (!loading && x >= 58 && x < 1226 && y >= 444 && y < 635) {
-            const size_t index = selected / PageSize * PageSize + static_cast<size_t>((x - 58) / 232);
-            if (index < scan.entries.size()) { selected = index; dirty = true; }
+        else if (!loading && x >= 64 && x < 1246 && y >= 166 && y < 638) {
+            // The grid of the NX Zero layout: two rows of six 165x216 cards, 197 / 236 apart.
+            const size_t grid_column = std::min<size_t>(static_cast<size_t>((x - 64) / 197), PageSize - 1);
+            const size_t grid_row = y < 402 ? 0 : 1;
+            const size_t index = selected / (2 * PageSize) * (2 * PageSize) + grid_row * PageSize + grid_column;
+            if (index < scan.entries.size()) {
+                if (index == selected) actions |= Play;
+                selected = index; dirty = true;
+            }
         }
         e.Handled(true);
     });

@@ -15,7 +15,7 @@ const Catalog EnglishCatalog = MakeCatalog({
     {Text::ReadyToPlay, L"READY TO PLAY"},
     {Text::ImportKeysFirst, L"IMPORT YOUR KEYS IN SETTINGS"},
     {Text::PersonalLibrary, L"Your personal library"},
-    {Text::YourGames, L"Your games"},
+    {Text::YourGames, L"My games"},
     {Text::SourceInternal, L"Internal"},
     {Text::CheckingGame, L"Checking access to the game..."},
     {Text::MissingKeys, L"Your keys are missing. Open Settings > File manager > Import keys."},
