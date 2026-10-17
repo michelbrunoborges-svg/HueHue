@@ -26,7 +26,7 @@
 
 | Tela | Implementação | Observação |
 |---|---|---|
-| 01 Início | `DrawNsHome` | Início abre o jogo selecionado (o último jogado) |
+| 01 Início | `DrawNsHome` | Início leva aos Recentes (ou a Todos, se nada foi jogado) |
 | 02 Meus jogos | `DrawNsLibrary` | grade 5 colunas, 10 por página |
 | 03 Favoritos / 04 Recentes | abas da biblioteca | `LocalState/ns_favorites.txt`, `ns_recent.txt` (30 últimos) |
 | 05 Buscar jogos / 51 Nenhum resultado | `DrawNsSearch` (Y) | página inteira: caixa, contagem, 1º resultado e teclado; filtra enquanto digita, sem acento e sem maiúscula |
