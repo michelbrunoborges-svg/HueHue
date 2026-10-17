@@ -133,9 +133,7 @@ public:
         target->BeginDraw();
         target->Clear(D2D1::ColorF(Palette::Backdrop));
         // The NS HUEHUE sections; the pages that keep Eden's own layout draw over the pack's ground.
-        if (view.about && view.about_credits) DrawNsCredits();
-        else if (view.about) DrawNsAbout();
-        else if (view.controller_panel) DrawNsControls(view);
+        if (view.controller_panel) DrawNsControls(view);
         else if (configuration.open && view.system.open) DrawSystemPage(view.system);
         else if (configuration.open) DrawNsSettings(view);
         else if (view.home) DrawNsHome(view);
@@ -153,7 +151,7 @@ private:
     // --- NS HUEHUE (design pack v1, design/ns-huehue-v1) ----------------------------------------
     // The approved screens are laid out on a 1920x1080 canvas; DesignSpace draws them there on top
     // of the library's own 1280x720 transform. Colors are the pack's tokens (ui_painter.h).
-    static constexpr size_t HomeRows = 5;
+    static constexpr size_t HomeRows = 3;
     static constexpr size_t GridColumns = 5;      // "covers": repeat(5, 1fr)
     static constexpr size_t GridVisible = 10;     // two rows on screen
     static constexpr float CardWidth = 323.2f;    // (1728 - 4 * 28) / 5
@@ -256,13 +254,13 @@ private:
     }
     void NsHeader(int active) {
         NsBrand();
-        static constexpr std::array<T, 5> nav{T::NsNavHome, T::NsNavGames, T::NsNavSettings,
-                                              T::NsNavControls, T::NsNavAbout};
+        // Sections 1..3: Meus jogos, Configuracoes, Controles.
+        static constexpr std::array<T, 3> nav{T::NsNavGames, T::NsNavSettings, T::NsNavControls};
         float x = 396;
-        for (int i = 0; i < 5; ++i) {
+        for (int i = 0; i < 3; ++i) {
             const auto label = Tr(nav[static_cast<size_t>(i)]);
             const float w = MeasureText(label, 27, false) + 44;
-            const bool on = i == active;
+            const bool on = i + 1 == active;
             Text(label, x + 22, 52, 27, on ? Palette::Accent : Palette::TextSecondary, w, 44);
             if (on) Round(x, 108, w, 4, 0, Palette::Accent);
             x += w + 16;
@@ -344,8 +342,7 @@ private:
         else Text(L"NS HUEHUE", 96, 150, 96, Palette::Magenta, 800, 130, true);
         Text(Spaced(Tr(T::NsTagline)), 97, 350, 24, Palette::Text, 900, 36);
         static constexpr std::array<std::pair<T, const wchar_t*>, HomeRows> items{{
-            {T::NsNavHome, L"play"}, {T::NsNavGames, L"games"}, {T::NsNavSettings, L"settings"},
-            {T::NsNavControls, L"pad"}, {T::NsNavAbout, L"info"}}};
+            {T::NsNavGames, L"games"}, {T::NsNavSettings, L"settings"}, {T::NsNavControls, L"pad"}}};
         // .home-menu .button: 500 wide, 73 tall with its border, 18 apart.
         for (size_t i = 0; i < HomeRows; ++i) {
             const float y = 431 + static_cast<float>(i) * 91;
@@ -469,8 +466,8 @@ private:
         NsBackdrop(false);
         NsHeader(2);
         static constexpr std::array<T, HomeRowCount> sections{T::NsSettingsSystem, T::NsSettingsControllers,
-                                                              T::NsSettingsFiles};
-        static constexpr std::array<const wchar_t*, HomeRowCount> icons{L"settings", L"pad", L"folder"};
+                                                              T::NsSettingsFiles, T::NsCredits};
+        static constexpr std::array<const wchar_t*, HomeRowCount> icons{L"settings", L"pad", L"folder", L"info"};
         const size_t section = panel.files ? static_cast<size_t>(HomeFiles) : std::min<size_t>(panel.selected, HomeRowCount - 1);
         NsTitle(std::wstring{Tr(T::NsNavSettings)} + L" · " + std::wstring{Tr(sections[section])});
         for (size_t i = 0; i < HomeRowCount; ++i) {
@@ -486,7 +483,19 @@ private:
         }
         const float left = 521, width = 1280;
         Text(Tr(sections[section]), left, 292, 34, Palette::Text, width, 50, true);
-        if (!panel.files) {
+        if (!panel.files && section == HomeCredits) {
+            // Créditos e licenças (they used to be the Sobre page): who the work comes from, the
+            // version and the license note. Nothing here opens.
+            static constexpr std::array<std::pair<const wchar_t*, T>, 5> credits{{
+                {L"eden-xbox · JulianDr14", T::NsRolePort}, {L"Eden · yuzu · Sudachi", T::NsRoleBase},
+                {L"NXbox · NspxMiguel", T::NsRoleUi}, {L"Mesa · dynarmic · DXC", T::NsRoleGraphics},
+                {L"NS HUEHUE · BR HueHue Edition", T::NsRoleEdition}}};
+            for (size_t i = 0; i < credits.size(); ++i)
+                NsRow(left, 356 + static_cast<float>(i) * 78, width, credits[i].first, Tr(credits[i].second), false);
+            Text(I18n::Format(T::NsExperimental, {version_string}), left, 762, 23, Palette::TextSecondary, width, 36);
+            Text(std::wstring{Tr(T::NsCreditsBody)} + L" " + std::wstring{Tr(T::NsNotAffiliated)}, left, 804, 21,
+                 Palette::TextSecondary, width, 120, false, true);
+        } else if (!panel.files) {
             // A preview of the section; A opens it.
             std::array<std::pair<std::wstring, std::wstring>, 3> rows;
             if (section == HomeSystem) {
@@ -526,10 +535,11 @@ private:
         }
         if (panel.busy)
             Text(I18n::Format(T::Importing, {std::to_wstring(panel.completed), std::to_wstring(panel.total)}),
-                 left, 850, 24, Palette::Accent, width, 40);
+                 left, 920, 24, Palette::Accent, width, 40);
         else if (!panel.notice.empty())
-            Text(panel.notice, left, 850, 23, Palette::Warning, width, 70, false, true);
-        NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, panel.busy ? T::Cancel : T::Back}});
+            Text(panel.notice, left, 920, 23, Palette::Warning, width, 70, false, true);
+        if (!panel.files && section == HomeCredits) NsFooter({{L'B', Ns::Error, T::Back}});
+        else NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, panel.busy ? T::Cancel : T::Back}});
     }
 
     // 18 · Controles (the controller page of the library)
@@ -602,43 +612,6 @@ private:
             }
         }
         NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Back}});
-    }
-
-    // 42-43 · Sobre o NS HUEHUE
-    void DrawNsAbout() {
-        DesignSpace space(target.Get());
-        NsBackdrop(false);
-        NsHeader(4);
-        NsTitle(Tr(T::NsAboutTitle));
-        NsImage(ns_mascot.Get(), D2D1::RectF(1180, 150, 1900, 1050), false, 0.75f, 0.5f, 1.0f);
-        if (ns_logo) NsImage(ns_logo.Get(), D2D1::RectF(96, 305, 816, 505), false, 1, 0, 0.5f);
-        else Text(L"NS HUEHUE", 96, 370, 96, Palette::Magenta, 800, 130, true);
-        Text(Tr(T::NsEdition), 96, 524, 34, Palette::Text, 950, 50, true);
-        Text(Tr(T::NsAboutBased), 96, 596, 28, Palette::Text, 950, 50);
-        Text(I18n::Format(T::NsExperimental, {version_string}), 96, 656, 23, Palette::TextSecondary, 950, 40);
-        NsButton(96, 711, 360, L"info", Tr(T::NsCredits), true, true);
-        Text(Tr(T::NsNotAffiliated), 96, 812, 23, Palette::TextSecondary, 950, 40);
-        NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Back}});
-    }
-
-    // 43 · Créditos e licenças: who the work comes from, and the license note.
-    void DrawNsCredits() {
-        DesignSpace space(target.Get());
-        NsBackdrop(false);
-        NsHeader(4);
-        NsTitle(Tr(T::NsCredits));
-        NsFill(400, 286, 1120, 680, 12, Palette::Panel, 0.95f);
-        NsStroke(400.5f, 286.5f, 1119, 679, 12, 1, Ns::Line);
-        Text(Tr(T::NsCreditsHeading), 441, 326, 34, Palette::Text, 1040, 50, true);
-        Round(441, 392, 1038, 1, 0, Ns::Line);
-        static constexpr std::array<std::pair<const wchar_t*, T>, 5> credits{{
-            {L"eden-xbox · JulianDr14", T::NsRolePort}, {L"Eden · yuzu · Sudachi", T::NsRoleBase},
-            {L"NXbox · NspxMiguel", T::NsRoleUi}, {L"Mesa · dynarmic · DXC", T::NsRoleGraphics},
-            {L"NS HUEHUE · BR HueHue Edition", T::NsRoleEdition}}};
-        for (size_t i = 0; i < credits.size(); ++i)
-            NsRow(441, 419 + static_cast<float>(i) * 77, 1038, credits[i].first, Tr(credits[i].second), false, 27, 77);
-        Text(Tr(T::NsCreditsBody), 441, 815, 21, Palette::TextSecondary, 1038, 130, false, true);
-        NsFooter({{L'B', Ns::Error, T::Back}});
     }
 
     // 07 · Opções do jogo (the list; its pages draw themselves)

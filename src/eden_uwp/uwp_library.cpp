@@ -187,10 +187,9 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                       Refresh = 64, Panel = 128, Left = 256, Right = 512, AddFolder = 1024,
                       Options = 2048, PreviousTab = 4096, NextTab = 8192, Search = 16384 };
     // NS HUEHUE state: the sections, the library's tabs, search and focus, and the lists kept.
-    constexpr unsigned NxHomeRows = 5;
+    constexpr unsigned NxHomeRows = 3;
     bool home = true;
     unsigned home_row = 0;
-    bool about = false, about_credits = false;
     unsigned library_tab = 0;
     int library_focus = -1;
     std::wstring query;
@@ -206,7 +205,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     auto library_notice_until = std::chrono::steady_clock::time_point::max();
     // The game grid is what the player sees: no page, overlay or modal over it.
     auto library_top = [&] {
-        return !home && !about && !settings && !configuration.open && !game_options.open &&
+        return !home && !settings && !configuration.open && !game_options.open &&
                !panel.keyboard.open && !missing_content && !search_editor;
     };
     // The entries the grid shows (the tab, then the search), and each one's place in it.
@@ -379,11 +378,6 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 query = search_editor->Value();
                 dirty = true;
             }
-            e.Handled(true);
-            return;
-        }
-        if (about) {
-            actions |= about_credits ? Quit : Play;
             e.Handled(true);
             return;
         }
@@ -641,13 +635,12 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         if (recents.size() > RecentLimit) recents.resize(RecentLimit);
         SaveList(L"ns_recent.txt", recents);
     };
-    // LB/RB and the home menu: 0 Inicio, 1 Meus jogos, 2 Configuracoes, 3 Controles, 4 Sobre.
+    // LB/RB and the home menu: 1 Meus jogos, 2 Configuracoes, 3 Controles (0 is the home screen,
+    // which B returns to; it has no button of its own).
     auto current_section = [&]() -> unsigned {
-        return about ? 4 : settings ? 3 : configuration.open ? 2 : home ? 0 : 1;
+        return settings ? 3 : configuration.open ? 2 : home ? 0 : 1;
     };
     auto go_section = [&](unsigned section) {
-        about = section == 4;
-        about_credits = false;
         settings = section == 3;
         return_to_configuration = false;
         panel.expanded = false;
@@ -926,24 +919,16 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             }
             actions = 0;
         }
-        // NS HUEHUE: LB/RB walk the five sections wherever no page or modal is open.
+        // NS HUEHUE: LB/RB walk Meus jogos, Configuracoes and Controles wherever no page or modal
+        // is open (from the home screen too).
         const bool modal = game_options.open || panel.keyboard.open || panel.expanded || system_page.open ||
                            configuration.files || configuration.busy || picker || validation.valid() ||
-                           missing_content || about_credits;
+                           missing_content;
         if (!modal && (actions & (PreviousTab | NextTab))) {
             const unsigned section = current_section();
-            go_section((actions & NextTab) ? (section + 1) % 5 : (section + 4) % 5);
+            const unsigned at = section == 0 ? 0 : section - 1; // home behaves as Meus jogos' neighbour
+            go_section(1 + ((actions & NextTab) ? (section == 0 ? 0 : (at + 1) % 3) : (at + 2) % 3));
             actions = 0;
-        }
-        if (about && actions && !modal) {
-            if (actions & Play) about_credits = true;
-            else if (actions & Quit) about = false;
-            actions = 0;
-            dirty = true;
-        } else if (about_credits && actions) {
-            if (actions & (Quit | Play)) about_credits = false;
-            actions = 0;
-            dirty = true;
         }
         if (home && actions && !game_options.open && !settings && !configuration.open &&
             !panel.keyboard.open && !picker && !validation.valid() && !missing_content &&
@@ -953,17 +938,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             if (pressed & Quit) return std::nullopt;
             if (pressed & Up) home_row = (home_row + NxHomeRows - 1) % NxHomeRows;
             if (pressed & Down) home_row = (home_row + 1) % NxHomeRows;
-            if (pressed & Play) {
-                if (home_row == 0) {
-                    // Inicio: back to the games, on Recentes when something was played.
-                    home = false;
-                    library_focus = -1;
-                    library_tab = recents.empty() ? 0 : 2;
-                    metadata_dirty = true;
-                } else {
-                    go_section(home_row);
-                }
-            }
+            // Meus jogos, Configuracoes, Controles.
+            if (pressed & Play) go_section(home_row + 1);
             dirty = true;
         }
         // The library's top row: the three tabs and the search box (Up from the first grid row).
@@ -1338,6 +1314,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     switch (configuration.selected) {
                     case HomeFiles: configuration.files = true; configuration.selected = 0; break;
                     case HomeControllers: settings = true; return_to_configuration = true; break;
+                    case HomeCredits: break; // The credits show beside the list; nothing to open.
                     default:
                         system_page.open = true;
                         system_page.selected = SystemPage::UserName;
@@ -1639,8 +1616,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             rebuild_shown();
             canvas->Draw({scan, selected, loading, settings, setting_row, options, notice, panel,
                           configuration, system_page, options_view, missing_content, home, home_row,
-                          about, library_tab, library_focus, &shown, &favorites, query,
-                          search_editor ? &*search_editor : nullptr, about_credits});
+                          false, library_tab, library_focus, &shown, &favorites, query,
+                          search_editor ? &*search_editor : nullptr, false});
             dirty = false;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds{16});

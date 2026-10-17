@@ -49,29 +49,26 @@ function Close {
     Start-Sleep -Seconds 3
 }
 
-# Telas na ordem do pacote de design (design/ns-huehue-v1): 01 inicio, 42-43 sobre e creditos,
-# 18 controles, 11 configuracoes, 09 biblioteca vazia; depois com jogos: 02 grade, 07 opcoes,
-# favorito, 05 busca, 03 favoritos.
-# 1. Primeira abertura: biblioteca vazia.
+# Telas do pacote de design (design/ns-huehue-v1): 01 inicio, 18 controles, 11 configuracoes
+# (com Creditos), 09 biblioteca vazia; depois com jogos: 02 grade, 07 opcoes, favorito, 05 busca.
+# 1. Primeira abertura: biblioteca vazia. Menu inicial: Meus jogos, Configuracoes, Controles.
 Launch
 Shot "01-inicio"
 Key "{DOWN}"
 Key "{DOWN}"
-Key "{DOWN}"
-Key "{DOWN}"
-Key "{ENTER}"
-Shot "42-sobre"
-Key "{ENTER}"
-Shot "43-creditos"
-Key "{ESC}"
-Key "{ESC}"
-Key "{UP}"
 Key "{ENTER}"
 Shot "18-controles"
 Key "{ESC}"
 Key "{UP}"
 Key "{ENTER}"
 Shot "11-configuracoes"
+Key "{DOWN}"
+Key "{DOWN}"
+Key "{DOWN}"
+Shot "43-creditos"
+Key "{UP}"
+Key "{UP}"
+Key "{UP}"
 Key "{ENTER}"
 Shot "11b-sistema"
 Key "{ESC}"
@@ -90,7 +87,6 @@ foreach ($n in @("Turbo Rally", "Reino Perdido", "Gol de Placa Arena", "Pulo Est
 }
 Launch
 Shot "01b-inicio-com-jogos"
-Key "{DOWN}"
 Key "{ENTER}"
 Shot "02-meus-jogos"
 Key "{RIGHT}"

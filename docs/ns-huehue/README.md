@@ -19,28 +19,28 @@
 - Rodapé mostra só os atalhos que a tela realmente atende. Nenhum botão sem ação.
 - Todas as opções do backend do Eden continuam acessíveis (Sistema, Controles, Arquivos,
   Opções do jogo: mods, cheats, updates, DLC, sessão Pulse).
-- Créditos e licenças continuam no app (Sobre → Créditos e licenças).
+- Créditos e licenças continuam no app (Configurações → Créditos e licenças).
 - Sem chaves, firmware ou jogos no pacote. Sem logos da Nintendo/Xbox e sem capas protegidas.
 
 ## Telas implementadas (número do pacote → onde está)
 
 | Tela | Implementação | Observação |
 |---|---|---|
-| 01 Início | `DrawNsHome` | Início leva aos Recentes (ou a Todos, se nada foi jogado) |
+| 01 Início | `DrawNsHome` | menu: Meus jogos, Configurações, Controles (sem botão Início e sem Sobre, a pedido do Michel em 17/10) |
 | 02 Meus jogos | `DrawNsLibrary` | grade 5 colunas, 10 por página |
 | 03 Favoritos / 04 Recentes | abas da biblioteca | `LocalState/ns_favorites.txt`, `ns_recent.txt` (30 últimos) |
 | 05 Buscar jogos / 51 Nenhum resultado | `DrawNsSearch` (Y) | página inteira: caixa, contagem, 1º resultado e teclado; filtra enquanto digita, sem acento e sem maiúscula |
 | 07 Opções do jogo | `DrawNsGameOptions` | Iniciar jogo · Mods · Cheats · Atualizações · DLC · Pulse · Favorito |
 | 09 Biblioteca vazia / 47 Carregando | `DrawNsEmpty` / `DrawNsLibrary` | "Bora começar?": A abre Configurações › Arquivos e USB |
-| 11–16 Configurações | `DrawNsSettings` + páginas do Eden | Sistema, Controles, Arquivos e USB |
+| 11–16 Configurações | `DrawNsSettings` + páginas do Eden | Sistema, Controles, Arquivos e USB, Créditos e licenças |
 | 18 Controles | `DrawNsControls` | linhas reais do Eden (tipo, A/B/X/Y, zona morta, teclado) |
-| 42 Sobre / 43 Créditos | `DrawNsAbout` / `DrawNsCredits` | créditos em página, com a nota de licenças |
+| 42 Sobre / 43 Créditos | Configurações › Créditos e licenças | Sobre retirado do menu; créditos, versão e licenças continuam (GPL) |
 | 48 Splash | `SplashScreen.png` do pacote | composto com o fundo, mascote e logo do pacote |
 
 ## Navegação
 
 A confirmar · B voltar · X opções do jogo · Y buscar · LB/RB trocam de seção
-(Início, Meus jogos, Configurações, Controles, Sobre) · ↑ na primeira linha da grade vai para
+(Meus jogos, Configurações, Controles; B volta ao menu inicial) · ↑ na primeira linha da grade vai para
 as abas e a busca. Menu na grade relê a biblioteca; View abre Controles.
 Teclado/PC: Enter, Esc, X, Y, Q/E, R (reler), F1, F2.
 
