@@ -557,5 +557,17 @@ const Catalog PortugueseCatalog = MakeCatalog({
     {Text::NsPlayer, L"Jogador 1"},
     {Text::NsGamesCount, L"{0} jogos"},
     {Text::NsOpen, L"Abrir"},
+    {Text::NsFoundOne, L"{0} jogo encontrado"},
+    {Text::NsFoundOther, L"{0} jogos encontrados"},
+    {Text::NsEmptyTitle, L"Biblioteca vazia"},
+    {Text::NsEmptyHeadline, L"Bora começar?"},
+    {Text::NsEmptyBody, L"Adicione seus jogos para montar a biblioteca."},
+    {Text::NsStartGame, L"Iniciar jogo"},
+    {Text::NsCreditsHeading, L"Quem construiu essa história"},
+    {Text::NsRolePort, L"Port Xbox / UWP"},
+    {Text::NsRoleBase, L"Base do emulador"},
+    {Text::NsRoleUi, L"Ideias de interface"},
+    {Text::NsRoleGraphics, L"Infraestrutura gráfica"},
+    {Text::NsRoleEdition, L"Edição brasileira"},
 });
 } // namespace EdenXbox::I18n

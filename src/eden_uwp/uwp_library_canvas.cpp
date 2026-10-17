@@ -133,16 +133,17 @@ public:
         target->BeginDraw();
         target->Clear(D2D1::ColorF(Palette::Backdrop));
         // The NS HUEHUE sections; the pages that keep Eden's own layout draw over the pack's ground.
-        if (view.about) DrawNsAbout(view);
+        if (view.about && view.about_credits) DrawNsCredits();
+        else if (view.about) DrawNsAbout();
         else if (view.controller_panel) DrawNsControls(view);
         else if (configuration.open && view.system.open) DrawSystemPage(view.system);
         else if (configuration.open) DrawNsSettings(view);
         else if (view.home) DrawNsHome(view);
+        else if (view.search) DrawNsSearch(view, *view.search);
         else DrawNsLibrary(view);
         if (panel.keyboard.open) DrawKeyboard(panel.keyboard);
         if (configuration.open && view.system.open && view.system.name_editor) DrawNameEditor(view.system);
         if (view.game_options.game || view.game_options.content) DrawGameOptions(view.game_options);
-        if (view.search) DrawNsSearch(*view.search);
         if (view.missing_content) Content::DrawMissingContent(*this);
         winrt::check_hresult(target->EndDraw());
         winrt::check_hresult(swapchain->Present(1, 0));
@@ -364,11 +365,48 @@ private:
                std::find(view.favorites->begin(), view.favorites->end(), entry.launch_path) != view.favorites->end();
     }
 
+    /// One cover card of the grid (.game): cover, favorite star, name and a line under it.
+    void DrawNsCard(const LibraryView& view, const LibraryEntry& entry, float cx, float cy) {
+        NsFill(cx, cy, CardWidth, CardHeight, 8, Palette::Panel);
+        NsStroke(cx + 0.5f, cy + 0.5f, CardWidth - 1, CardHeight - 1, 8, 1, Ns::Line);
+        const D2D1_RECT_F cover = D2D1::RectF(cx + 8, cy + 8, cx + CardWidth - 8, cy + 207);
+        Round(cover.left, cover.top, cover.right - cover.left, cover.bottom - cover.top, 4, 0x0d1a1d);
+        ID2D1Bitmap1* const art = CoverBitmap(entry);
+        NsImage(art ? art : ns_fallback.Get(), cover, true);
+        if (IsFavorite(view, entry)) {
+            NsFill(cover.right - 50, cover.top + 10, 40, 40, 20, Palette::Backdrop, 0.7f);
+            NsImage(NsIcon(L"star"), D2D1::RectF(cover.right - 44, cover.top + 16, cover.right - 16, cover.top + 44), false);
+        }
+        Text(entry.name, cx + 15, cy + 218, 23, Palette::Text, CardWidth - 30, 32, true);
+        std::wstring under = entry.display_version.empty() ? std::wstring{} : L"v" + entry.display_version;
+        if (!entry.source_name.empty()) under += (under.empty() ? L"" : L" · ") + entry.source_name;
+        if (!entry.pulse_saved.empty()) under += under.empty() ? L"Pulse" : L" · Pulse";
+        if (under.empty()) under = entry.relative_path.extension().wstring();
+        Text(under, cx + 15, cy + 252, 17, Palette::TextSecondary, CardWidth - 30, 26);
+    }
+
     // 02-05, 09, 47, 51 · Meus jogos
+    // 09 · Biblioteca vazia: A opens Arquivos e USB.
+    void DrawNsEmpty() {
+        NsTitle(Tr(T::NsEmptyTitle));
+        NsImage(ns_mascot.Get(), D2D1::RectF(1190, 150, 1890, 1050), false, 0.6f, 0.5f, 1.0f);
+        NsImage(NsIcon(L"games"), D2D1::RectF(186, 268, 240, 322), false);
+        Text(Tr(T::NsEmptyHeadline), 186, 330, 76, Palette::Text, 950, 100, true);
+        Text(Tr(T::NsEmptyBody), 186, 440, 28, Palette::Text, 950, 50);
+        NsButton(186, 512, 420, L"folder", Tr(T::NsSettingsFiles), true, true);
+        Text(Tr(T::EmptyBody), 186, 622, 23, Palette::TextSecondary, 900, 80, false, true);
+        NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Back}});
+    }
+
     void DrawNsLibrary(const LibraryView& view) {
         DesignSpace space(target.Get());
         NsBackdrop(false);
         NsHeader(1);
+        if (!view.loading && view.scan.entries.empty()) {
+            DrawNsEmpty();
+            NsToast(view.notice);
+            return;
+        }
         NsTitle(Tr(T::NsNavGames));
         static constexpr std::array<T, 3> tabs{T::NsTabAll, T::NsTabFavorites, T::NsTabRecent};
         float x = 96;
@@ -399,11 +437,6 @@ private:
             }
             Text(Tr(T::LoadingTitle), 96, 820, 34, Palette::Text, 1500, 50, true);
             Text(Tr(T::LoadingBody), 96, 876, 23, Palette::TextSecondary, 1500, 40);
-        } else if (view.scan.entries.empty()) {
-            NsImage(ns_mascot.Get(), D2D1::RectF(1190, 330, 1890, 1110), false, 0.6f, 0.5f, 1.0f);
-            NsImage(NsIcon(L"games"), D2D1::RectF(186, 400, 276, 490), false);
-            Text(Tr(T::EmptyTitle), 186, 515, 60, Palette::Text, 950, 160, true, true);
-            Text(Tr(T::EmptyBody), 186, 690, 28, Palette::TextSecondary, 900, 200, false, true);
         } else if (!view.shown || view.shown->empty()) {
             const T message = !view.query.empty() ? T::NsNoResults
                             : view.library_tab == 1 ? T::NsNoFavorites : T::NsNoRecent;
@@ -418,23 +451,7 @@ private:
             for (size_t k = first; k < std::min(first + GridVisible, list.size()); ++k) {
                 const size_t slot = k - first;
                 const float cx = card_x(slot), cy = card_y(slot);
-                const LibraryEntry& entry = view.scan.entries[list[k]];
-                NsFill(cx, cy, CardWidth, CardHeight, 8, Palette::Panel);
-                NsStroke(cx + 0.5f, cy + 0.5f, CardWidth - 1, CardHeight - 1, 8, 1, Ns::Line);
-                const D2D1_RECT_F cover = D2D1::RectF(cx + 8, cy + 8, cx + CardWidth - 8, cy + 207);
-                Round(cover.left, cover.top, cover.right - cover.left, cover.bottom - cover.top, 4, 0x0d1a1d);
-                ID2D1Bitmap1* const art = CoverBitmap(entry);
-                NsImage(art ? art : ns_fallback.Get(), cover, true);
-                if (IsFavorite(view, entry)) {
-                    NsFill(cover.right - 50, cover.top + 10, 40, 40, 20, Palette::Backdrop, 0.7f);
-                    NsImage(NsIcon(L"star"), D2D1::RectF(cover.right - 44, cover.top + 16, cover.right - 16, cover.top + 44), false);
-                }
-                Text(entry.name, cx + 15, cy + 218, 23, Palette::Text, CardWidth - 30, 32, true);
-                std::wstring under = entry.display_version.empty() ? std::wstring{} : L"v" + entry.display_version;
-                if (!entry.source_name.empty()) under += (under.empty() ? L"" : L" · ") + entry.source_name;
-                if (!entry.pulse_saved.empty()) under += under.empty() ? L"Pulse" : L" · Pulse";
-                if (under.empty()) under = entry.relative_path.extension().wstring();
-                Text(under, cx + 15, cy + 252, 17, Palette::TextSecondary, CardWidth - 30, 26);
+                DrawNsCard(view, view.scan.entries[list[k]], cx, cy);
                 if (list[k] == view.selected && view.library_focus < 0) NsFocus(cx, cy, CardWidth, CardHeight, 8);
             }
             Text(std::to_wstring(position + 1) + L" / " + std::to_wstring(list.size()), 1524, 200, 23,
@@ -588,7 +605,7 @@ private:
     }
 
     // 42-43 · Sobre o NS HUEHUE
-    void DrawNsAbout(const LibraryView& view) {
+    void DrawNsAbout() {
         DesignSpace space(target.Get());
         NsBackdrop(false);
         NsHeader(4);
@@ -599,20 +616,29 @@ private:
         Text(Tr(T::NsEdition), 96, 524, 34, Palette::Text, 950, 50, true);
         Text(Tr(T::NsAboutBased), 96, 596, 28, Palette::Text, 950, 50);
         Text(I18n::Format(T::NsExperimental, {version_string}), 96, 656, 23, Palette::TextSecondary, 950, 40);
-        NsButton(96, 711, 360, L"info", Tr(T::NsCredits), true, !view.about_credits);
+        NsButton(96, 711, 360, L"info", Tr(T::NsCredits), true, true);
         Text(Tr(T::NsNotAffiliated), 96, 812, 23, Palette::TextSecondary, 950, 40);
-        if (view.about_credits) {
-            brush->SetColor(D2D1::ColorF(0, 0, 0, 0.72f));
-            target->FillRectangle(D2D1::RectF(0, 0, 1920, 1080), brush.Get());
-            NsFill(400, 230, 1120, 640, 12, Palette::Panel, 0.97f);
-            NsStroke(400.5f, 230.5f, 1119, 639, 12, 1, Ns::Line);
-            Text(Tr(T::NsCredits), 440, 270, 34, Palette::Text, 1040, 50, true);
-            Round(440, 334, 1040, 1, 0, Ns::Line);
-            Text(Tr(T::NsCreditsBody), 440, 360, 26, Palette::TextSecondary, 1040, 420, false, true);
-            NsFooter({{L'B', Ns::Error, T::Back}});
-        } else {
-            NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Back}});
-        }
+        NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Back}});
+    }
+
+    // 43 · Créditos e licenças: who the work comes from, and the license note.
+    void DrawNsCredits() {
+        DesignSpace space(target.Get());
+        NsBackdrop(false);
+        NsHeader(4);
+        NsTitle(Tr(T::NsCredits));
+        NsFill(400, 286, 1120, 680, 12, Palette::Panel, 0.95f);
+        NsStroke(400.5f, 286.5f, 1119, 679, 12, 1, Ns::Line);
+        Text(Tr(T::NsCreditsHeading), 441, 326, 34, Palette::Text, 1040, 50, true);
+        Round(441, 392, 1038, 1, 0, Ns::Line);
+        static constexpr std::array<std::pair<const wchar_t*, T>, 5> credits{{
+            {L"eden-xbox · JulianDr14", T::NsRolePort}, {L"Eden · yuzu · Sudachi", T::NsRoleBase},
+            {L"NXbox · NspxMiguel", T::NsRoleUi}, {L"Mesa · dynarmic · DXC", T::NsRoleGraphics},
+            {L"NS HUEHUE · BR HueHue Edition", T::NsRoleEdition}}};
+        for (size_t i = 0; i < credits.size(); ++i)
+            NsRow(441, 419 + static_cast<float>(i) * 77, 1038, credits[i].first, Tr(credits[i].second), false, 27, 77);
+        Text(Tr(T::NsCreditsBody), 441, 815, 21, Palette::TextSecondary, 1038, 130, false, true);
+        NsFooter({{L'B', Ns::Error, T::Back}});
     }
 
     // 07 · Opções do jogo (the list; its pages draw themselves)
@@ -621,17 +647,21 @@ private:
         NsBackdrop(false);
         NsHeader(1);
         NsTitle(Tr(T::NsGameOptions));
-        NsFill(400, 286, 1120, 637, 12, Palette::Panel, 0.95f);
-        NsStroke(400.5f, 286.5f, 1119, 636, 12, 1, Ns::Line);
+        NsFill(400, 286, 1120, 696, 12, Palette::Panel, 0.95f);
+        NsStroke(400.5f, 286.5f, 1119, 695, 12, 1, Ns::Line);
         Text(game.name, 441, 328, 34, Palette::Text, 1040, 50, true);
         Round(441, 392, 1038, 1, 0, Ns::Line);
         const auto options = GameOptions();
-        for (size_t i = 0; i <= options.size(); ++i) {
+        // The library's rows around Eden's: Iniciar jogo first, the favorite last.
+        for (size_t i = 0; i < options.size() + 2; ++i) {
             const float y = 419 + static_cast<float>(i) * 77;
             std::wstring title, value = L"›";
-            if (i < options.size()) {
-                title = Tr(GameOptionTitle(options[i]));
-                if (options[i] == GameOption::Pulse)
+            if (i == 0) {
+                title = Tr(T::NsStartGame);
+                value = swap_prompt_faces ? L"B" : L"A";
+            } else if (i <= options.size()) {
+                title = Tr(GameOptionTitle(options[i - 1]));
+                if (options[i - 1] == GameOption::Pulse)
                     value = game.pulse_saved.empty() ? std::wstring{Tr(T::PulseNone)}
                           : I18n::Format(game.pulse_current ? T::PulseSavedOn : T::PulseSavedOther, {game.pulse_saved});
             } else {
@@ -644,22 +674,36 @@ private:
         NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Back}});
     }
 
-    // 05 · Buscar jogos (the shared on-screen keyboard)
-    void DrawNsSearch(const TextEntry& editor) {
-        using L = SystemPageLayout;
+    // 05, 51 · Buscar jogos: the box, the first result and the shared keyboard's keys.
+    void DrawNsSearch(const LibraryView& view, const TextEntry& editor) {
         using K = TextEntryPanelLayout;
-        brush->SetColor(D2D1::ColorF(0, 0, 0, 0.86f));
-        target->FillRectangle(D2D1::RectF(0, 0, 1280, 720), brush.Get());
-        Round(L::EditorX, L::EditorY, K::Width, K::Height, 12, Palette::Panel);
-        DrawTextEntryPanel(*this, {editor, Tr(T::NsSearchGames), std::wstring_view{}, std::wstring_view{}},
-                           L::EditorX, L::EditorY);
-        const float left = L::EditorX + K::Left;
-        const float footer = L::EditorY + K::Footer;
-        ControlPrompt(Navigation::Play, Tr(T::TypeKey), left, footer, 140);
-        ControlPrompt(Navigation::AddFolder, Tr(T::DeleteKey), left + 190, footer, 140);
-        ControlPrompt(Navigation::Space, Tr(T::SpaceKey), left + 380, footer, 140);
-        ControlPrompt(Navigation::Options, Tr(T::DoneKey), left + 570, footer, 140);
-        ControlPrompt(Navigation::Back, Tr(T::Cancel), left + 760, footer, 140);
+        using S = NsSearchLayout;
+        DesignSpace space(target.Get());
+        NsBackdrop(false);
+        NsHeader(1);
+        NsTitle(Tr(T::NsSearchGames));
+        NsFill(96, 266, 1728, 72, 8, Palette::Backdrop);
+        NsStroke(97.5f, 267.5f, 1725, 69, 8, 3, Palette::Accent);
+        const std::wstring& value = editor.Value();
+        const float typed = std::min(MeasureText(value, 28, false), 1600.0f);
+        Text(value, 124, 282, 28, Palette::Text, 1620, 42);
+        Round(126 + typed, 286, 2, 34, 1, Palette::Accent);
+        const size_t found = view.shown ? view.shown->size() : 0;
+        Text(found ? I18n::Plural(T::NsFoundOne, T::NsFoundOther, found) : std::wstring{Tr(T::NsNoResults)},
+             96, 352, 23, Palette::TextSecondary, 1200, 36);
+        if (found) {
+            DrawNsCard(view, view.scan.entries[view.shown->front()], 96, S::KeysY);
+            NsFocus(96, S::KeysY, CardWidth, CardHeight, 8);
+        }
+        // The panel draws its own title and box too: only its keys show here.
+        target->PushAxisAlignedClip(D2D1::RectF(S::KeysX - 10, S::KeysY - 10, S::KeysX + K::BoxWidth + 10,
+                                                S::KeysY + TextEntry::Rows * (K::KeyHeight + K::Gap) + 4),
+                                    D2D1_ANTIALIAS_MODE_ALIASED);
+        DrawTextEntryPanel(*this, {editor, std::wstring_view{}, std::wstring_view{}, std::wstring_view{}},
+                           S::PanelX(), S::PanelY());
+        target->PopAxisAlignedClip();
+        NsFooter({{L'A', Palette::Accent, T::TypeKey}, {L'X', Ns::KeyX, T::DeleteKey}, {L'Y', Ns::KeyY, T::SpaceKey},
+                  {L'\u2261', Palette::Text, T::DoneKey}, {L'B', Ns::Error, T::Cancel}});
     }
 
     void DrawControllerPanel(const LibraryView& view) {

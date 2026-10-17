@@ -581,6 +581,18 @@ enum class Text : std::uint16_t {
     NsPlayer,
     NsGamesCount,
     NsOpen,
+    NsFoundOne,
+    NsFoundOther,
+    NsEmptyTitle,
+    NsEmptyHeadline,
+    NsEmptyBody,
+    NsStartGame,
+    NsCreditsHeading,
+    NsRolePort,
+    NsRoleBase,
+    NsRoleUi,
+    NsRoleGraphics,
+    NsRoleEdition,
 
 
     Count

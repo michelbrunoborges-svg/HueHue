@@ -29,12 +29,12 @@
 | 01 Início | `DrawNsHome` | Início abre o jogo selecionado (o último jogado) |
 | 02 Meus jogos | `DrawNsLibrary` | grade 5 colunas, 10 por página |
 | 03 Favoritos / 04 Recentes | abas da biblioteca | `LocalState/ns_favorites.txt`, `ns_recent.txt` (30 últimos) |
-| 05 Buscar jogos / 51 Nenhum resultado | Y → teclado na tela | filtra enquanto digita, sem acento e sem maiúscula |
-| 07 Opções do jogo | `DrawNsGameOptions` | + linha "Adicionar/Remover favorito" |
-| 09 Biblioteca vazia / 47 Carregando | `DrawNsLibrary` | |
+| 05 Buscar jogos / 51 Nenhum resultado | `DrawNsSearch` (Y) | página inteira: caixa, contagem, 1º resultado e teclado; filtra enquanto digita, sem acento e sem maiúscula |
+| 07 Opções do jogo | `DrawNsGameOptions` | Iniciar jogo · Mods · Cheats · Atualizações · DLC · Pulse · Favorito |
+| 09 Biblioteca vazia / 47 Carregando | `DrawNsEmpty` / `DrawNsLibrary` | "Bora começar?": A abre Configurações › Arquivos e USB |
 | 11–16 Configurações | `DrawNsSettings` + páginas do Eden | Sistema, Controles, Arquivos e USB |
 | 18 Controles | `DrawNsControls` | linhas reais do Eden (tipo, A/B/X/Y, zona morta, teclado) |
-| 42 Sobre / 43 Créditos | `DrawNsAbout` | |
+| 42 Sobre / 43 Créditos | `DrawNsAbout` / `DrawNsCredits` | créditos em página, com a nota de licenças |
 | 48 Splash | `SplashScreen.png` do pacote | composto com o fundo, mascote e logo do pacote |
 
 ## Navegação
@@ -47,7 +47,7 @@ Teclado/PC: Enter, Esc, X, Y, Q/E, R (reler), F1, F2.
 ## Telas do pacote sem backend no Eden (não implementadas de propósito)
 
 Não existem no Eden hoje, então não ganharam botão (regra do HANDOFF: nada sem ação):
-06 Detalhes do jogo, 08 Iniciando jogo (o Eden usa a própria tela de carregamento), 10 erro
+06 Detalhes do jogo, botões "Ver instruções" (09), "Diagnóstico" (42) e "Ver licenças" (43), 08 Iniciando jogo (o Eden usa a própria tela de carregamento), 10 erro
 dedicado (o erro aparece no aviso do rodapé), 13 Online, 14/30–34 Contas e avatares,
 17 Renderizador (o Eden só tem D3D12), 19–22 importação por USB (a importação é pelo
 seletor de pastas em Arquivos), 23–26 fontes de conteúdo e downloads, 35–38 sincronização

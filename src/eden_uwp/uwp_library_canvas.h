@@ -13,10 +13,18 @@
 #include "eden_uwp/mods/mod_session.h"
 #include "eden_uwp/mods/mods_page.h"
 #include "eden_uwp/system_page.h"
+#include "eden_uwp/text_entry_panel.h"
 #include "eden_uwp/uwp_input.h"
 #include "eden_uwp/uwp_controllers.h"
 #include "eden_uwp/uwp_file_manager.h"
 namespace EdenXbox {
+/// NS HUEHUE search page (1920x1080 design units): where the keyboard's keys sit, so the canvas
+/// and the pointer agree.
+struct NsSearchLayout {
+    static constexpr float KeysX = 500, KeysY = 420;
+    static constexpr float PanelX() { return KeysX - TextEntryPanelLayout::Left; }
+    static constexpr float PanelY() { return KeysY - TextEntryPanelLayout::Top; }
+};
 /// The selected game's options page, when open.
 struct GameOptionsView {
     const GameOptionsPage& page;

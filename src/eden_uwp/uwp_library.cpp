@@ -201,6 +201,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     std::vector<size_t> shown;
     std::vector<size_t> position_of;
     std::wstring filtered_query;
+    bool launch_from_options = false;
     unsigned filtered_tab = 0;
     auto library_notice_until = std::chrono::steady_clock::time_point::max();
     // The game grid is what the player sees: no page, overlay or modal over it.
@@ -371,8 +372,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         // The NS HUEHUE screens are laid out on 1920x1080: the same point there.
         const float dx = x * 1.5f, dy = y * 1.5f;
         if (search_editor) {
-            using L = SystemPageLayout;
-            if (const auto key = TextEntryPanelLayout::KeyAt(x - L::EditorX, y - L::EditorY)) {
+            using S = NsSearchLayout;
+            if (const auto key = TextEntryPanelLayout::KeyAt(dx - S::PanelX(), dy - S::PanelY())) {
                 search_editor->Focus(key->first, key->second);
                 if (search_editor->Press() == TextEntry::Result::Done) finish_search = true;
                 query = search_editor->Value();
@@ -989,6 +990,14 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             actions = 0;
             dirty = true;
         }
+        if (library_top() && !loading && scan.entries.empty() && (actions & Play) && library_focus < 0) {
+            // Biblioteca vazia: A opens Configuracoes > Arquivos e USB, where games, keys and
+            // firmware come in.
+            go_section(2);
+            configuration.files = true;
+            configuration.selected = 0;
+            actions = 0;
+        }
         if (library_top() && !loading) {
             rebuild_shown();
             if (!shown.empty() && position_of[std::min(selected, position_of.size() - 1)] == SIZE_MAX) {
@@ -1201,13 +1210,19 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 dirty = true;
             } else if (actions) {
                 const auto send = [&](unsigned bit, GameOptionsInput input) {
-                    if (actions & bit) HandleGameOptionsInput(game_options, input, 1);
+                    if (actions & bit) HandleGameOptionsInput(game_options, input, 1, 1);
                 };
                 send(Up, GameOptionsInput::Up);
                 send(Down, GameOptionsInput::Down);
                 send(Play, GameOptionsInput::Confirm);
                 send(Quit, GameOptionsInput::Back);
-                if (game_options.extra) {
+                if (game_options.extra == 0u) {
+                    // NS HUEHUE: the first row starts the game.
+                    game_options.extra.reset();
+                    selected = game_options.game;
+                    game_options = {};
+                    launch_from_options = true;
+                } else if (game_options.extra) {
                     // NS HUEHUE: the last row adds the game to the favorites or removes it.
                     game_options.extra.reset();
                     const auto& path = scan.entries[game_options.game].launch_path;
@@ -1294,6 +1309,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 dirty = true;
             }
             actions = 0;
+            if (std::exchange(launch_from_options, false)) actions = Play;
         }
         if (actions & Quit) {
             if (panel.keyboard.open) { panel.keyboard.open = panel.keyboard.capturing = false; dirty = true; actions &= ~Quit; }

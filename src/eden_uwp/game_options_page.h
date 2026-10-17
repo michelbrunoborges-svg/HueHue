@@ -69,17 +69,18 @@ struct GameOptionsPage {
     std::optional<GameOption> page; ///< The option page open over the list.
     bool confirm_discard{}; ///< A was pressed once on the Pulse row; a second press discards.
     bool discard{};         ///< Confirmed: the library discards the game's session.
-    /// NS HUEHUE: A on a row after GameOptions() (the favorite row); the library acts on it.
+    /// NS HUEHUE: A on one of the library's own rows (`leading` before GameOptions(), the rest
+    /// after); its index counts the leading rows first. The library acts on it.
     std::optional<std::size_t> extra;
 };
 
 enum class GameOptionsInput : std::uint8_t { Up, Down, Confirm, Back };
 
-/// Applies one press to the list (an open option page takes its own input). `extra_rows` rows
-/// follow the options (the library's own, such as the favorite row); A on one sets `extra`.
+/// Applies one press to the list (an open option page takes its own input). The library may add
+/// rows of its own: `leading` before the options and `trailing` after; A on one sets `extra`.
 inline void HandleGameOptionsInput(GameOptionsPage& options, GameOptionsInput input,
-                                   std::size_t extra_rows = 0) {
-    const std::size_t count = GameOptions().size() + extra_rows;
+                                   std::size_t leading = 0, std::size_t trailing = 0) {
+    const std::size_t count = leading + GameOptions().size() + trailing;
     const bool confirming = std::exchange(options.confirm_discard, false);
     switch (input) {
     case GameOptionsInput::Up:
@@ -88,18 +89,24 @@ inline void HandleGameOptionsInput(GameOptionsPage& options, GameOptionsInput in
     case GameOptionsInput::Down:
         options.selected = (options.selected + 1) % count;
         break;
-    case GameOptionsInput::Confirm:
-        if (options.selected >= GameOptions().size()) {
-            options.extra = options.selected - GameOptions().size();
+    case GameOptionsInput::Confirm: {
+        if (options.selected < leading) {
+            options.extra = options.selected;
             break;
         }
-        if (GameOptions()[options.selected] == GameOption::Pulse) {
+        const std::size_t row = options.selected - leading;
+        if (row >= GameOptions().size()) {
+            options.extra = leading + row - GameOptions().size();
+            break;
+        }
+        if (GameOptions()[row] == GameOption::Pulse) {
             options.confirm_discard = !confirming;
             options.discard = confirming;
             break;
         }
-        options.page = GameOptions()[options.selected];
+        options.page = GameOptions()[row];
         break;
+    }
     case GameOptionsInput::Back:
         options.open = false;
         break;
