@@ -18,7 +18,7 @@ function Shot([string] $name) {
     Write-Host "print: $name"
 }
 function Key([string] $keys) {
-    $null = $shell.AppActivate("HueHue Switch")
+    $null = $shell.AppActivate("NX Zero HueHue Switch")
     Start-Sleep -Milliseconds 400
     [System.Windows.Forms.SendKeys]::SendWait($keys)
     Start-Sleep -Seconds 2
@@ -51,31 +51,43 @@ function Close {
 
 # 1. Primeira abertura: biblioteca vazia.
 Launch
-Shot "1-biblioteca-vazia"
+Shot "1-inicio"
+Key "{DOWN}"
+Key "{DOWN}"
+Key "{DOWN}"
+Key "{DOWN}"
+Key "{ENTER}"
+Shot "2-sobre"
+Key "{ESC}"
+Key "{UP}"
+Key "{ENTER}"
+Shot "3-controles"
+Key "{ESC}"
+Key "{UP}"
+Key "{ENTER}"
+Shot "4-configuracoes"
+Key "{ESC}"
+Key "{UP}"
+Key "{ENTER}"
+Shot "5-biblioteca-vazia"
 Close
 
-# 2. Biblioteca com jogos ficticios (arquivos vazios: so o nome aparece, a capa e o placeholder).
 $games = Join-Path $env:LOCALAPPDATA "Packages\$($app.PackageFamilyName)\LocalState\games"
 New-Item -ItemType Directory -Force $games | Out-Null
 foreach ($n in @("Turbo Rally", "Reino Perdido", "Gol de Placa Arena", "Pulo Estelar", "Corrida Espacial", "Ilha do Tesouro")) {
     New-Item -ItemType File -Force (Join-Path $games "$n.nsp") | Out-Null
 }
 Launch
-Shot "2-biblioteca"
-Key "{RIGHT}"
-Shot "3-selecao"
-Key "o"
-Shot "4-configuracoes"
+Shot "6-inicio-continuar"
 Key "{DOWN}"
-Shot "5-configuracoes-item"
 Key "{ENTER}"
-Shot "6-submenu"
-Key "{ESC}"
-Key "{ESC}"
-Key "{F1}"
-Shot "7-controle"
-Key "{ESC}"
+Shot "7-biblioteca"
+Key "{RIGHT}"
+Shot "8-selecao"
 Key "{F2}"
-Shot "8-opcoes-do-jogo"
+Shot "9-opcoes-do-jogo"
+Key "{ESC}"
+Key "{ESC}"
+Shot "10-volta-ao-inicio"
 Close
 Get-ChildItem $Out

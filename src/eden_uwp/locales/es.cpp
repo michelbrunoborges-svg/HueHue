@@ -492,5 +492,15 @@ const Catalog SpanishCatalog = MakeCatalog({
     {Text::UpscalingFsrSharp, L"FSR 1 · nítido"},
     {Text::UpscalingFsrBalanced, L"FSR 1 · equilibrado"},
     {Text::UpscalingFsrSoft, L"FSR 1 · suave"},
+    // NX Zero HueHue
+    {Text::HomeStart, L"INICIAR"},
+    {Text::HomeGames, L"JUEGOS"},
+    {Text::HomeSettings, L"AJUSTES"},
+    {Text::HomeControls, L"CONTROLES"},
+    {Text::HomeAbout, L"ACERCA DE"},
+    {Text::HomeSubtitle, L"EMULADOR DE NINTENDO SWITCH PARA XBOX"},
+    {Text::HomeContinue, L"Continuar:"},
+    {Text::AboutDescription, L"Emulador de Nintendo Switch para Xbox Series X|S en modo desarrollador, con el estilo de NX Zero y la cara de HueHue."},
+    {Text::AboutCredits, L"Basado en eden-xbox (JulianDr14) y Eden, que vienen de yuzu y Sudachi. Software libre bajo la GNU GPL versión 3 o posterior; el código fuente está en GitHub. Sin relación con Nintendo ni Microsoft."},
 });
 } // namespace EdenXbox::I18n

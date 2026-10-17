@@ -492,5 +492,15 @@ const Catalog EnglishCatalog = MakeCatalog({
     {Text::UpscalingFsrSharp, L"FSR 1 · sharp"},
     {Text::UpscalingFsrBalanced, L"FSR 1 · balanced"},
     {Text::UpscalingFsrSoft, L"FSR 1 · soft"},
+    // NX Zero HueHue
+    {Text::HomeStart, L"START"},
+    {Text::HomeGames, L"GAMES"},
+    {Text::HomeSettings, L"SETTINGS"},
+    {Text::HomeControls, L"CONTROLS"},
+    {Text::HomeAbout, L"ABOUT"},
+    {Text::HomeSubtitle, L"NINTENDO SWITCH EMULATOR FOR XBOX"},
+    {Text::HomeContinue, L"Continue:"},
+    {Text::AboutDescription, L"Nintendo Switch emulator for Xbox Series X|S in Developer Mode, with the NX Zero look and the HueHue face."},
+    {Text::AboutCredits, L"Built on eden-xbox (JulianDr14) and Eden, which descend from yuzu and Sudachi. Free software under the GNU GPL version 3 or later; the source code is on GitHub. Not affiliated with Nintendo or Microsoft."},
 });
 } // namespace EdenXbox::I18n

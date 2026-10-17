@@ -91,10 +91,27 @@ public:
             static_cast<UINT32>(version_text.size()), version_format.Get(), 180, 18,
             &version_layout));
         winrt::check_hresult(version_layout->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
+        version_string = version_text;
         try {
             asset_root = std::filesystem::path{
                 winrt::Windows::ApplicationModel::Package::Current().InstalledLocation().Path().c_str()} / L"Assets";
             logo = LoadAssetBitmap(L"HueHueLogo.png");
+            // NX Zero HueHue: the graffiti layout (tools/huehue/make_ui_assets.py).
+            wall = LoadAssetBitmap(L"ui/Background.jpg");
+            nx_logo = LoadAssetBitmap(L"ui/Logo.png");
+            mascot = LoadAssetBitmap(L"ui/Mascot.png");
+            app_icon = LoadAssetBitmap(L"Square150x150Logo.png");
+            title_pt = LoadAssetBitmap(L"ui/title_games_pt.png");
+            title_en = LoadAssetBitmap(L"ui/title_games_en.png");
+            static constexpr std::array<std::wstring_view, HomeRows> menu_files{
+                L"start", L"games", L"settings", L"controls", L"about"};
+            static constexpr std::array<std::wstring_view, HomeRows> icon_files{
+                L"play", L"games", L"settings", L"controls", L"about"};
+            for (size_t i = 0; i < HomeRows; ++i) {
+                menu_pt[i] = LoadAssetBitmap(L"ui/menu_" + std::wstring{menu_files[i]} + L"_pt.png");
+                menu_en[i] = LoadAssetBitmap(L"ui/menu_" + std::wstring{menu_files[i]} + L"_en.png");
+                home_icons[i] = LoadAssetBitmap(L"ui/icon_" + std::wstring{icon_files[i]} + L".png");
+            }
         } catch (const winrt::hresult_error&) { /* Wordmark remains available. */ }
         CreateHueBackdrop();
         const float scale = std::min(width / 1280.0f, height / 720.0f);
@@ -124,20 +141,24 @@ public:
             swap_prompt_faces = SwapControllerFaceButtons(panel.devices[*active], options.swap_face_buttons);
         target->BeginDraw();
         target->Clear(D2D1::ColorF(Palette::Backdrop));
-        DrawHueBackdrop();
-        if (logo) target->DrawBitmap(logo.Get(), D2D1::RectF(50, 38, 104, 92), 1,
-                                     D2D1_INTERPOLATION_MODE_LINEAR);
-        const float tag_x = DrawHueWordmark(118, 40);
-        Text(Tr(T::LibraryHeading), tag_x + 34, 54, 16, Palette::Text, 220, 30, true);
-        Round(tag_x + 34, 80, MeasureText(Tr(T::LibraryHeading), 16, true), 3, 1.5f, Palette::Accent);
-        Round(839, 43, 225, 44, 14, 0x17181c);
+        if (view.home) {
+            if (view.about) DrawAbout();
+            else DrawHome(view);
+        } else {
+        Wall(0.30f);
+        if (vignette) target->FillRectangle(D2D1::RectF(0, 0, 1280, 720), vignette.Get());
+        const float logo_width = Fit(nx_logo.Get(), 42, 24, 70);
+        const float tag_x = 42 + logo_width + 14;
+        if (!Fit(Portuguese() ? title_pt.Get() : title_en.Get(), tag_x, 26, 66)) {
+            Text(Tr(T::LibraryHeading), tag_x, 50, 22, Palette::Accent, 300, 34, true);
+        }
+        Round(839, 43, 225, 44, 14, 0x141419);
         ControlPrompt(Navigation::AddFolder, Tr(T::SettingsTitle), 849, 49, 174);
-        Round(1080, 43, 146, 44, 14, 0x17181c);
+        Round(1080, 43, 146, 44, 14, 0x141419);
         ControlPrompt(Navigation::Settings, Tr(T::Controller), 1090, 49, 100);
-        Round(50, 111, 60, 3, 0, HueColor::Green);
-        Round(110, 111, 60, 3, 0, HueColor::Yellow);
-        Round(170, 111, 60, 3, 0, HueColor::Blue);
-        Round(230, 112, 996, 1, 0, 0x232429);
+        Round(50, 111, 90, 3, 0, Palette::Accent);
+        Round(140, 111, 60, 3, 0, Palette::Magenta);
+        Round(200, 112, 1026, 1, 0, 0x232429);
         if (view.loading) {
             Text(Tr(T::LoadingTitle), 64, 192, 40, 0xf4f4f6, 1000, 64, true);
             Text(Tr(T::LoadingBody), 64, 266, 24, 0xa3a3ad, 1000);
@@ -146,18 +167,19 @@ public:
             Text(Tr(T::EmptyBody), 64, 278, 24, 0xa3a3ad, 1120);
         } else {
             const auto& game = scan.entries[selected];
+            Round(60, 144, 228, 228, 15, Palette::Accent);
             Cover(game, 64, 148, 220);
             Text(Tr(configuration.status.keys_ready ? T::ReadyToPlay : T::ImportKeysFirst),
-                 320, 149, 16, 0xc8f31d, 700);
+                 320, 149, 16, 0x39ff14, 700);
             if (!game.display_version.empty())
                 Text(L"v" + game.display_version, 990, 149, 19, Palette::Accent, 200, 30, true);
             Text(game.name, 320, 184, 42, 0xf4f4f6, 866, 110, true, true);
             Text((game.developer.empty() ? std::wstring{Tr(T::PersonalLibrary)} : game.developer) +
                  (game.source_name.empty() ? L"" : L" · " + game.source_name),
                  320, 292, 23, 0xa3a3ad, 850);
-            Round(320, 334, 184, 46, 14, 0xc8f31d);
-            Round(331, 341, 34, 32, 8, 0x10140a);
-            ControlPrompt(Navigation::Play, Tr(T::Play), 332, 340, 100, 0x0b0b0d);
+            Round(320, 334, 184, 46, 14, 0x39ff14);
+            Round(331, 341, 34, 32, 8, 0x08200d);
+            ControlPrompt(Navigation::Play, Tr(T::Play), 332, 340, 100, 0x0a0a0f);
             Round(520, 334, 200, 46, 14, Palette::Panel);
             ControlPrompt(Navigation::Options, Tr(T::Options), 530, 341, 170, Palette::Text);
             Text(game.relative_path.extension().wstring().substr(1), 744, 344, 18, 0xa3a3ad, 380);
@@ -170,8 +192,9 @@ public:
             const size_t first = selected / 5 * 5;
             for (size_t i = first; i < std::min(first + 5, scan.entries.size()); ++i) {
                 const float x = 64 + static_cast<float>(i - first) * 232;
-                Round(x - 6, 444, 220, 191, 16, i == selected ? 0xc8f31d : 0x17181c);
-                Round(x - 3, 447, 214, 185, 13, i == selected ? 0x1a2008 : 0x141519);
+                if (i == selected) Round(x - 10, 440, 228, 199, 19, Palette::Magenta);
+                Round(x - 6, 444, 220, 191, 16, i == selected ? 0x39ff14 : 0x141419);
+                Round(x - 3, 447, 214, 185, 13, i == selected ? 0x0b2a12 : 0x141519);
                 Cover(scan.entries[i], x + 39, 454, 124);
                 Text(scan.entries[i].name, x + 3, 586, 19, 0xf4f4f6, 197, 25, true);
                 const auto& tile = scan.entries[i];
@@ -185,11 +208,12 @@ public:
         ControlPrompt(Navigation::Options, Tr(T::Options), 448, 654, 130);
         ControlPrompt(Navigation::Refresh, Tr(T::Refresh), 620, 654, 130);
         ControlPrompt(Navigation::Settings, Tr(T::Controller), 792, 654, 130);
-        ControlPrompt(Navigation::Back, Tr(T::Exit), 1000, 654, 130);
+        ControlPrompt(Navigation::Back, Tr(T::Back), 1000, 654, 130);
+        if (!view.notice.empty()) Text(view.notice, 320, 316, 15, 0xe4bb83, 860, 22);
+        }
         brush->SetColor(D2D1::ColorF(0x6e6e78));
         target->DrawTextLayout(D2D1::Point2F(1046, 690), version_layout.Get(), brush.Get(),
                                D2D1_DRAW_TEXT_OPTIONS_CLIP);
-        if (!view.notice.empty()) Text(view.notice, 320, 316, 15, 0xe4bb83, 860, 22);
         if (view.controller_panel) DrawControllerPanel(view);
         if (panel.keyboard.open) DrawKeyboard(panel.keyboard);
         if (configuration.open && !view.controller_panel) {
@@ -213,9 +237,9 @@ private:
             DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, 46, L"pt-BR", &pattern_format));
         pattern_format->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
         const D2D1_GRADIENT_STOP stops[] = {
-            {0.0f, D2D1::ColorF(0x0b0b0d, 0.92f)},
-            {0.6f, D2D1::ColorF(0x0b0b0d, 0.55f)},
-            {1.0f, D2D1::ColorF(0x0b0b0d, 0.0f)},
+            {0.0f, D2D1::ColorF(0x0a0a0f, 0.92f)},
+            {0.6f, D2D1::ColorF(0x0a0a0f, 0.55f)},
+            {1.0f, D2D1::ColorF(0x0a0a0f, 0.0f)},
         };
         ComPtr<ID2D1GradientStopCollection> collection;
         // Chamada pela interface base: ID2D1DeviceContext tem outra sobrecarga com o mesmo nome.
@@ -225,40 +249,83 @@ private:
             D2D1::RadialGradientBrushProperties(D2D1::Point2F(380, 300), D2D1::Point2F(0, 0), 760, 420),
             collection.Get(), &vignette));
     }
-    void DrawHueBackdrop() {
-        static constexpr std::wstring_view row =
-            L"HUE RA HUE RA HUEHUE HUE RA HUE RA HUEHUE HUE RA HUE RA HUEHUE HUE RA";
-        D2D1_MATRIX_3X2_F base;
-        target->GetTransform(&base);
-        target->SetTransform(D2D1::Matrix3x2F::Rotation(-9.0f, D2D1::Point2F(640, 360)) *
-                             *D2D1::Matrix3x2F::ReinterpretBaseType(&base));
-        brush->SetColor(D2D1::ColorF(1, 1, 1, 0.05f));
-        for (int i = 0; i < 16; ++i) {
-            const float x = (i % 2 == 0) ? -260.0f : -110.0f;
-            const float y = -190.0f + static_cast<float>(i) * 66.0f;
-            target->DrawText(row.data(), static_cast<UINT32>(row.size()), pattern_format.Get(),
-                             D2D1::RectF(x, y, x + 2600, y + 70), brush.Get(),
-                             D2D1_DRAW_TEXT_OPTIONS_CLIP);
-        }
-        target->SetTransform(base);
-        if (vignette) target->FillRectangle(D2D1::RectF(0, 0, 1280, 720), vignette.Get());
+    // --- NX Zero HueHue: layout grafite -----------------------------------------------------
+    static constexpr size_t HomeRows = 5;
+    bool Portuguese() const { return I18n::CurrentUiLanguage().tag.starts_with(L"pt"); }
+    /// `bitmap` `height` tall, keeping its proportions, from (x, y); returns its width.
+    float Fit(ID2D1Bitmap1* bitmap, float x, float y, float height) {
+        if (!bitmap) return 0;
+        const auto size = bitmap->GetSize();
+        if (size.height <= 0) return 0;
+        const float width = size.width * height / size.height;
+        target->DrawBitmap(bitmap, D2D1::RectF(x, y, x + width, y + height), 1,
+                           D2D1_INTERPOLATION_MODE_LINEAR);
+        return width;
     }
-    // "HUEHUE" letra a letra nas cores do Brasil e a etiqueta SWITCH em verde-limao.
-    // Devolve onde a etiqueta termina, para o titulo da secao vir logo depois.
-    float DrawHueWordmark(float x, float y) {
-        static constexpr std::array<unsigned, 6> colors{HueColor::Green, HueColor::Blue, HueColor::Yellow,
-                                                        HueColor::Green, HueColor::Blue, HueColor::Yellow};
-        static constexpr std::wstring_view word = L"HUEHUE";
-        for (size_t i = 0; i < word.size(); ++i) {
-            const std::wstring_view letter = word.substr(i, 1);
-            Text(letter, x, y, 34, colors[i], 40, 48, true);
-            x += MeasureText(letter, 34, true);
+    /// The graffiti wall behind every screen, under a black veil of `veil` (0..1).
+    void Wall(float veil) {
+        if (wall) target->DrawBitmap(wall.Get(), D2D1::RectF(0, 0, 1280, 720), 1,
+                                     D2D1_INTERPOLATION_MODE_LINEAR);
+        else Round(0, 0, 1280, 720, 0, Palette::Backdrop);
+        if (veil > 0) {
+            brush->SetColor(D2D1::ColorF(0, 0, 0, veil));
+            target->FillRectangle(D2D1::RectF(0, 0, 1280, 720), brush.Get());
         }
-        x += 10;
-        const float tag_w = MeasureText(L"SWITCH", 13, true) + 16;
-        Round(x, 54, tag_w, 24, 6, Palette::Accent);
-        Text(L"SWITCH", x, 54, 13, Palette::OnAccent, tag_w, 24, true, false, true);
-        return x + tag_w;
+    }
+    /// The selected menu entry: a green spray band, neon edge and a magenta tick.
+    void SelectedBand(float x, float y, float w, float h) {
+        Round(x, y, w, h, 12, Palette::AccentDeep);
+        brush->SetColor(D2D1::ColorF(Palette::Accent));
+        target->DrawRoundedRectangle(D2D1::RoundedRect(D2D1::RectF(x + 1, y + 1, x + w - 1, y + h - 1), 11, 11),
+                                     brush.Get(), 2);
+        Round(x - 11, y + 8, 5, h - 16, 2.5f, Palette::Magenta);
+    }
+    void DrawHome(const LibraryView& view) {
+        Wall(0);
+        if (mascot) {
+            const auto size = mascot->GetSize();
+            const float h = 560;
+            const float w = size.height > 0 ? size.width * h / size.height : 0;
+            target->DrawBitmap(mascot.Get(), D2D1::RectF(1280 - 46 - w, 92, 1280 - 46, 92 + h), 1,
+                               D2D1_INTERPOLATION_MODE_LINEAR);
+        }
+        if (!Fit(nx_logo.Get(), 50, 24, 220)) Text(L"NX ZERO", 64, 60, 72, Palette::Accent, 700, 100, true);
+        Text(Tr(T::HomeSubtitle), 66, 252, 20, Palette::Text, 760, 30, true);
+        static constexpr std::array<T, HomeRows> labels{T::HomeStart, T::HomeGames, T::HomeSettings,
+                                                       T::HomeControls, T::HomeAbout};
+        const bool pt = Portuguese();
+        for (size_t i = 0; i < HomeRows; ++i) {
+            const float y = 310 + static_cast<float>(i) * 60;
+            const bool active = i == view.home_row;
+            if (active) SelectedBand(64, y, 440, 50);
+            if (home_icons[i]) target->DrawBitmap(home_icons[i].Get(), D2D1::RectF(72, y + 4, 114, y + 46), 1,
+                                                  D2D1_INTERPOLATION_MODE_LINEAR);
+            if (!Fit((pt ? menu_pt : menu_en)[i].Get(), 124, y - 10, 70))
+                Text(Tr(labels[i]), 128, y + 8, 26, Palette::Text, 360, 36, true);
+            if (i == 0 && !view.loading && view.selected < view.scan.entries.size()) {
+                Text(std::wstring{Tr(T::HomeContinue)} + L" " + view.scan.entries[view.selected].name,
+                     240, y + 15, 14, active ? Palette::Text : Palette::TextSecondary, 254, 22, false, false,
+                     false, true);
+            }
+        }
+        ControlPrompt(Navigation::Play, Tr(T::Select), 64, 654, 130);
+        ControlPrompt(Navigation::Back, Tr(T::Exit), 236, 654, 130);
+    }
+    void DrawAbout() {
+        Wall(0.55f);
+        Round(140, 90, 1000, 540, 24, Palette::Panel);
+        Round(164, 90, 952, 3, 1.5f, Palette::Accent);
+        if (app_icon) {
+            Round(176, 126, 158, 158, 22, Palette::Accent);
+            target->DrawBitmap(app_icon.Get(), D2D1::RectF(180, 130, 330, 280), 1,
+                               D2D1_INTERPOLATION_MODE_LINEAR);
+        }
+        Text(L"NX Zero \u2013 HueHue Switch", 360, 132, 30, Palette::Text, 740, 44, true);
+        Text(version_string, 360, 180, 16, Palette::Accent, 400, 24, true);
+        Text(Tr(T::AboutDescription), 360, 212, 17, Palette::TextSecondary, 740, 90, false, true);
+        Text(Tr(T::AboutCredits), 180, 318, 16, Palette::TextHint, 920, 190, false, true);
+        Text(L"github.com/michelbrunoborges-svg/HueHue", 180, 520, 17, Palette::Magenta, 920, 26, true);
+        ControlPrompt(Navigation::Back, Tr(T::Back), 180, 576, 150);
     }
 
     void DrawControllerPanel(const LibraryView& view) {
@@ -266,7 +333,7 @@ private:
         const auto& panel = view.panel;
         brush->SetColor(D2D1::ColorF(0, 0, 0, 0.72f));
         target->FillRectangle(D2D1::RectF(0, 0, 1280, 720), brush.Get());
-        Round(620, 133, 586, 487, 24, 0x17181c);
+        Round(620, 133, 586, 487, 24, 0x141419);
         Text(Tr(T::ControllerTitle), 658, 168, 34, 0xf4f4f6, 490, 55, true);
         Text(Tr(T::ControllerSubtitle), 658, 227, 21, 0xa3a3ad, 490);
         const unsigned offset = panel.xbox ? 0 : 1;
@@ -274,7 +341,7 @@ private:
         const bool nintendo = active && panel.devices[*active].nintendo;
         for (unsigned row = 0; row < 3 + offset; ++row) {
             const float y = ControllerRowTop + row * ControllerRowHeight;
-            Round(648, y, 530, 56, 14, row == view.controller_row ? 0x2a3510 : 0x141519);
+            Round(648, y, 530, 56, 14, row == view.controller_row ? 0x0f3d18 : 0x141519);
             const bool device = offset && row == 0;
             const bool type = row == offset;
             const bool face = row == offset + 1;
@@ -295,16 +362,16 @@ private:
             } else {
                 value = std::to_wstring(static_cast<int>(options.deadzone * 100)) + L"%";
             }
-            Text(value, 669, y + 28, 18, 0xc8f31d, 460, 26);
+            Text(value, 669, y + 28, 18, 0x39ff14, 460, 26);
         }
         if (!panel.xbox) {
-            Round(648, 510, 530, 34, 10, view.controller_row == 4 ? 0x2a3510 : 0x141519);
-            Text(std::wstring{Tr(T::SetUpKeyboard)} + L"   >", 669, 512, 19, 0xc8f31d, 460, 30, true);
+            Round(648, 510, 530, 34, 10, view.controller_row == 4 ? 0x0f3d18 : 0x141519);
+            Text(std::wstring{Tr(T::SetUpKeyboard)} + L"   >", 669, 512, 19, 0x39ff14, 460, 30, true);
         }
         ControlPrompt(Navigation::Explore, Tr(T::Select), 658, 551, 90);
         ControlPrompt(Navigation::Play, Tr(T::Change), 838, 551, 100);
         ControlPrompt(Navigation::Back, Tr(T::Back), 1018, 551, 100);
-        if (!panel.notice.empty()) Text(panel.notice, 658, 594, 16, 0xc8f31d, 515, 25);
+        if (!panel.notice.empty()) Text(panel.notice, 658, 594, 16, 0x39ff14, 515, 25);
         if (panel.expanded) {
             const size_t first = ControllerChoiceFirst(panel);
             const size_t count = panel.devices.size() + 2;
@@ -313,7 +380,7 @@ private:
                   (end - first) * ControllerChoiceHeight + 8, 12, 0x34353c);
             for (size_t i = first; i < end; ++i) {
                 const float y = ControllerChoiceTop + (i - first) * ControllerChoiceHeight;
-                Round(652, y, 522, 40, 8, i == panel.choice ? 0x2a3510 : 0x141519);
+                Round(652, y, 522, 40, 8, i == panel.choice ? 0x0f3d18 : 0x141519);
                 const bool session = i >= 2 && panel.devices[i - 2].id.starts_with(L"session:");
                 const bool supported = i < 2 || (bool(panel.devices[i - 2]) && !session);
                 std::wstring label;
@@ -370,12 +437,12 @@ private:
         };
         const size_t action = editor.selected;
         path(1, 0x26272d); path(2, 0x26272d); path(0, 0x1d1e23);
-        path(3, action == 6 ? 0xc8f31d : 0x35363d); path(4, action == 7 ? 0xc8f31d : 0x35363d);
+        path(3, action == 6 ? 0x39ff14 : 0x35363d); path(4, action == 7 ? 0x39ff14 : 0x35363d);
         auto circle = [&](float x, float y, float radius, const wchar_t* label, bool active, float font = 16) {
             const auto shape = D2D1::Ellipse(D2D1::Point2F(x, y), radius, radius);
-            brush->SetColor(D2D1::ColorF(active ? 0xc8f31dU : 0x141519U)); target->FillEllipse(shape, brush.Get());
+            brush->SetColor(D2D1::ColorF(active ? 0x39ff14U : 0x141519U)); target->FillEllipse(shape, brush.Get());
             brush->SetColor(D2D1::ColorF(active ? 0xe0fa85U : 0x62636dU)); target->DrawEllipse(shape, brush.Get(), 1.4f);
-            Text(label, x - radius, y - radius, font, active ? 0x0b0b0d : 0xe6e6eb,
+            Text(label, x - radius, y - radius, font, active ? 0x0a0a0f : 0xe6e6eb,
                  radius * 2, radius * 2, true, false, true);
         };
         auto stick = [&](float x, float y, const wchar_t* label, bool active) {
@@ -389,35 +456,35 @@ private:
         Round(278, 359, 22, 62, 4, 0x131318); Round(258, 379, 62, 22, 4, 0x131318);
         for (size_t i = 12; i <= 15; ++i) {
             const auto tile = KeyboardDiagramTile(i);
-            Round(tile.x, tile.y, tile.w, tile.h, 3, action == i ? 0xc8f31d : 0x33343b);
+            Round(tile.x, tile.y, tile.w, tile.h, 3, action == i ? 0x39ff14 : 0x33343b);
         }
         circle(300, 304, 10, L"-", action == 11, 14); circle(400, 304, 10, L"+", action == 10, 14);
         circle(379, 334, 10, L"", action == 18);
-        brush->SetColor(D2D1::ColorF(action == 18 ? 0x0b0b0dU : 0xc9c9d1U));
+        brush->SetColor(D2D1::ColorF(action == 18 ? 0x0a0a0fU : 0xc9c9d1U));
         target->DrawLine(D2D1::Point2F(374, 334), D2D1::Point2F(379, 330), brush.Get(), 1.4f);
         target->DrawLine(D2D1::Point2F(379, 330), D2D1::Point2F(384, 334), brush.Get(), 1.4f);
         target->DrawRectangle(D2D1::RectF(376, 334, 382, 339), brush.Get(), 1.2f);
-        Round(314, 327, 14, 14, 3, action == 19 ? 0xc8f31d : 0x131318);
+        Round(314, 327, 14, 14, 3, action == 19 ? 0x39ff14 : 0x131318);
         brush->SetColor(D2D1::ColorF(0x9a9aa4));
         target->DrawEllipse(D2D1::Ellipse(D2D1::Point2F(321, 334), 4, 4), brush.Get(), 1.2f);
         for (const auto i : {size_t{8}, size_t{9}}) {
             const auto tile = KeyboardDiagramTile(i);
-            Round(tile.x, tile.y, tile.w, tile.h, 8, action == i ? 0xc8f31d : 0x26272d);
-            Text(i == 8 ? L"ZL" : L"ZR", tile.x, tile.y, 14, action == i ? 0x0b0b0d : 0xc9c9d1,
+            Round(tile.x, tile.y, tile.w, tile.h, 8, action == i ? 0x39ff14 : 0x26272d);
+            Text(i == 8 ? L"ZL" : L"ZR", tile.x, tile.y, 14, action == i ? 0x0a0a0f : 0xc9c9d1,
                  tile.w, tile.h, true, false, true);
         }
-        Text(L"L", 220, 252, 14, action == 6 ? 0x0b0b0d : 0xc9c9d1, 60, 22, true, false, true);
-        Text(L"R", 450, 252, 14, action == 7 ? 0x0b0b0d : 0xc9c9d1, 40, 22, true, false, true);
+        Text(L"L", 220, 252, 14, action == 6 ? 0x0a0a0f : 0xc9c9d1, 60, 22, true, false, true);
+        Text(L"R", 450, 252, 14, action == 7 ? 0x0a0a0f : 0xc9c9d1, 40, 22, true, false, true);
         Round(120, 564, 480, 67, 12, 0x1f280c);
         Text(Tr(T::SelectedBinding), 140, 574, 11, 0xa8b86a, 300, 19, true);
         Text(KeyboardActionName(action), 140, 594, 20, 0xf4f6ee, 285, 30, true);
         Round(436, 579, 142, 38, 8, 0x12160a);
         Text(editor.capturing ? std::wstring{Tr(T::PressAKey)} : KeyboardKeyName(editor.bindings[action]),
-             436, 579, 16, 0xc8f31d, 142, 38, true, false, true);
+             436, 579, 16, 0x39ff14, 142, 38, true, false, true);
         const std::array<std::wstring_view, 3> pages{Tr(T::KeyPageButtons), Tr(T::KeyPageSystem), Tr(T::KeyPageSticks)};
         for (unsigned page = 0; page < pages.size(); ++page) {
             const float x = 635 + page * 174.0f;
-            Round(x, 203, 166, 36, 9, page == editor.page ? 0x2a3510 : 0x1b1c21);
+            Round(x, 203, 166, 36, 9, page == editor.page ? 0x0f3d18 : 0x1b1c21);
             Text(pages[page], x, 203, 15, page == editor.page ? 0xd6f75a : 0xb0b0b9,
                  166, 36, true, false, true);
         }
@@ -427,7 +494,7 @@ private:
             Text(KeyboardActionName(i), tile.x + 14, tile.y, 15, 0xc9c9d1, 136, tile.h, false, false, true);
             Round(tile.x + 153, tile.y + 9, 86, 27, 6, 0x131318);
             Text(i == action && editor.capturing ? std::wstring{L"..."} : KeyboardKeyName(editor.bindings[i]),
-                 tile.x + 153, tile.y + 9, 14, i == action ? 0xc8f31d : 0xb0b0b9, 86, 27, true, false, true);
+                 tile.x + 153, tile.y + 9, 14, i == action ? 0x39ff14 : 0xb0b0b9, 86, 27, true, false, true);
         }
         Round(635, 603, 155, 36, 8, 0x1b1c21); Text(Tr(T::ClearBinding), 635, 603, 15, 0xc9c9d1, 155, 36, false, false, true);
         Round(806, 603, 170, 36, 8, 0x1b1c21); Text(Tr(T::RestoreDefaults), 806, 603, 15, 0xc9c9d1, 170, 36, false, false, true);
@@ -461,19 +528,19 @@ private:
     enum class Navigation : unsigned { Play, Explore, Settings, Options, Back, AddFolder, Space, Refresh, Tabs };
     using ConfigurationIcon = UiIcon;
     void DrawConfiguration(const ConfigurationPanel& panel) {
-        Round(0, 0, 1280, 720, 0, 0x0b0b0d);
+        Wall(0.62f);
         const auto layout = GetConfigurationLayout(panel);
         if (panel.files) {
-            Round(90, 80, 1100, 590, 24, 0x17181c);
-            Round(130, 108, 48, 48, 12, 0x2a3510);
-            Icon(ConfigurationIcon::Folder, 138, 116, 0xc8f31d);
+            Round(90, 80, 1100, 590, 24, 0x141419);
+            Round(130, 108, 48, 48, 12, 0x0f3d18);
+            Icon(ConfigurationIcon::Folder, 138, 116, 0x39ff14);
             Text(Tr(T::FileManager), 194, 108, 32, 0xf4f4f6, 850, 50, true);
             Text(std::wstring{Tr(panel.status.keys_ready ? T::KeysReady : T::KeysMissing)} + L"  ·  " +
                  I18n::Format(T::FirmwareFiles, {std::to_wstring(panel.status.firmware_files)}),
-                 130, 168, 18, 0xc8f31d, 950);
+                 130, 168, 18, 0x39ff14, 950);
             Text(Tr(T::FilesSubtitle), 130, 201, 16, 0xa3a3ad, 950);
         } else {
-            Round(140, 100, 1000, 540, 24, 0x17181c);
+            Round(140, 100, 1000, 540, 24, 0x141419);
             PageHeader(180, 131, ConfigurationIcon::Settings, Tr(T::SettingsTitle), Tr(T::SettingsSubtitle));
         }
         const auto count = ConfigurationRowCount(panel);
@@ -502,7 +569,7 @@ private:
             Text(title, layout.x + 72, y + (panel.files ? 10.0f : 12.0f), panel.files ? 20.0f : 22.0f,
                  0xf4f4f6, layout.width - 135, 32, !panel.files);
             if (!hint.empty()) Text(hint, layout.x + 72, y + 44, 16, 0xbcbcc5, layout.width - 135, 26);
-            Chevron(layout.x + layout.width - 28, y + layout.row_height / 2, active ? 0xc8f31d : 0xa3a3ad);
+            Chevron(layout.x + layout.width - 28, y + layout.row_height / 2, active ? 0x39ff14 : 0xa3a3ad);
         }
         ScrollIndicator(layout.x + layout.width + 14, layout.top,
                         5 * layout.stride - (layout.stride - layout.row_height), first,
@@ -510,12 +577,12 @@ private:
         if (!panel.files) {
             Text(Tr(T::EmulatorData), 180, 511, 12, 0xa3a3ad, 190, 26, true);
             Text(Tr(panel.status.keys_ready ? T::KeysReady : T::KeysMissing), 380, 506, 16,
-                 panel.status.keys_ready ? 0xc8f31d : 0xf3ba6a, 260);
+                 panel.status.keys_ready ? 0x39ff14 : 0xf3ba6a, 260);
             Text(I18n::Format(T::FirmwareFiles, {std::to_wstring(panel.status.firmware_files)}),
                  680, 506, 16, 0xa3a3ad, 350);
         }
         if (panel.busy) Text(I18n::Format(T::Importing, {std::to_wstring(panel.completed), std::to_wstring(panel.total)}),
-                             130, 565, 18, 0xc8f31d, 990);
+                             130, 565, 18, 0x39ff14, 990);
         else Text(panel.notice, layout.x + 4, panel.files ? 561.0f : 538.0f, 16, 0xf3ba6a,
                   layout.width - 20, panel.files ? 40.0f : 28.0f, false, true);
         ControlPrompt(Navigation::Explore, Tr(T::Select), layout.x + 4, layout.footer, 110);
@@ -525,8 +592,8 @@ private:
     }
     void DrawSystemPage(const SystemPage& page) {
         using L = SystemPageLayout;
-        Round(0, 0, 1280, 720, 0, 0x0b0b0d);
-        Round(L::PanelX, L::PanelY, L::PanelWidth, L::PanelHeight, 24, 0x17181c);
+        Wall(0.62f);
+        Round(L::PanelX, L::PanelY, L::PanelWidth, L::PanelHeight, 24, 0x141419);
         PageHeader(L::RowX, 99, ConfigurationIcon::Language, Tr(T::SystemTitle), Tr(T::SystemSubtitle));
         static constexpr std::array<ConfigurationIcon, SystemPage::RowCount> icons{
             ConfigurationIcon::User, ConfigurationIcon::Language, ConfigurationIcon::Controller,
@@ -539,7 +606,7 @@ private:
             RowFrame(L::RowX, y, L::RowWidth, L::RowHeight, active, icons[i]);
             Text(Tr(SystemRowTitle(row)), L::RowX + 72, y + 4, 20, 0xf4f4f6, 420, 30, true);
             Text(Tr(SystemRowHint(row)), L::RowX + 72, y + 28, 15, 0xbcbcc5, 440, 22);
-            const unsigned accent = active ? 0xc8f31d : 0xa3a3ad;
+            const unsigned accent = active ? 0x39ff14 : 0xa3a3ad;
             const float right = L::RowX + L::RowWidth - 28;
             const float middle = y + L::RowHeight / 2;
             const bool choice = row == SystemPage::InterfaceLanguage || row == SystemPage::GameLanguage ||
@@ -557,7 +624,7 @@ private:
                 Text(value, L::RowX + 500, y + (L::RowHeight - 30) / 2, 19, active ? 0xf4f4f6 : 0xdadae0,
                      right - 22 - (L::RowX + 500), 30, active, false, false, true);
         }
-        if (!page.notice.empty()) Text(page.notice, L::RowX + 4, L::Notice, 16, 0xc8f31d, L::RowWidth - 20, 28);
+        if (!page.notice.empty()) Text(page.notice, L::RowX + 4, L::Notice, 16, 0x39ff14, L::RowWidth - 20, 28);
         ControlPrompt(Navigation::Explore, Tr(T::Select), L::RowX + 4, L::Footer, 110);
         ControlPrompt(Navigation::Play, Tr(T::Change), L::RowX + 380, L::Footer, 110);
         ControlPrompt(Navigation::Back, Tr(T::Back), L::RowX + L::RowWidth - 230, L::Footer, 150);
@@ -805,8 +872,8 @@ private:
                                D2D1_INTERPOLATION_MODE_LINEAR);
             target->PopLayer();
         } else {
-            Text(L"HUEHUE", x + size * 0.12f, y + size * 0.32f, size > 150 ? 34.0f : 20.0f,
-                 0xc8f31d, size * 0.85f, 54, true);
+            Text(L"NX ZERO", x + size * 0.12f, y + size * 0.32f, size > 150 ? 34.0f : 20.0f,
+                 0x39ff14, size * 0.85f, 54, true);
             Text(entry.relative_path.extension().wstring().substr(1), x + size * 0.12f,
                  y + size * 0.58f, 16, 0xa3a3ad, size * 0.85f);
         }
@@ -882,6 +949,9 @@ private:
     ComPtr<ID2D1DeviceContext> target;
     ComPtr<IWICImagingFactory> wic;
     ComPtr<ID2D1Bitmap1> logo;
+    ComPtr<ID2D1Bitmap1> wall, nx_logo, mascot, app_icon, title_pt, title_en;
+    std::array<ComPtr<ID2D1Bitmap1>, HomeRows> menu_pt, menu_en, home_icons;
+    std::wstring version_string;
     ComPtr<IDWriteTextFormat> pattern_format;
     ComPtr<ID2D1RadialGradientBrush> vignette;
     std::array<ComPtr<ID2D1PathGeometry>, 5> controller_paths;

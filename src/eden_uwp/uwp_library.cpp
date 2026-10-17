@@ -476,6 +476,12 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     unsigned navigation_context = 0;
     std::optional<ControllerDevice> pad;
     ControllerCatalog<ControllerDevice> controllers;
+    // NX Zero HueHue: the home menu (Iniciar, Jogos, Configuracoes, Controles, Sobre) comes first;
+    // B in the library goes back to it, and B on it leaves the app.
+    constexpr unsigned NxHomeRows = 5;
+    bool home = true;
+    unsigned home_row = 0;
+    bool about = false;
     while (true) {
         window.Dispatcher().ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
         const auto now = std::chrono::steady_clock::now();
@@ -699,6 +705,35 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 if (!system_page.open) configuration.selected = HomeSystem;
             }
             actions = 0;
+        }
+        if (home && actions && !game_options.open && !settings && !configuration.open &&
+            !panel.keyboard.open && !picker && !validation.valid() && !missing_content &&
+            !configuration.busy) {
+            const unsigned pressed = actions;
+            actions = 0;
+            if (about) {
+                if (pressed & (Quit | Play)) about = false;
+            } else {
+                if (pressed & Quit) return std::nullopt;
+                if (pressed & Up) home_row = (home_row + NxHomeRows - 1) % NxHomeRows;
+                if (pressed & Down) home_row = (home_row + 1) % NxHomeRows;
+                if (pressed & Play) {
+                    if (home_row == 0) {
+                        // Iniciar: the selected game (the library keeps the last one) or the list.
+                        home = false;
+                        if (!loading && !scan.entries.empty()) actions = Play;
+                    } else if (home_row == 1) {
+                        home = false;
+                    } else if (home_row == 2) {
+                        actions = AddFolder; // the settings page, over the home menu
+                    } else if (home_row == 3) {
+                        actions = Panel; // the controller page
+                    } else {
+                        about = true;
+                    }
+                }
+            }
+            dirty = true;
         }
         if (actions & Options && !game_options.open && !settings && !configuration.open &&
             !panel.keyboard.open && !loading && !picker && !validation.valid() && !scan.entries.empty()) {
@@ -994,6 +1029,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 else configuration.open = false;
                 dirty = true; actions &= ~Quit;
             }
+            else if (!home) { home = true; dirty = true; actions &= ~Quit; }
             else return std::nullopt;
         }
         if (actions & Panel && !configuration.open) { settings = !settings; panel.keyboard.open = panel.keyboard.capturing = false; panel.expanded = false; dirty = true; }
@@ -1075,7 +1111,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     if (scan.entries[i].launch_path == auto_pick ||
                         (!IsStoragePath(scan.entries[i].launch_path) &&
                          std::string_view{reinterpret_cast<const char*>(path.data()), path.size()} == auto_pick)) {
-                        selected = i; settings = false; actions |= Play;
+                        selected = i; settings = false; home = false; actions |= Play;
                     }
                 }
             }
@@ -1282,7 +1318,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 cheat_session ? &*cheat_session : nullptr, cheats_page, options_notice, content_session.get(),
                 mod_session.get(), &mods_page};
             canvas->Draw({scan, selected, loading, settings, setting_row, options, notice, panel,
-                          configuration, system_page, options_view, missing_content});
+                          configuration, system_page, options_view, missing_content, home, home_row,
+                          about});
             dirty = false;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds{16});

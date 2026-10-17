@@ -517,6 +517,16 @@ enum class Text : std::uint16_t {
     UpscalingFsrSharp,
     UpscalingFsrBalanced,
     UpscalingFsrSoft,
+    // NX Zero HueHue: home menu and About page.
+    HomeStart,
+    HomeGames,
+    HomeSettings,
+    HomeControls,
+    HomeAbout,
+    HomeSubtitle,
+    HomeContinue,
+    AboutDescription,
+    AboutCredits,
 
 
     Count

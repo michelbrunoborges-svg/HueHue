@@ -50,7 +50,7 @@ void DrawTextEntryPanel(UiPainter& painter, const TextEntryPanelView& view, floa
                              (action == TextEntry::Action::Symbols && entry.ShowingSymbols());
         const float key_x = x + K::KeyX(key * 2), key_y = y + K::KeyY(TextEntry::CharacterRows);
         const float width = K::KeyWidth * 2 + K::Gap;
-        const unsigned idle = action == TextEntry::Action::Done ? 0x1f280c : latched ? 0x2a3510 : 0x26272d;
+        const unsigned idle = action == TextEntry::Action::Done ? 0x1f280c : latched ? 0x0f3d18 : 0x26272d;
         painter.Round(key_x, key_y, width, K::KeyHeight, 10, active ? Palette::Accent : idle);
         Text label = Text::DoneKey;
         switch (action) {

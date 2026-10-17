@@ -13,6 +13,16 @@ emulador é o deles. Aqui mudam o tema, o idioma, o nome do app e o build autom�
 > Zelda: Tears of the Kingdom ainda estoura a memória. Outros jogos podem não abrir.
 > A primeira passagem por uma área nova engasga enquanto os shaders compilam.
 
+
+## Visual NX Zero (layout grafite)
+
+Desde esta versão o app aparece como **NX Zero HueHue Switch** e abre num menu inicial
+(INICIAR, JOGOS, CONFIGURAÇÕES, CONTROLES, SOBRE) com o letreiro "NX ZERO / BR HUEHUE EDITION",
+a parede de grafite verde-neon e magenta e a cara do HueHue como mascote. B na biblioteca volta ao
+menu; B no menu sai. As imagens ficam em `dist/uwp/Assets/ui` e saem de
+`tools/huehue/make_ui_assets.py` (fontes livres em `tools/huehue/fonts`). A identidade do pacote não
+mudou: instalar por cima mantém jogos, chaves e saves.
+
 ## O que mudou em relação ao eden-xbox
 
 | Área | Mudança |

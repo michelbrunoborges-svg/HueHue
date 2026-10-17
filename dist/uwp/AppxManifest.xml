@@ -20,7 +20,7 @@
             ProcessorArchitecture="x64" />
 
   <Properties>
-    <DisplayName>HueHue Switch</DisplayName>
+    <DisplayName>NX Zero HueHue Switch</DisplayName>
     <PublisherDisplayName>HueHue (base: Eden Emulator Project)</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -52,7 +52,7 @@
          uwp_boot.cpp) is the conventional "<exe>.App" moniker; there is no activatable class. -->
     <Application Id="App" Executable="eden-uwp.exe" EntryPoint="eden-uwp.App">
       <uap:VisualElements
-          DisplayName="HueHue Switch"
+          DisplayName="NX Zero HueHue Switch"
           Description="HueHue Switch: emulador de Nintendo Switch para Xbox Series em Dev Mode (tema HueHue sobre o eden-xbox)."
           BackgroundColor="#0B0B0D"
           Square150x150Logo="Assets\Square150x150Logo.png"

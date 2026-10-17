@@ -73,9 +73,8 @@ struct GameMenuSurface::Impl : UiPainter {
         target->SetTransform(D2D1::Matrix3x2F::Scale(scale, scale));
         draw();
         // Faixa do tema HueHue: verde, amarelo e azul, depois o verde-limao de destaque.
-        Round(0, 0, 60, 4, 0, HueColor::Green);
-        Round(60, 0, 60, 4, 0, HueColor::Yellow);
-        Round(120, 0, 60, 4, 0, HueColor::Blue);
+        Round(0, 0, 120, 4, 0, Palette::Accent);
+        Round(120, 0, 60, 4, 0, Palette::Magenta);
         Round(180, 0, width - 180, 4, 0, Palette::Accent);
         winrt::check_hresult(target->EndDraw());
         return Pixels();

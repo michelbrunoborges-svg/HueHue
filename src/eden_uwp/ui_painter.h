@@ -21,20 +21,22 @@
 
 namespace EdenXbox {
 
-/// The frontend's colors (0xRRGGBB). Tema HueHue: fundo preto, cinzas neutros e o
-/// verde-limao do "AUTOMATICO!" como destaque.
+/// The frontend's colors (0xRRGGBB). Tema NX Zero HueHue (layout grafite): parede escura,
+/// verde-neon do spray como destaque e magenta como segunda cor.
 namespace Palette {
-inline constexpr unsigned Backdrop = 0x0b0b0d;
-inline constexpr unsigned Panel = 0x17181c;
-inline constexpr unsigned Row = 0x141519;
-inline constexpr unsigned RowActive = 0x2a3510;
-inline constexpr unsigned Accent = 0xc8f31d;
-inline constexpr unsigned OnAccent = 0x0b0b0d;
+inline constexpr unsigned Backdrop = 0x0a0a0f;
+inline constexpr unsigned Panel = 0x141419;
+inline constexpr unsigned Row = 0x121217;
+inline constexpr unsigned RowActive = 0x0f3d18;
+inline constexpr unsigned Accent = 0x39ff14;
+inline constexpr unsigned AccentDeep = 0x16a34a;
+inline constexpr unsigned Magenta = 0xff2bd6;
+inline constexpr unsigned OnAccent = 0x0a0a0f;
 inline constexpr unsigned Text = 0xf4f4f6;
 inline constexpr unsigned TextSecondary = 0xa3a3ad;
 inline constexpr unsigned TextHint = 0xbcbcc5;
 inline constexpr unsigned Warning = 0xf3ba6a;
-inline constexpr unsigned Track = 0x2a2b31;
+inline constexpr unsigned Track = 0x26262e;
 } // namespace Palette
 
 /// As cores do logo HUEHUE (verde, azul e amarelo da bandeira).
