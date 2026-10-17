@@ -417,12 +417,12 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         if (configuration.open && !settings && !content_session) {
             // NS HUEHUE settings: the sections on the left, the file rows on the right.
             if (configuration.busy) {}
-            else if (dx >= 96 && dx < 446 && dy >= 292 && dy < 292 + static_cast<float>(HomeRowCount) * 90.0f) {
+            else if (dx >= 96 && dx < 446 && dy >= 294 && dy < 294 + static_cast<float>(HomeRowCount) * 89.0f) {
                 configuration.files = false;
-                configuration.selected = std::min<size_t>(static_cast<size_t>((dy - 292) / 90), HomeRowCount - 1);
+                configuration.selected = std::min<size_t>(static_cast<size_t>((dy - 294) / 89), HomeRowCount - 1);
                 actions |= Play; dirty = true;
-            } else if (configuration.files && dx >= 521 && dx < 1801 && dy >= 367 && dy < 367 + 5 * 78.0f) {
-                const auto choice = ConfigurationFirstRow(configuration) + static_cast<size_t>((dy - 367) / 78);
+            } else if (configuration.files && dx >= 521 && dx < 1801 && dy >= 356 && dy < 356 + 5 * 78.0f) {
+                const auto choice = ConfigurationFirstRow(configuration) + static_cast<size_t>((dy - 356) / 78);
                 if (choice < ConfigurationRowCount(configuration)) {
                     configuration.selected = choice; actions |= Play; dirty = true;
                 }
@@ -461,36 +461,36 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             // NS HUEHUE controls page: rows of 76 (choices 70) from (1114, 392), 710 wide.
             if (panel.expanded) {
                 const size_t first = ControllerChoiceFirst(panel);
-                if (dx >= 1114 && dx < 1824 && dy >= 392) {
-                    const size_t i = first + static_cast<size_t>((dy - 392) / 70);
+                if (dx >= 1114 && dx < 1824 && dy >= 396) {
+                    const size_t i = first + static_cast<size_t>((dy - 396) / 70);
                     if (i < panel.devices.size() + 2 && i < first + ControllerVisibleChoices) {
                         panel.choice = i;
                         actions |= Play;
                     } else actions |= Quit;
                 } else actions |= Quit;
-            } else if (dx >= 1114 && dx < 1824 && dy >= 392 && dy < 392 + (panel.xbox ? 3 : 5) * 76.0f) {
-                setting_row = static_cast<unsigned>((dy - 392) / 76);
+            } else if (dx >= 1114 && dx < 1824 && dy >= 396 && dy < 396 + (panel.xbox ? 3 : 5) * 76.0f) {
+                setting_row = static_cast<unsigned>((dy - 396) / 76);
                 if (!panel.xbox && setting_row == 4) {
                     panel.keyboard.open = true; panel.keyboard.capturing = false; dirty = true;
                 } else actions |= Play;
             } else if (dy < 152 || dy > 996) actions |= Quit;
         } else if (home) {
             // The home menu: five 500x70 buttons from (96, 444), 88 apart.
-            if (dx >= 96 && dx < 596 && dy >= 444 && dy < 444 + NxHomeRows * 88.0f) {
-                home_row = std::min(NxHomeRows - 1, static_cast<unsigned>((dy - 444) / 88));
+            if (dx >= 96 && dx < 596 && dy >= 431 && dy < 431 + NxHomeRows * 91.0f) {
+                home_row = std::min(NxHomeRows - 1, static_cast<unsigned>((dy - 431) / 91));
                 actions |= Play; dirty = true;
             }
-        } else if (dx >= 1414 && dx < 1824 && dy >= 287 && dy < 343) {
+        } else if (dx >= 1414 && dx < 1824 && dy >= 268 && dy < 329) {
             actions |= Search;
         } else if (dx >= 96 && dx < 1000 && dy >= 285 && dy < 344) {
             // The tabs (their widths follow the text; about 200 each is close enough to pick one).
             library_tab = std::min(2U, static_cast<unsigned>((dx - 96) / 200));
             library_focus = -1; metadata_dirty = true; dirty = true;
-        } else if (!loading && dx >= 96 && dx < 1824 && dy >= 396 && dy < 396 + 2 * 308.0f) {
-            // The grid: two rows of five 323x280 cards, 351 / 308 apart.
+        } else if (!loading && dx >= 96 && dx < 1824 && dy >= 376 && dy < 376 + 2 * 319.0f) {
+            // The grid: two rows of five 323x291 cards, 351 / 319 apart.
             rebuild_shown();
             const size_t column = std::min<size_t>(static_cast<size_t>((dx - 96) / 351.2f), PageSize - 1);
-            const size_t row = dy < 704 ? 0 : 1;
+            const size_t row = dy < 681 ? 0 : 1;
             const size_t cursor = selected < position_of.size() && position_of[selected] != SIZE_MAX ? position_of[selected] : 0;
             const size_t at = cursor / PageVisible * PageVisible + row * PageSize + column;
             if (at < shown.size()) {
@@ -954,9 +954,11 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             if (pressed & Down) home_row = (home_row + 1) % NxHomeRows;
             if (pressed & Play) {
                 if (home_row == 0) {
-                    // Inicio: the game the library has selected (the last one played), or the list.
+                    // Inicio: back to the games, on Recentes when something was played.
                     home = false;
-                    if (!loading && !scan.entries.empty()) actions = Play;
+                    library_focus = -1;
+                    library_tab = recents.empty() ? 0 : 2;
+                    metadata_dirty = true;
                 } else {
                     go_section(home_row);
                 }

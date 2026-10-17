@@ -102,7 +102,6 @@ public:
             ns_mascot = LoadAssetBitmap(L"ns/mascot.png");
             ns_fallback = LoadAssetBitmap(L"ns/cover-fallback.png");
         } catch (const winrt::hresult_error&) { /* Wordmark remains available. */ }
-        CreateHueBackdrop();
         // "HUEHUE SEMPRE!": the pack's graffiti tag (Impact, falling back to Segoe UI Black).
         if (FAILED(write->CreateTextFormat(L"Impact", nullptr, DWRITE_FONT_WEIGHT_BLACK, DWRITE_FONT_STYLE_ITALIC,
                                            DWRITE_FONT_STRETCH_NORMAL, 54, L"pt-BR", &graffiti_format)))
@@ -130,6 +129,7 @@ public:
         swap_prompt_faces = false;
         if (const auto active = SelectController(panel.devices, options.controller_id))
             swap_prompt_faces = SwapControllerFaceButtons(panel.devices[*active], options.swap_face_buttons);
+        player_name = view.system.settings.user_name;
         target->BeginDraw();
         target->Clear(D2D1::ColorF(Palette::Backdrop));
         // The NS HUEHUE sections; the pages that keep Eden's own layout draw over the pack's ground.
@@ -149,27 +149,6 @@ public:
     }
     void InvalidateCovers() { covers.clear(); pictures.clear(); }
 private:
-    // --- Tema HueHue -------------------------------------------------------------------------
-    // Fundo: "HUE RA HUE RA HUEHUE" repetido na diagonal, quase invisivel, e uma vinheta escura
-    // atras do jogo em destaque para o texto continuar legivel. Tudo criado uma vez no canvas;
-    // a biblioteca so repinta quando o estado muda, entao o custo por quadro e irrelevante.
-    void CreateHueBackdrop() {
-        winrt::check_hresult(write->CreateTextFormat(L"Segoe UI", nullptr, DWRITE_FONT_WEIGHT_BLACK,
-            DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, 46, L"pt-BR", &pattern_format));
-        pattern_format->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
-        const D2D1_GRADIENT_STOP stops[] = {
-            {0.0f, D2D1::ColorF(0x071012, 0.92f)},
-            {0.6f, D2D1::ColorF(0x071012, 0.55f)},
-            {1.0f, D2D1::ColorF(0x071012, 0.0f)},
-        };
-        ComPtr<ID2D1GradientStopCollection> collection;
-        // Chamada pela interface base: ID2D1DeviceContext tem outra sobrecarga com o mesmo nome.
-        winrt::check_hresult(static_cast<ID2D1RenderTarget*>(target.Get())->CreateGradientStopCollection(
-            stops, 3, &collection));
-        winrt::check_hresult(target->CreateRadialGradientBrush(
-            D2D1::RadialGradientBrushProperties(D2D1::Point2F(380, 300), D2D1::Point2F(0, 0), 760, 420),
-            collection.Get(), &vignette));
-    }
     // --- NS HUEHUE (design pack v1, design/ns-huehue-v1) ----------------------------------------
     // The approved screens are laid out on a 1920x1080 canvas; DesignSpace draws them there on top
     // of the library's own 1280x720 transform. Colors are the pack's tokens (ui_painter.h).
@@ -177,7 +156,8 @@ private:
     static constexpr size_t GridColumns = 5;      // "covers": repeat(5, 1fr)
     static constexpr size_t GridVisible = 10;     // two rows on screen
     static constexpr float CardWidth = 323.2f;    // (1728 - 4 * 28) / 5
-    static constexpr float CardHeight = 280;
+    static constexpr float CardHeight = 291;     // 8 + cover 199 + name + line + 8
+    static constexpr float GridTop = 376;
     static constexpr float CardGap = 28;
     struct DesignSpace {
         explicit DesignSpace(ID2D1DeviceContext* dc_) : dc(dc_) {
@@ -191,26 +171,6 @@ private:
         ID2D1DeviceContext* dc;
         D2D1_MATRIX_3X2_F saved{};
     };
-    /// `bitmap` `height` tall, keeping its proportions, from (x, y); returns its width.
-    float Fit(ID2D1Bitmap1* bitmap, float x, float y, float height) {
-        if (!bitmap) return 0;
-        const auto size = bitmap->GetSize();
-        if (size.height <= 0) return 0;
-        const float width = size.width * height / size.height;
-        target->DrawBitmap(bitmap, D2D1::RectF(x, y, x + width, y + height), 1,
-                           D2D1_INTERPOLATION_MODE_LINEAR);
-        return width;
-    }
-    /// The quiet pattern behind the overlay pages (1280x720), under a black veil of `veil`.
-    void Wall(float veil) {
-        if (wall) target->DrawBitmap(wall.Get(), D2D1::RectF(0, 0, 1280, 720), 1,
-                                     D2D1_INTERPOLATION_MODE_LINEAR);
-        else Round(0, 0, 1280, 720, 0, Palette::Backdrop);
-        if (veil > 0) {
-            brush->SetColor(D2D1::ColorF(0, 0, 0, veil));
-            target->FillRectangle(D2D1::RectF(0, 0, 1280, 720), brush.Get());
-        }
-    }
     /// Letter-spaced capitals ("SEU JOGO. SUA RESENHA.").
     static std::wstring Spaced(std::wstring_view text) {
         std::wstring out;
@@ -288,8 +248,13 @@ private:
         Round(0, 0, 1920, 6, 0, Palette::Accent);
     }
     /// Logo, the five sections (`active` underlined), the player's name and the rule under them.
-    void NsHeader(const LibraryView& view, int active) {
-        if (Fit(ns_logo.Get(), 96, 31, 90) <= 0) Text(L"NS HUEHUE", 96, 48, 40, Palette::Magenta, 250, 56, true);
+    /// The pack's .brand: the logo inside 250x90, left aligned.
+    void NsBrand() {
+        if (ns_logo) NsImage(ns_logo.Get(), D2D1::RectF(96, 31, 346, 121), false, 1, 0, 0.5f);
+        else Text(L"NS HUEHUE", 96, 48, 40, Palette::Magenta, 250, 56, true);
+    }
+    void NsHeader(int active) {
+        NsBrand();
         static constexpr std::array<T, 5> nav{T::NsNavHome, T::NsNavGames, T::NsNavSettings,
                                               T::NsNavControls, T::NsNavAbout};
         float x = 396;
@@ -301,8 +266,7 @@ private:
             if (on) Round(x, 108, w, 4, 0, Palette::Accent);
             x += w + 16;
         }
-        const std::wstring name = view.system.settings.user_name.empty()
-                                      ? std::wstring{Tr(T::NsPlayer)} : view.system.settings.user_name;
+        const std::wstring name = player_name.empty() ? std::wstring{Tr(T::NsPlayer)} : player_name;
         const float name_width = MeasureText(name, 24, false);
         Text(name, 1824 - name_width - 2, 56, 24, Palette::Text, name_width + 4, 40);
         NsImage(NsIcon(L"user"), D2D1::RectF(1824 - name_width - 57, 56, 1824 - name_width - 17, 96), false);
@@ -374,23 +338,23 @@ private:
         DesignSpace space(target.Get());
         NsBackdrop(true);
         NsImage(ns_mascot.Get(), D2D1::RectF(960, 120, 1900, 1110), false, 1, 0.5f, 1.0f);
-        DrawGraffiti(L"HUEHUE\nSEMPRE!", 1560, 130);
-        if (Fit(ns_logo.Get(), 96, 125, 200) <= 0) Text(L"NS HUEHUE", 96, 150, 96, Palette::Magenta, 800, 130, true);
-        Text(Spaced(Tr(T::NsTagline)), 98, 345, 24, Palette::Text, 900, 36);
+        DrawGraffiti(L"HUEHUE\nSEMPRE!", 1640, 122);
+        if (ns_logo) NsImage(ns_logo.Get(), D2D1::RectF(96, 125, 816, 325), false, 1, 0, 0.5f);
+        else Text(L"NS HUEHUE", 96, 150, 96, Palette::Magenta, 800, 130, true);
+        Text(Spaced(Tr(T::NsTagline)), 97, 350, 24, Palette::Text, 900, 36);
         static constexpr std::array<std::pair<T, const wchar_t*>, HomeRows> items{{
             {T::NsNavHome, L"play"}, {T::NsNavGames, L"games"}, {T::NsNavSettings, L"settings"},
             {T::NsNavControls, L"pad"}, {T::NsNavAbout, L"info"}}};
+        // .home-menu .button: 500 wide, 73 tall with its border, 18 apart.
         for (size_t i = 0; i < HomeRows; ++i) {
-            const float y = 444 + static_cast<float>(i) * 88;
+            const float y = 431 + static_cast<float>(i) * 91;
             const bool focus = i == view.home_row;
-            NsFill(96, y, 500, 70, 7, focus ? Palette::AccentDeep : Ns::MenuButton, focus ? 1.0f : 0.85f);
-            NsStroke(97, y + 1, 498, 68, 6, 2, Ns::Divider);
-            if (focus) NsFocus(96, y, 500, 70, 7);
-            NsImage(NsIcon(items[i].second), D2D1::RectF(122, y + 17, 158, y + 53), false);
-            Text(Tr(items[i].first), 178, y + 14, 28, focus ? Palette::Accent : Palette::Text, 400, 42, true);
+            NsFill(96, y, 500, 73, 7, focus ? Palette::AccentDeep : Ns::MenuButton, focus ? 1.0f : 0.85f);
+            NsStroke(97, y + 1, 498, 71, 6, 2, Ns::Divider);
+            if (focus) NsFocus(96, y, 500, 73, 7);
+            NsImage(NsIcon(items[i].second), D2D1::RectF(124, y + 18, 160, y + 54), false);
+            Text(Tr(items[i].first), 180, y + 15, 28, focus ? Palette::Accent : Palette::Text, 400, 42, true);
         }
-        if (!view.loading && view.selected < view.scan.entries.size())
-            Text(view.scan.entries[view.selected].name, 620, 461, 22, Palette::TextSecondary, 420, 36);
         NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Exit}});
         NsToast(view.notice);
     }
@@ -404,7 +368,7 @@ private:
     void DrawNsLibrary(const LibraryView& view) {
         DesignSpace space(target.Get());
         NsBackdrop(false);
-        NsHeader(view, 1);
+        NsHeader(1);
         NsTitle(Tr(T::NsNavGames));
         static constexpr std::array<T, 3> tabs{T::NsTabAll, T::NsTabFavorites, T::NsTabRecent};
         float x = 96;
@@ -418,20 +382,20 @@ private:
             if (view.library_focus == static_cast<int>(i)) NsFocus(x, 285, w, 59, 6);
             x += w + 16;
         }
-        NsFill(1414, 287, 410, 56, 8, Ns::MenuButton);
-        NsStroke(1414.5f, 287.5f, 409, 55, 8, 1, view.query.empty() ? Ns::Line : Palette::Accent);
-        NsImage(NsIcon(L"search"), D2D1::RectF(1434, 302, 1460, 328), false);
-        Text(view.query.empty() ? std::wstring{Tr(T::NsSearchGames)} : std::wstring{view.query}, 1476, 296, 23,
-             view.query.empty() ? Palette::TextSecondary : Palette::Text, 290, 38);
-        Text(L"Y", 1772, 296, 23, Palette::TextSecondary, 32, 38, true);
-        if (view.library_focus == 3) NsFocus(1414, 287, 410, 56, 8);
+        NsFill(1414, 268, 410, 61, 8, Ns::MenuButton);
+        NsStroke(1414.5f, 268.5f, 409, 60, 8, 1, view.query.empty() ? Ns::Line : Palette::Accent);
+        NsImage(NsIcon(L"search"), D2D1::RectF(1435, 286, 1461, 312), false);
+        Text(view.query.empty() ? std::wstring{Tr(T::NsSearchGames)} : std::wstring{view.query}, 1477, 280, 23,
+             view.query.empty() ? Palette::TextSecondary : Palette::Text, 280, 38);
+        Text(L"Y", 1772, 280, 23, Palette::TextSecondary, 32, 38, true);
+        if (view.library_focus == 3) NsFocus(1414, 268, 410, 61, 8);
 
         const auto card_x = [](size_t slot) { return 96 + static_cast<float>(slot % GridColumns) * (CardWidth + CardGap); };
-        const auto card_y = [](size_t slot) { return 396 + static_cast<float>(slot / GridColumns) * (CardHeight + CardGap); };
+        const auto card_y = [](size_t slot) { return GridTop + static_cast<float>(slot / GridColumns) * (CardHeight + CardGap); };
         if (view.loading) {
             for (size_t slot = 0; slot < GridColumns; ++slot) {
-                NsFill(card_x(slot), 396, CardWidth, 390, 8, 0x1b282b);
-                NsStroke(card_x(slot) + 0.5f, 396.5f, CardWidth - 1, 389, 8, 1, Ns::Divider);
+                NsFill(card_x(slot), GridTop, CardWidth, 390, 8, 0x1b282b);
+                NsStroke(card_x(slot) + 0.5f, GridTop + 0.5f, CardWidth - 1, 389, 8, 1, Ns::Divider);
             }
             Text(Tr(T::LoadingTitle), 96, 820, 34, Palette::Text, 1500, 50, true);
             Text(Tr(T::LoadingBody), 96, 876, 23, Palette::TextSecondary, 1500, 40);
@@ -465,12 +429,12 @@ private:
                     NsFill(cover.right - 50, cover.top + 10, 40, 40, 20, Palette::Backdrop, 0.7f);
                     NsImage(NsIcon(L"star"), D2D1::RectF(cover.right - 44, cover.top + 16, cover.right - 16, cover.top + 44), false);
                 }
-                Text(entry.name, cx + 15, cy + 213, 23, Palette::Text, CardWidth - 30, 32, true);
+                Text(entry.name, cx + 15, cy + 218, 23, Palette::Text, CardWidth - 30, 32, true);
                 std::wstring under = entry.display_version.empty() ? std::wstring{} : L"v" + entry.display_version;
                 if (!entry.source_name.empty()) under += (under.empty() ? L"" : L" · ") + entry.source_name;
                 if (!entry.pulse_saved.empty()) under += under.empty() ? L"Pulse" : L" · Pulse";
                 if (under.empty()) under = entry.relative_path.extension().wstring();
-                Text(under, cx + 15, cy + 246, 17, Palette::TextSecondary, CardWidth - 30, 26);
+                Text(under, cx + 15, cy + 252, 17, Palette::TextSecondary, CardWidth - 30, 26);
                 if (list[k] == view.selected && view.library_focus < 0) NsFocus(cx, cy, CardWidth, CardHeight, 8);
             }
             Text(std::to_wstring(position + 1) + L" / " + std::to_wstring(list.size()), 1524, 200, 23,
@@ -486,22 +450,22 @@ private:
         const auto& panel = view.configuration;
         DesignSpace space(target.Get());
         NsBackdrop(false);
-        NsHeader(view, 2);
+        NsHeader(2);
         static constexpr std::array<T, HomeRowCount> sections{T::NsSettingsSystem, T::NsSettingsControllers,
                                                               T::NsSettingsFiles};
         static constexpr std::array<const wchar_t*, HomeRowCount> icons{L"settings", L"pad", L"folder"};
         const size_t section = panel.files ? static_cast<size_t>(HomeFiles) : std::min<size_t>(panel.selected, HomeRowCount - 1);
         NsTitle(std::wstring{Tr(T::NsNavSettings)} + L" · " + std::wstring{Tr(sections[section])});
         for (size_t i = 0; i < HomeRowCount; ++i) {
-            const float y = 292 + static_cast<float>(i) * 90;
+            const float y = 294 + static_cast<float>(i) * 89;
             const bool selected = i == section;
             if (selected) {
-                Round(96, y, 350, 81, 6, Ns::NavSelected);
-                Round(96, y, 4, 81, 0, Palette::Accent);
+                Round(96, y, 350, 80, 6, Ns::NavSelected);
+                Round(96, y, 4, 80, 0, Palette::Accent);
             }
-            NsImage(NsIcon(icons[i]), D2D1::RectF(121, y + 24, 153, y + 56), false);
-            Text(Tr(sections[i]), 167, y + 19, 27, selected ? Palette::Accent : Palette::TextSecondary, 270, 44);
-            if (selected && !panel.files) NsFocus(96, y, 350, 81, 6);
+            NsImage(NsIcon(icons[i]), D2D1::RectF(123, y + 24, 155, y + 56), false);
+            Text(Tr(sections[i]), 169, y + 18, 29, selected ? Palette::Accent : Palette::TextSecondary, 270, 44);
+            if (selected && !panel.files) NsFocus(96, y, 350, 80, 6);
         }
         const float left = 521, width = 1280;
         Text(Tr(sections[section]), left, 292, 34, Palette::Text, width, 50, true);
@@ -522,9 +486,9 @@ private:
                          {std::wstring{Tr(T::NsOpen)}, L"›"}}};
             }
             for (size_t i = 0; i < rows.size(); ++i)
-                NsRow(left, 367 + static_cast<float>(i) * 78, width, rows[i].first, rows[i].second, false);
+                NsRow(left, 356 + static_cast<float>(i) * 78, width, rows[i].first, rows[i].second, false);
             Text(Tr(section == HomeSystem ? T::SystemHint : section == HomeControllers ? T::ControllersHint : T::FileManagerHint),
-                 left, 620, 21, Palette::TextSecondary, width, 70, false, true);
+                 left, 612, 21, Palette::TextSecondary, width, 70, false, true);
         } else {
             const auto count = ConfigurationRowCount(panel);
             const auto first = ConfigurationFirstRow(panel);
@@ -539,7 +503,7 @@ private:
                 const std::wstring value = i == 1 ? std::wstring{Tr(panel.status.keys_ready ? T::KeysReady : T::KeysMissing)}
                                          : i == 2 ? I18n::Format(T::FirmwareFiles, {std::to_wstring(panel.status.firmware_files)})
                                                   : std::wstring{L"›"};
-                NsRow(left, 367 + static_cast<float>(i - first) * 78, width, title, value, i == panel.selected);
+                NsRow(left, 356 + static_cast<float>(i - first) * 78, width, title, value, i == panel.selected);
             }
             Text(Tr(T::FilesSubtitle), left, 770, 21, Palette::TextSecondary, width, 60, false, true);
         }
@@ -557,9 +521,9 @@ private:
         const auto& panel = view.panel;
         DesignSpace space(target.Get());
         NsBackdrop(false);
-        NsHeader(view, 3);
+        NsHeader(3);
         NsTitle(Tr(T::NsNavControls));
-        NsImage(NsIcon(L"pad"), D2D1::RectF(300, 377, 800, 777), false);
+        NsImage(NsIcon(L"pad"), D2D1::RectF(300, 402, 800, 802), false);
         const auto callout = [&](T text, float x, float y, bool right) {
             const auto label = Tr(text);
             const float w = MeasureText(label, 26, false) + 4;
@@ -567,16 +531,16 @@ private:
             Text(label, lx, y, 26, Palette::Accent, w, 40);
             Round(lx, y + 46, w, 1, 0, 0x496065);
         };
-        callout(T::NsNavHint, 135, 337, false);
-        callout(T::NsDpadHint, 120, 697, false);
-        callout(T::NsConfirmHint, 970, 407, true);
-        callout(T::NsBackHint, 970, 627, true);
+        callout(T::NsNavHint, 135, 345, false);
+        callout(T::NsDpadHint, 120, 705, false);
+        callout(T::NsConfirmHint, 970, 415, true);
+        callout(T::NsBackHint, 970, 635, true);
         const float left = 1114, width = 710;
-        Text(Tr(T::NsControlsHeading), left, 322, 34, Palette::Text, width, 50, true);
+        Text(Tr(T::NsControlsHeading), left, 326, 34, Palette::Text, width, 50, true);
         const unsigned offset = panel.xbox ? 0 : 1;
         const auto active = SelectController(panel.devices, options.controller_id);
         const bool nintendo = active && panel.devices[*active].nintendo;
-        float y = 392;
+        float y = 396;
         for (unsigned row = 0; row < 3 + offset; ++row) {
             const bool device = offset && row == 0;
             const bool type = row == offset;
@@ -606,8 +570,8 @@ private:
             const size_t first = ControllerChoiceFirst(panel);
             const size_t count = panel.devices.size() + 2;
             const size_t end = std::min(count, first + ControllerVisibleChoices);
-            NsFill(left - 12, 380, width + 24, static_cast<float>(end - first) * 70 + 24, 12, Palette::Panel);
-            NsStroke(left - 11.5f, 380.5f, width + 23, static_cast<float>(end - first) * 70 + 23, 12, 1, Ns::Line);
+            NsFill(left - 12, 384, width + 24, static_cast<float>(end - first) * 70 + 24, 12, Palette::Panel);
+            NsStroke(left - 11.5f, 384.5f, width + 23, static_cast<float>(end - first) * 70 + 23, 12, 1, Ns::Line);
             for (size_t i = first; i < end; ++i) {
                 const bool session = i >= 2 && panel.devices[i - 2].id.starts_with(L"session:");
                 const bool supported = i < 2 || (bool(panel.devices[i - 2]) && !session);
@@ -617,7 +581,7 @@ private:
                 else label = panel.devices[i - 2].name + L" · " +
                     std::wstring{Tr(supported ? (panel.devices[i - 2].wireless ? T::Wireless : T::Usb) :
                                     session ? T::AutomaticOnly : T::NoCompatibleMapping)};
-                NsRow(left, 392 + static_cast<float>(i - first) * 70, width, label, L"", i == panel.choice, 23, 70);
+                NsRow(left, 396 + static_cast<float>(i - first) * 70, width, label, L"", i == panel.choice, 23, 70);
             }
         }
         NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Back}});
@@ -627,15 +591,16 @@ private:
     void DrawNsAbout(const LibraryView& view) {
         DesignSpace space(target.Get());
         NsBackdrop(false);
-        NsHeader(view, 4);
+        NsHeader(4);
         NsTitle(Tr(T::NsAboutTitle));
-        NsImage(ns_mascot.Get(), D2D1::RectF(1180, 150, 1900, 1110), false, 0.75f, 0.5f, 1.0f);
-        if (Fit(ns_logo.Get(), 96, 345, 200) <= 0) Text(L"NS HUEHUE", 96, 370, 96, Palette::Magenta, 800, 130, true);
-        Text(Tr(T::NsEdition), 96, 565, 34, Palette::Text, 950, 50, true);
-        Text(Tr(T::NsAboutBased), 96, 625, 28, Palette::Text, 950, 50);
-        Text(I18n::Format(T::NsExperimental, {version_string}), 96, 690, 23, Palette::TextSecondary, 950, 40);
-        NsButton(96, 760, 470, L"info", Tr(T::NsCredits), true, !view.about_credits);
-        Text(Tr(T::NsNotAffiliated), 96, 870, 23, Palette::TextSecondary, 950, 40);
+        NsImage(ns_mascot.Get(), D2D1::RectF(1180, 150, 1900, 1050), false, 0.75f, 0.5f, 1.0f);
+        if (ns_logo) NsImage(ns_logo.Get(), D2D1::RectF(96, 305, 816, 505), false, 1, 0, 0.5f);
+        else Text(L"NS HUEHUE", 96, 370, 96, Palette::Magenta, 800, 130, true);
+        Text(Tr(T::NsEdition), 96, 524, 34, Palette::Text, 950, 50, true);
+        Text(Tr(T::NsAboutBased), 96, 596, 28, Palette::Text, 950, 50);
+        Text(I18n::Format(T::NsExperimental, {version_string}), 96, 656, 23, Palette::TextSecondary, 950, 40);
+        NsButton(96, 711, 360, L"info", Tr(T::NsCredits), true, !view.about_credits);
+        Text(Tr(T::NsNotAffiliated), 96, 812, 23, Palette::TextSecondary, 950, 40);
         if (view.about_credits) {
             brush->SetColor(D2D1::ColorF(0, 0, 0, 0.72f));
             target->FillRectangle(D2D1::RectF(0, 0, 1920, 1080), brush.Get());
@@ -654,17 +619,15 @@ private:
     void DrawNsGameOptions(const GameOptionsView& view, const LibraryEntry& game) {
         DesignSpace space(target.Get());
         NsBackdrop(false);
-        Round(0, 0, 1920, 6, 0, Palette::Accent);
-        if (Fit(ns_logo.Get(), 96, 31, 90) <= 0) Text(L"NS HUEHUE", 96, 48, 40, Palette::Magenta, 250, 56, true);
-        Round(96, 152, 1728, 1, 0, Ns::Divider);
+        NsHeader(1);
         NsTitle(Tr(T::NsGameOptions));
-        NsFill(400, 300, 1120, 640, 12, Palette::Panel, 0.95f);
-        NsStroke(400.5f, 300.5f, 1119, 639, 12, 1, Ns::Line);
-        Text(game.name, 440, 336, 34, Palette::Text, 1040, 50, true);
-        Round(440, 404, 1040, 1, 0, Ns::Line);
+        NsFill(400, 286, 1120, 637, 12, Palette::Panel, 0.95f);
+        NsStroke(400.5f, 286.5f, 1119, 636, 12, 1, Ns::Line);
+        Text(game.name, 441, 328, 34, Palette::Text, 1040, 50, true);
+        Round(441, 392, 1038, 1, 0, Ns::Line);
         const auto options = GameOptions();
         for (size_t i = 0; i <= options.size(); ++i) {
-            const float y = 432 + static_cast<float>(i) * 78;
+            const float y = 419 + static_cast<float>(i) * 77;
             std::wstring title, value = L"›";
             if (i < options.size()) {
                 title = Tr(GameOptionTitle(options[i]));
@@ -675,9 +638,9 @@ private:
                 title = Tr(view.favorite ? T::NsFavoriteRemove : T::NsFavoriteAdd);
                 value = L"☆";
             }
-            NsRow(440, y, 1040, title, value, i == view.page.selected);
+            NsRow(441, y, 1038, title, value, i == view.page.selected, 27, 77);
         }
-        if (!view.notice.empty()) Text(view.notice, 440, 900, 22, Palette::Warning, 1040, 36);
+        if (!view.notice.empty()) NsToast(view.notice);
         NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Back}});
     }
 
@@ -902,7 +865,7 @@ private:
         {
             DesignSpace space(target.Get());
             NsBackdrop(false);
-            Fit(ns_logo.Get(), 96, 31, 90);
+            NsBrand();
         }
         const auto layout = GetConfigurationLayout(panel);
         if (panel.files) {
@@ -970,7 +933,7 @@ private:
         {
             DesignSpace space(target.Get());
             NsBackdrop(false);
-            Fit(ns_logo.Get(), 96, 31, 90);
+            NsBrand();
         }
         Round(L::PanelX, L::PanelY, L::PanelWidth, L::PanelHeight, 24, 0x101b1e);
         PageHeader(L::RowX, 99, ConfigurationIcon::Language, Tr(T::SystemTitle), Tr(T::SystemSubtitle));
@@ -1314,9 +1277,8 @@ private:
     ComPtr<ID2D1Bitmap1> wall, ns_background, ns_logo, ns_mascot, ns_fallback;
     std::unordered_map<std::wstring, ComPtr<ID2D1Bitmap1>> ns_icons;
     ComPtr<IDWriteTextFormat> graffiti_format;
+    std::wstring player_name; ///< The System page's name for the header chip (empty: "Jogador 1").
     std::wstring version_string;
-    ComPtr<IDWriteTextFormat> pattern_format;
-    ComPtr<ID2D1RadialGradientBrush> vignette;
     std::array<ComPtr<ID2D1PathGeometry>, 5> controller_paths;
     PromptFamily prompt_family{PromptFamily::Keyboard};
     bool swap_prompt_faces{};
