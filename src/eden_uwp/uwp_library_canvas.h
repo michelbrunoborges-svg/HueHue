@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 #include <memory>
+#include <string>
+#include <vector>
 #include "eden_uwp/content/content_session.h"
 #include <string_view>
 #include "eden_uwp/cheats/cheat_session.h"
@@ -25,6 +27,7 @@ struct GameOptionsView {
     const Content::ContentSession* content{};
     const Mods::ModSession* mods{};      ///< The open mods page's.
     const Mods::ModsPage* mods_page{};
+    bool favorite{}; ///< NS HUEHUE: the game is a favorite (the list's last row adds or removes it).
 };
 /// Everything one frame of the library shows.
 struct LibraryView {
@@ -44,6 +47,14 @@ struct LibraryView {
     bool home{};
     unsigned home_row{};
     bool about{};
+    // NS HUEHUE: the grid of "Meus jogos".
+    unsigned library_tab{};                     ///< 0 all, 1 favorites, 2 recent.
+    int library_focus{-1};                      ///< -1 the grid, 0..2 a tab, 3 the search box.
+    const std::vector<std::size_t>* shown{};    ///< The entries the grid shows, in order.
+    const std::vector<std::string>* favorites{}; ///< Launch paths.
+    std::wstring_view query{};
+    const TextEntry* search{};                  ///< The search keyboard, while open.
+    bool about_credits{};
 };
 class LibraryCanvas {
 public:

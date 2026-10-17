@@ -21,23 +21,37 @@
 
 namespace EdenXbox {
 
-/// The frontend's colors (0xRRGGBB). Tema NX Zero HueHue (layout grafite): parede escura,
-/// verde-neon do spray como destaque e magenta como segunda cor.
+/// The frontend's colors (0xRRGGBB): the NS HUEHUE design pack v1 (design/ns-huehue-v1, approved
+/// by Michel on 17/10/2026). Dark teal-black ground, neon green focus, pink brand.
 namespace Palette {
-inline constexpr unsigned Backdrop = 0x0a0a0f;
-inline constexpr unsigned Panel = 0x141419;
-inline constexpr unsigned Row = 0x121217;
-inline constexpr unsigned RowActive = 0x0f3d18;
-inline constexpr unsigned Accent = 0x39ff14;
-inline constexpr unsigned AccentDeep = 0x16a34a;
-inline constexpr unsigned Magenta = 0xff2bd6;
-inline constexpr unsigned OnAccent = 0x0a0a0f;
-inline constexpr unsigned Text = 0xf4f4f6;
-inline constexpr unsigned TextSecondary = 0xa3a3ad;
-inline constexpr unsigned TextHint = 0xbcbcc5;
-inline constexpr unsigned Warning = 0xf3ba6a;
-inline constexpr unsigned Track = 0x26262e;
+inline constexpr unsigned Backdrop = 0x071012;
+inline constexpr unsigned Panel = 0x101b1e;
+inline constexpr unsigned Row = 0x162124;
+inline constexpr unsigned RowActive = 0x1a321e;
+inline constexpr unsigned Accent = 0x8aff00;
+inline constexpr unsigned AccentDeep = 0x173b12;
+inline constexpr unsigned Magenta = 0xff1493;
+inline constexpr unsigned OnAccent = 0x071012;
+inline constexpr unsigned Text = 0xf4f7f5;
+inline constexpr unsigned TextSecondary = 0xa6b5b7;
+inline constexpr unsigned TextHint = 0xbccacb;
+inline constexpr unsigned Warning = 0xffcf32;
+inline constexpr unsigned Track = 0x253033;
 } // namespace Palette
+
+/// Tokens of the NS HUEHUE design pack that the palette above does not name (styles.css).
+namespace Ns {
+inline constexpr unsigned Line = 0x354347;      // borders
+inline constexpr unsigned Divider = 0x304137;   // header and footer rules
+inline constexpr unsigned Secondary = 0x172225; // secondary buttons and chips
+inline constexpr unsigned MenuButton = 0x081113;
+inline constexpr unsigned NavSelected = 0x163d17;
+inline constexpr unsigned Muted = 0x73858a;
+inline constexpr unsigned Error = 0xff6b74;
+inline constexpr unsigned KeyX = 0x36c6ff;
+inline constexpr unsigned KeyY = 0xffcf32;
+inline constexpr unsigned Toast = 0x1d3822;
+} // namespace Ns
 
 /// As cores do logo HUEHUE (verde, azul e amarelo da bandeira).
 namespace HueColor {

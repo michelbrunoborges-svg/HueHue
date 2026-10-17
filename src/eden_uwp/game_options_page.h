@@ -69,13 +69,17 @@ struct GameOptionsPage {
     std::optional<GameOption> page; ///< The option page open over the list.
     bool confirm_discard{}; ///< A was pressed once on the Pulse row; a second press discards.
     bool discard{};         ///< Confirmed: the library discards the game's session.
+    /// NS HUEHUE: A on a row after GameOptions() (the favorite row); the library acts on it.
+    std::optional<std::size_t> extra;
 };
 
 enum class GameOptionsInput : std::uint8_t { Up, Down, Confirm, Back };
 
-/// Applies one press to the list (an open option page takes its own input).
-inline void HandleGameOptionsInput(GameOptionsPage& options, GameOptionsInput input) {
-    const std::size_t count = GameOptions().size();
+/// Applies one press to the list (an open option page takes its own input). `extra_rows` rows
+/// follow the options (the library's own, such as the favorite row); A on one sets `extra`.
+inline void HandleGameOptionsInput(GameOptionsPage& options, GameOptionsInput input,
+                                   std::size_t extra_rows = 0) {
+    const std::size_t count = GameOptions().size() + extra_rows;
     const bool confirming = std::exchange(options.confirm_discard, false);
     switch (input) {
     case GameOptionsInput::Up:
@@ -85,6 +89,10 @@ inline void HandleGameOptionsInput(GameOptionsPage& options, GameOptionsInput in
         options.selected = (options.selected + 1) % count;
         break;
     case GameOptionsInput::Confirm:
+        if (options.selected >= GameOptions().size()) {
+            options.extra = options.selected - GameOptions().size();
+            break;
+        }
         if (GameOptions()[options.selected] == GameOption::Pulse) {
             options.confirm_discard = !confirming;
             options.discard = confirming;

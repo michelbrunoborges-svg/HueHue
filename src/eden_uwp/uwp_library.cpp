@@ -11,6 +11,8 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cwctype>
+#include <fstream>
 #include <future>
 #include <thread>
 #include <winrt/Windows.Foundation.Collections.h>
@@ -20,6 +22,7 @@
 #include <winrt/Windows.System.h>
 #include <winrt/Windows.System.Profile.h>
 #include <winrt/Windows.Graphics.Display.h>
+#include <winrt/Windows.Storage.h>
 #include <winrt/Windows.Storage.Pickers.h>
 #include "eden_uwp/cheats/cheat_session.h"
 #include "eden_uwp/cheats/cheats_page.h"
@@ -51,8 +54,11 @@ using winrt::Windows::System::VirtualKey;
 using I18n::Tr;
 using T = I18n::Text;
 
-/// Games per row of the grid; the metadata window is the visible page and both neighbours.
-constexpr size_t PageSize = 6; // one row of the grid (two rows show at a time)
+/// Games per row of the grid (the NS HUEHUE grid has five); two rows show at a time, and the
+/// metadata window is that page and a row on each side.
+constexpr size_t PageSize = 5;
+constexpr size_t PageVisible = 2 * PageSize;
+constexpr size_t RecentLimit = 30;
 /// Background batches stay short so a page change never waits long behind them: games opened
 /// through the loaders per fill batch, cache records read per names batch.
 constexpr size_t FillBatch = 6;
@@ -60,6 +66,44 @@ constexpr size_t NamesBatch = 64;
 
 std::wstring Wide(std::string_view utf8) {
     return winrt::to_hstring(utf8).c_str();
+}
+
+// NS HUEHUE: favorites and recent games, one launch path per line in LocalState.
+std::filesystem::path ListPath(const wchar_t* name) {
+    try {
+        return std::filesystem::path{winrt::Windows::Storage::ApplicationData::Current().LocalFolder().Path().c_str()} / name;
+    } catch (...) { return {}; }
+}
+std::vector<std::string> LoadList(const wchar_t* name) {
+    std::vector<std::string> list;
+    const auto path = ListPath(name);
+    if (path.empty()) return list;
+    std::ifstream in(path, std::ios::binary);
+    for (std::string line; std::getline(in, line);) {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (!line.empty() && std::find(list.begin(), list.end(), line) == list.end()) list.push_back(std::move(line));
+    }
+    return list;
+}
+bool SaveList(const wchar_t* name, const std::vector<std::string>& list) {
+    const auto path = ListPath(name);
+    if (path.empty()) return false;
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+    for (const auto& line : list) out << line << '\n';
+    return static_cast<bool>(out);
+}
+/// Lower case without accents, so "pokemon" finds "Pokémon".
+std::wstring Fold(std::wstring_view text) {
+    static constexpr std::wstring_view from = L"áàâãäéèêëíìîïóòôõöúùûüçñ";
+    static constexpr std::wstring_view to = L"aaaaaeeeeiiiiooooouuuucn";
+    std::wstring out;
+    out.reserve(text.size());
+    for (const wchar_t c : text) {
+        const auto lower = static_cast<wchar_t>(std::towlower(c));
+        const auto at = from.find(lower);
+        out += at == std::wstring_view::npos ? lower : to[at];
+    }
+    return out;
 }
 } // namespace
 
@@ -141,7 +185,51 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     unsigned actions = 0;
     enum : unsigned { Up = 1, Down = 2, Play = 4, Quit = 8, Swap = 16, Zone = 32,
                       Refresh = 64, Panel = 128, Left = 256, Right = 512, AddFolder = 1024,
-                      Options = 2048, PreviousTab = 4096, NextTab = 8192 };
+                      Options = 2048, PreviousTab = 4096, NextTab = 8192, Search = 16384 };
+    // NS HUEHUE state: the sections, the library's tabs, search and focus, and the lists kept.
+    constexpr unsigned NxHomeRows = 5;
+    bool home = true;
+    unsigned home_row = 0;
+    bool about = false, about_credits = false;
+    unsigned library_tab = 0;
+    int library_focus = -1;
+    std::wstring query;
+    std::optional<TextEntry> search_editor;
+    std::wstring search_before;
+    std::vector<std::string> favorites = LoadList(L"ns_favorites.txt");
+    std::vector<std::string> recents = LoadList(L"ns_recent.txt");
+    std::vector<size_t> shown;
+    std::vector<size_t> position_of;
+    std::wstring filtered_query;
+    unsigned filtered_tab = 0;
+    auto library_notice_until = std::chrono::steady_clock::time_point::max();
+    // The game grid is what the player sees: no page, overlay or modal over it.
+    auto library_top = [&] {
+        return !home && !about && !settings && !configuration.open && !game_options.open &&
+               !panel.keyboard.open && !missing_content && !search_editor;
+    };
+    // The entries the grid shows (the tab, then the search), and each one's place in it.
+    auto rebuild_shown = [&] {
+        shown.clear();
+        const std::wstring folded = Fold(query);
+        const auto matches = [&](const LibraryEntry& entry) {
+            return folded.empty() || Fold(entry.name).find(folded) != std::wstring::npos;
+        };
+        if (library_tab == 2) {
+            for (const auto& path : recents)
+                for (size_t i = 0; i < scan.entries.size(); ++i)
+                    if (scan.entries[i].launch_path == path && matches(scan.entries[i])) shown.push_back(i);
+        } else {
+            for (size_t i = 0; i < scan.entries.size(); ++i) {
+                const auto& entry = scan.entries[i];
+                if (library_tab == 1 && std::find(favorites.begin(), favorites.end(), entry.launch_path) == favorites.end())
+                    continue;
+                if (matches(entry)) shown.push_back(i);
+            }
+        }
+        position_of.assign(scan.entries.size(), SIZE_MAX);
+        for (size_t k = 0; k < shown.size(); ++k) position_of[shown[k]] = k;
+    };
     using winrt::Windows::Storage::StorageFolder;
     winrt::Windows::Foundation::IAsyncOperation<StorageFolder> picker{nullptr};
     std::future<std::string> validation;
@@ -162,7 +250,16 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         }
     });
     // Typing on a real keyboard while the name editor is open; KeyDown handles the rest.
+    // The search keyboard (NS HUEHUE) takes typing the same way, and filters as it goes.
+    std::optional<bool> finish_search;
     auto characters = window.CharacterReceived(winrt::auto_revoke, [&](auto&&, CharacterReceivedEventArgs const& e) {
+        if (search_editor) {
+            search_editor->Type(static_cast<wchar_t>(e.KeyCode()));
+            query = search_editor->Value();
+            dirty = true;
+            e.Handled(true);
+            return;
+        }
         if (!system_page.name_editor) return;
         system_page.name_editor->Type(static_cast<wchar_t>(e.KeyCode()));
         system_page.editor_notice.clear();
@@ -171,6 +268,28 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     });
     auto keyboard = window.KeyDown(winrt::auto_revoke, [&](auto&&, KeyEventArgs const& e) {
         if (e.KeyStatus().WasKeyDown) return;
+        if (search_editor) {
+            using Command = TextEntry::Command;
+            std::optional<Command> command;
+            switch (e.VirtualKey()) {
+            case VirtualKey::Escape: command = Command::Cancel; break;
+            case VirtualKey::Enter: command = Command::Done; break;
+            case VirtualKey::Back: command = Command::Delete; break;
+            case VirtualKey::Up: command = Command::Up; break;
+            case VirtualKey::Down: command = Command::Down; break;
+            case VirtualKey::Left: command = Command::Left; break;
+            case VirtualKey::Right: command = Command::Right; break;
+            default: break;
+            }
+            if (command) {
+                const auto result = search_editor->Apply(*command);
+                query = search_editor->Value();
+                if (result != TextEntry::Result::None) finish_search = result == TextEntry::Result::Done;
+            }
+            dirty = true;
+            e.Handled(true);
+            return;
+        }
         if (system_page.name_editor) {
             using Command = TextEntry::Command;
             std::optional<Command> command;
@@ -232,8 +351,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         case VirtualKey::F1: actions |= Panel; break;
         case VirtualKey::Escape: actions |= Quit; break;
         case VirtualKey::Enter: actions |= Play; break;
-        case VirtualKey::X: actions |= Swap; break;
-        case VirtualKey::Y:
+        case VirtualKey::X: actions |= library_top() ? Options : Swap; break;
+        case VirtualKey::Y: actions |= library_top() ? Search : Refresh; break;
         case VirtualKey::R: actions |= Refresh; break;
         case VirtualKey::O: actions |= AddFolder; break;
         case VirtualKey::F2: actions |= Options; break;
@@ -249,6 +368,24 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         const auto scale = std::max(0.01f, std::min(width / 1280.0f, height / 720.0f));
         const float x = static_cast<float>((p.X * dpi - (width - 1280 * scale) / 2) / scale);
         const float y = static_cast<float>((p.Y * dpi - (height - 720 * scale) / 2) / scale);
+        // The NS HUEHUE screens are laid out on 1920x1080: the same point there.
+        const float dx = x * 1.5f, dy = y * 1.5f;
+        if (search_editor) {
+            using L = SystemPageLayout;
+            if (const auto key = TextEntryPanelLayout::KeyAt(x - L::EditorX, y - L::EditorY)) {
+                search_editor->Focus(key->first, key->second);
+                if (search_editor->Press() == TextEntry::Result::Done) finish_search = true;
+                query = search_editor->Value();
+                dirty = true;
+            }
+            e.Handled(true);
+            return;
+        }
+        if (about) {
+            actions |= about_credits ? Quit : Play;
+            e.Handled(true);
+            return;
+        }
         if (system_page.name_editor) {
             using L = SystemPageLayout;
             if (const auto key = TextEntryPanelLayout::KeyAt(x - L::EditorX, y - L::EditorY)) {
@@ -278,17 +415,18 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             return;
         }
         if (configuration.open && !settings && !content_session) {
-            const auto layout = GetConfigurationLayout(configuration);
-            if (y >= layout.footer - 7 && y < layout.footer + 40 &&
-                x >= layout.x + layout.width - 230 && x < layout.x + layout.width) actions |= Quit;
-            else if (!configuration.busy && x >= layout.x && x < layout.x + layout.width && y >= layout.top) {
-                const auto row = static_cast<size_t>((y - layout.top) / layout.stride);
-                const auto choice = ConfigurationFirstRow(configuration) + row;
-                if (row < 5 && y < layout.top + row * layout.stride + layout.row_height &&
-                    choice < ConfigurationRowCount(configuration)) {
+            // NS HUEHUE settings: the sections on the left, the file rows on the right.
+            if (configuration.busy) {}
+            else if (dx >= 96 && dx < 446 && dy >= 292 && dy < 292 + static_cast<float>(HomeRowCount) * 90.0f) {
+                configuration.files = false;
+                configuration.selected = std::min<size_t>(static_cast<size_t>((dy - 292) / 90), HomeRowCount - 1);
+                actions |= Play; dirty = true;
+            } else if (configuration.files && dx >= 521 && dx < 1801 && dy >= 367 && dy < 367 + 5 * 78.0f) {
+                const auto choice = ConfigurationFirstRow(configuration) + static_cast<size_t>((dy - 367) / 78);
+                if (choice < ConfigurationRowCount(configuration)) {
                     configuration.selected = choice; actions |= Play; dirty = true;
                 }
-            }
+            } else if (dy < 152 || dy > 996) actions |= Quit;
             e.Handled(true);
             return;
         }
@@ -320,33 +458,44 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             e.Handled(true); return;
         }
         if (settings) {
+            // NS HUEHUE controls page: rows of 76 (choices 70) from (1114, 392), 710 wide.
             if (panel.expanded) {
                 const size_t first = ControllerChoiceFirst(panel);
-                if (x >= 648 && x < 1178 && y >= ControllerChoiceTop) {
-                    const size_t i = first + static_cast<size_t>((y - ControllerChoiceTop) / ControllerChoiceHeight);
+                if (dx >= 1114 && dx < 1824 && dy >= 392) {
+                    const size_t i = first + static_cast<size_t>((dy - 392) / 70);
                     if (i < panel.devices.size() + 2 && i < first + ControllerVisibleChoices) {
                         panel.choice = i;
                         actions |= Play;
                     } else actions |= Quit;
                 } else actions |= Quit;
-            } else if (!panel.xbox && Contains({648, 510, 530, 34}, x, y)) {
-                panel.keyboard.open = true; panel.keyboard.capturing = false; dirty = true;
-            } else if (x < 620 || x > 1206 || y < 133 || y > 620) actions |= Panel;
-            else if (x >= 648 && x < 1178 && y >= ControllerRowTop &&
-                     y < ControllerRowTop + (panel.xbox ? 3 : 4) * ControllerRowHeight) {
-                setting_row = static_cast<unsigned>((y - ControllerRowTop) / ControllerRowHeight);
-                actions |= Play;
+            } else if (dx >= 1114 && dx < 1824 && dy >= 392 && dy < 392 + (panel.xbox ? 3 : 5) * 76.0f) {
+                setting_row = static_cast<unsigned>((dy - 392) / 76);
+                if (!panel.xbox && setting_row == 4) {
+                    panel.keyboard.open = true; panel.keyboard.capturing = false; dirty = true;
+                } else actions |= Play;
+            } else if (dy < 152 || dy > 996) actions |= Quit;
+        } else if (home) {
+            // The home menu: five 500x70 buttons from (96, 444), 88 apart.
+            if (dx >= 96 && dx < 596 && dy >= 444 && dy < 444 + NxHomeRows * 88.0f) {
+                home_row = std::min(NxHomeRows - 1, static_cast<unsigned>((dy - 444) / 88));
+                actions |= Play; dirty = true;
             }
-        } else if (x >= 839 && x < 1064 && y >= 43 && y < 87) actions |= AddFolder;
-        else if (x >= 1080 && x < 1226 && y >= 43 && y < 87) actions |= Panel;
-        else if (!loading && x >= 64 && x < 1246 && y >= 166 && y < 638) {
-            // The grid of the NX Zero layout: two rows of six 165x216 cards, 197 / 236 apart.
-            const size_t grid_column = std::min<size_t>(static_cast<size_t>((x - 64) / 197), PageSize - 1);
-            const size_t grid_row = y < 402 ? 0 : 1;
-            const size_t index = selected / (2 * PageSize) * (2 * PageSize) + grid_row * PageSize + grid_column;
-            if (index < scan.entries.size()) {
-                if (index == selected) actions |= Play;
-                selected = index; dirty = true;
+        } else if (dx >= 1414 && dx < 1824 && dy >= 287 && dy < 343) {
+            actions |= Search;
+        } else if (dx >= 96 && dx < 1000 && dy >= 285 && dy < 344) {
+            // The tabs (their widths follow the text; about 200 each is close enough to pick one).
+            library_tab = std::min(2U, static_cast<unsigned>((dx - 96) / 200));
+            library_focus = -1; metadata_dirty = true; dirty = true;
+        } else if (!loading && dx >= 96 && dx < 1824 && dy >= 396 && dy < 396 + 2 * 308.0f) {
+            // The grid: two rows of five 323x280 cards, 351 / 308 apart.
+            rebuild_shown();
+            const size_t column = std::min<size_t>(static_cast<size_t>((dx - 96) / 351.2f), PageSize - 1);
+            const size_t row = dy < 704 ? 0 : 1;
+            const size_t cursor = selected < position_of.size() && position_of[selected] != SIZE_MAX ? position_of[selected] : 0;
+            const size_t at = cursor / PageVisible * PageVisible + row * PageSize + column;
+            if (at < shown.size()) {
+                if (shown[at] == selected) actions |= Play;
+                selected = shown[at]; library_focus = -1; dirty = true;
             }
         }
         e.Handled(true);
@@ -480,12 +629,38 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     unsigned navigation_context = 0;
     std::optional<ControllerDevice> pad;
     ControllerCatalog<ControllerDevice> controllers;
-    // NX Zero HueHue: the home menu (Iniciar, Jogos, Configuracoes, Controles, Sobre) comes first;
-    // B in the library goes back to it, and B on it leaves the app.
-    constexpr unsigned NxHomeRows = 5;
-    bool home = true;
-    unsigned home_row = 0;
-    bool about = false;
+    auto library_say = [&](std::wstring text, std::chrono::steady_clock::time_point until) {
+        notice = std::move(text);
+        library_notice_until = until;
+        dirty = true;
+    };
+    auto remember_recent = [&](const std::string& path) {
+        recents.erase(std::remove(recents.begin(), recents.end(), path), recents.end());
+        recents.insert(recents.begin(), path);
+        if (recents.size() > RecentLimit) recents.resize(RecentLimit);
+        SaveList(L"ns_recent.txt", recents);
+    };
+    // LB/RB and the home menu: 0 Inicio, 1 Meus jogos, 2 Configuracoes, 3 Controles, 4 Sobre.
+    auto current_section = [&]() -> unsigned {
+        return about ? 4 : settings ? 3 : configuration.open ? 2 : home ? 0 : 1;
+    };
+    auto go_section = [&](unsigned section) {
+        about = section == 4;
+        about_credits = false;
+        settings = section == 3;
+        return_to_configuration = false;
+        panel.expanded = false;
+        panel.keyboard.open = panel.keyboard.capturing = false;
+        if (section == 2) {
+            configuration.open = true; configuration.files = false; configuration.selected = HomeSystem;
+            configuration.notice.clear(); refresh_setup();
+        } else {
+            configuration.open = false; configuration.files = false;
+        }
+        if (section <= 1) home = section == 0;
+        if (section == 1) library_focus = -1;
+        dirty = true;
+    };
     while (true) {
         window.Dispatcher().ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
         const auto now = std::chrono::steady_clock::now();
@@ -497,6 +672,9 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         }
         if (!system_page.notice.empty() && now >= system_notice_until) {
             system_page.notice.clear(); dirty = true;
+        }
+        if (!notice.empty() && now >= library_notice_until) {
+            notice.clear(); library_notice_until = std::chrono::steady_clock::time_point::max(); dirty = true;
         }
         if (!options_notice.empty() && now >= options_notice_until) {
             options_notice.clear(); dirty = true;
@@ -560,7 +738,28 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 if (hit(GamepadButtons::DPadDown)) directions |= Down;
                 if (hit(GamepadButtons::DPadLeft)) directions |= Left;
                 if (hit(GamepadButtons::DPadRight)) directions |= Right;
-                if (system_page.name_editor) {
+                if (search_editor) {
+                    // The same keyboard as the name: A types, X deletes, Y space, Menu done, B cancels.
+                    const std::pair<bool, MenuAction> presses[] = {
+                        {(directions & Up) != 0, MenuAction::Up},
+                        {(directions & Down) != 0, MenuAction::Down},
+                        {(directions & Left) != 0, MenuAction::Left},
+                        {(directions & Right) != 0, MenuAction::Right},
+                        {hit(GamepadButtons::A), MenuAction::Confirm},
+                        {hit(GamepadButtons::X), MenuAction::Alternate},
+                        {hit(GamepadButtons::Y), MenuAction::Refresh},
+                        {hit(GamepadButtons::View) || hit(GamepadButtons::LeftShoulder), MenuAction::PreviousTab},
+                        {hit(GamepadButtons::Menu) || hit(GamepadButtons::RightShoulder), MenuAction::NextTab},
+                        {hit(GamepadButtons::B), MenuAction::Back},
+                    };
+                    for (const auto& [pressed, action] : presses) {
+                        if (!pressed || finish_search) continue;
+                        const auto result = search_editor->Apply(*TextEntryCommand(action));
+                        if (result != TextEntry::Result::None) finish_search = result == TextEntry::Result::Done;
+                    }
+                    query = search_editor->Value();
+                    if (directions || edges != GamepadButtons::None) dirty = true;
+                } else if (system_page.name_editor) {
                     // Like the console's keyboard: A types, X deletes, Y adds a space, Menu (or RB)
                     // is done, View (or LB) is Shift and B leaves without saving. The bumpers are
                     // what a game's keyboard uses, where + and - belong to the game menu.
@@ -593,12 +792,14 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     if (!panel.keyboard.open) {
                         actions |= directions;
                         if (hit(GamepadButtons::A)) actions |= Play;
+                        const bool top = library_top();
                         if (hit(GamepadButtons::X)) {
                             if (settings || content_session || missing_content) actions |= Swap;
+                            else if (top) actions |= Options; // NS HUEHUE: X Opcoes
                             else if (!configuration.open) actions |= AddFolder;
                         }
-                        if (hit(GamepadButtons::Y)) actions |= Refresh;
-                        if (hit(GamepadButtons::Menu)) actions |= Options;
+                        if (hit(GamepadButtons::Y)) actions |= top ? Search : Refresh; // Y Buscar
+                        if (hit(GamepadButtons::Menu)) actions |= top ? Refresh : Options;
                         if (hit(GamepadButtons::View)) actions |= Panel;
                         if (hit(GamepadButtons::LeftShoulder)) actions |= PreviousTab;
                         if (hit(GamepadButtons::RightShoulder)) actions |= NextTab;
@@ -615,6 +816,16 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             finish_name_editor.reset();
             dirty = true;
         }
+        if (finish_search) {
+            // Done keeps the filter; B puts back the one from before.
+            if (!*finish_search) query = search_before;
+            search_editor.reset();
+            finish_search.reset();
+            library_focus = -1;
+            metadata_dirty = true;
+            dirty = true;
+        }
+        if (search_editor) actions = 0;
         if (picker) {
             actions = 0; // The system picker owns input until it returns.
             if (picker.Status() != winrt::Windows::Foundation::AsyncStatus::Started) {
@@ -650,7 +861,11 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         }
         if (missing_content) {
             if (actions & Quit) { missing_content = false; actions = 0; }
-            else if (actions & Swap) { Content::AllowMissingForNextLaunch(selected_path); return selected_path; }
+            else if (actions & Swap) {
+                Content::AllowMissingForNextLaunch(selected_path);
+                remember_recent(selected_path);
+                return selected_path;
+            }
             else if (actions & Play) missing_content = false;
             else actions = 0;
             dirty = true;
@@ -660,7 +875,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             if (validation.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
                 try {
                     const auto error = validation.get();
-                    if (error.empty()) return selected_path;
+                    if (error.empty()) { remember_recent(selected_path); return selected_path; }
                     if (error == "content-missing") missing_content = true;
                     else notice = Wide(error);
                 } catch (const std::exception& e) { notice = Wide(e.what()); }
@@ -710,34 +925,76 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             }
             actions = 0;
         }
+        // NS HUEHUE: LB/RB walk the five sections wherever no page or modal is open.
+        const bool modal = game_options.open || panel.keyboard.open || panel.expanded || system_page.open ||
+                           configuration.files || configuration.busy || picker || validation.valid() ||
+                           missing_content || about_credits;
+        if (!modal && (actions & (PreviousTab | NextTab))) {
+            const unsigned section = current_section();
+            go_section((actions & NextTab) ? (section + 1) % 5 : (section + 4) % 5);
+            actions = 0;
+        }
+        if (about && actions && !modal) {
+            if (actions & Play) about_credits = true;
+            else if (actions & Quit) about = false;
+            actions = 0;
+            dirty = true;
+        } else if (about_credits && actions) {
+            if (actions & (Quit | Play)) about_credits = false;
+            actions = 0;
+            dirty = true;
+        }
         if (home && actions && !game_options.open && !settings && !configuration.open &&
             !panel.keyboard.open && !picker && !validation.valid() && !missing_content &&
             !configuration.busy) {
             const unsigned pressed = actions;
             actions = 0;
-            if (about) {
-                if (pressed & (Quit | Play)) about = false;
-            } else {
-                if (pressed & Quit) return std::nullopt;
-                if (pressed & Up) home_row = (home_row + NxHomeRows - 1) % NxHomeRows;
-                if (pressed & Down) home_row = (home_row + 1) % NxHomeRows;
-                if (pressed & Play) {
-                    if (home_row == 0) {
-                        // Iniciar: the selected game (the library keeps the last one) or the list.
-                        home = false;
-                        if (!loading && !scan.entries.empty()) actions = Play;
-                    } else if (home_row == 1) {
-                        home = false;
-                    } else if (home_row == 2) {
-                        actions = AddFolder; // the settings page, over the home menu
-                    } else if (home_row == 3) {
-                        actions = Panel; // the controller page
-                    } else {
-                        about = true;
-                    }
+            if (pressed & Quit) return std::nullopt;
+            if (pressed & Up) home_row = (home_row + NxHomeRows - 1) % NxHomeRows;
+            if (pressed & Down) home_row = (home_row + 1) % NxHomeRows;
+            if (pressed & Play) {
+                if (home_row == 0) {
+                    // Inicio: the game the library has selected (the last one played), or the list.
+                    home = false;
+                    if (!loading && !scan.entries.empty()) actions = Play;
+                } else {
+                    go_section(home_row);
                 }
             }
             dirty = true;
+        }
+        // The library's top row: the three tabs and the search box (Up from the first grid row).
+        if (library_top() && library_focus >= 0 && actions) {
+            if (actions & Left) library_focus = library_focus > 0 ? library_focus - 1 : 3;
+            if (actions & Right) library_focus = (library_focus + 1) % 4;
+            if (actions & (Down | Quit)) library_focus = -1;
+            if (actions & Play) {
+                if (library_focus < 3) {
+                    library_tab = static_cast<unsigned>(library_focus);
+                    metadata_dirty = true;
+                } else {
+                    search_before = query;
+                    search_editor.emplace(query, 32);
+                }
+            }
+            if (actions & Search) { search_before = query; search_editor.emplace(query, 32); }
+            actions &= Options | Refresh | Panel;
+            dirty = true;
+        }
+        if (library_top() && (actions & Search)) {
+            search_before = query;
+            search_editor.emplace(query, 32);
+            actions = 0;
+            dirty = true;
+        }
+        if (library_top() && !loading) {
+            rebuild_shown();
+            if (!shown.empty() && position_of[std::min(selected, position_of.size() - 1)] == SIZE_MAX) {
+                selected = shown.front();
+                dirty = true;
+            }
+            // Nothing on screen to start or to open options for.
+            if (shown.empty()) actions &= ~(Play | Options);
         }
         if (actions & Options && !game_options.open && !settings && !configuration.open &&
             !panel.keyboard.open && !loading && !picker && !validation.valid() && !scan.entries.empty()) {
@@ -942,12 +1199,24 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 dirty = true;
             } else if (actions) {
                 const auto send = [&](unsigned bit, GameOptionsInput input) {
-                    if (actions & bit) HandleGameOptionsInput(game_options, input);
+                    if (actions & bit) HandleGameOptionsInput(game_options, input, 1);
                 };
                 send(Up, GameOptionsInput::Up);
                 send(Down, GameOptionsInput::Down);
                 send(Play, GameOptionsInput::Confirm);
                 send(Quit, GameOptionsInput::Back);
+                if (game_options.extra) {
+                    // NS HUEHUE: the last row adds the game to the favorites or removes it.
+                    game_options.extra.reset();
+                    const auto& path = scan.entries[game_options.game].launch_path;
+                    const auto found = std::find(favorites.begin(), favorites.end(), path);
+                    const bool added = found == favorites.end();
+                    if (added) favorites.push_back(path);
+                    else favorites.erase(found);
+                    if (SaveList(L"ns_favorites.txt", favorites)) notify(added ? T::NsFavoriteAdded : T::NsFavoriteRemoved);
+                    else notify(T::SystemSaveFailed);
+                    metadata_dirty = true;
+                }
                 if (game_options.confirm_discard || game_options.discard) {
                     auto& game = scan.entries[game_options.game];
                     if (game.pulse_saved.empty()) {
@@ -1033,7 +1302,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 else configuration.open = false;
                 dirty = true; actions &= ~Quit;
             }
-            else if (!home) { home = true; dirty = true; actions &= ~Quit; }
+            else if (!home) { home = true; library_focus = -1; dirty = true; actions &= ~Quit; }
             else return std::nullopt;
         }
         if (actions & Panel && !configuration.open) { settings = !settings; panel.keyboard.open = panel.keyboard.capturing = false; panel.expanded = false; dirty = true; }
@@ -1122,8 +1391,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         }
         if (actions & Play && !configuration.open && !settings && !panel.keyboard.open && !loading && !scan.entries.empty()) {
             selected_path = scan.entries[selected].launch_path;
-            notice = Tr(T::CheckingGame);
-            dirty = true;
+            library_say(std::wstring{Tr(T::CheckingGame)}, std::chrono::steady_clock::time_point::max());
             metadata_worker.request_stop();
             metadata = {};
             std::packaged_task<std::string()> task{[path = selected_path, old_metadata = std::move(metadata_worker)]() mutable {
@@ -1191,10 +1459,26 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             }
         } else {
             actions &= ~(Swap | Zone);
-            if (actions & Left && selected) { --selected; dirty = true; }
-            if (actions & Right && selected + 1 < scan.entries.size()) { ++selected; dirty = true; }
-            if (actions & Up && selected >= PageSize) { selected -= PageSize; dirty = true; }
-            if (actions & Down && selected + PageSize < scan.entries.size()) { selected += PageSize; dirty = true; }
+            // NS HUEHUE: the grid walks the entries it shows, five to a row; Up from the first row
+            // reaches the tabs.
+            if (library_top() && !loading && (actions & (Left | Right | Up | Down))) {
+                rebuild_shown(); // A scan may have just finished.
+                if (shown.empty()) {
+                    if (actions & Up) library_focus = static_cast<int>(library_tab);
+                } else {
+                    size_t at = position_of[selected] == SIZE_MAX ? 0 : position_of[selected];
+                    if (actions & Left && at) --at;
+                    if (actions & Right && at + 1 < shown.size()) ++at;
+                    if (actions & Up) {
+                        if (at >= PageSize) at -= PageSize;
+                        else library_focus = static_cast<int>(library_tab);
+                    }
+                    if (actions & Down && at + PageSize < shown.size()) at += PageSize;
+                    else if (actions & Down && at / PageSize < (shown.size() - 1) / PageSize) at = shown.size() - 1;
+                    selected = shown[at];
+                }
+                dirty = true;
+            }
         }
         if (actions & Swap) { options.swap_face_buttons = !options.swap_face_buttons; dirty = true; }
         if (actions & Zone) {
@@ -1214,7 +1498,9 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 auto batch = metadata.get();
                 if (batch.generation == generation) {
                     // Merge field by field: a names-only batch must not drop icons already shown.
-                    const size_t page = selected / PageSize * PageSize;
+                    rebuild_shown();
+                    const size_t cursor = selected < position_of.size() && position_of[selected] != SIZE_MAX ? position_of[selected] : 0;
+                    const size_t page = cursor / PageVisible * PageVisible;
                     const size_t window_first = page >= PageSize ? page - PageSize : 0;
                     for (auto& entry : batch.entries) {
                         auto found = std::find_if(scan.entries.begin(), scan.entries.end(), [&](const auto& e) {
@@ -1236,7 +1522,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                         }
                         found->title_loaded |= entry.title_loaded;
                         // The player may have paged on meanwhile: keep icons only inside the window.
-                        if (batch.icons && index >= window_first && index < page + 2 * PageSize)
+                        if (batch.icons && position_of[index] != SIZE_MAX && position_of[index] >= window_first &&
+                            position_of[index] < page + PageVisible + PageSize)
                             found->icon = std::move(entry.icon);
                     }
                     dirty = true;
@@ -1245,7 +1532,14 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         }
         // Metadata, one worker at a time and in priority order: the covers around the cursor, then
         // every title the cache already has, then the rest of the library into the cache.
-        const size_t page = selected / PageSize * PageSize;
+        // The grid's page in what it shows (the tab and search pick the entries); covers load for it
+        // and a row on each side.
+        if (query != filtered_query || library_tab != filtered_tab) {
+            filtered_query = query; filtered_tab = library_tab; metadata_dirty = true;
+        }
+        rebuild_shown();
+        const size_t grid_at = selected < position_of.size() && position_of[selected] != SIZE_MAX ? position_of[selected] : 0;
+        const size_t page = grid_at / PageVisible * PageVisible;
         // The player moved to another page: background work yields to its covers.
         if (metadata.valid() && metadata_background && (metadata_dirty || retained_page != page))
             metadata_worker.request_stop();
@@ -1256,25 +1550,26 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 metadata_dirty = false;
                 retained_page = page;
                 const size_t window_first = page >= PageSize ? page - PageSize : 0;
-                const size_t window_end = std::min(page + 2 * PageSize, scan.entries.size());
+                const size_t window_end = std::min(page + PageVisible + PageSize, shown.size());
                 for (size_t i = 0; i < scan.entries.size(); ++i) {
                     auto& entry = scan.entries[i];
-                    if ((i < window_first || i >= window_end) && entry.metadata_loaded) {
+                    const size_t at = position_of[i];
+                    if ((at == SIZE_MAX || at < window_first || at >= window_end) && entry.metadata_loaded) {
                         std::vector<unsigned char>{}.swap(entry.icon);
                         entry.metadata_loaded = false;
                     }
                 }
                 // The visible page first, then the next one (where the player usually goes), then the previous.
                 const auto want = [&](size_t first, size_t last) {
-                    for (size_t i = first; i < std::min(last, scan.entries.size()); ++i) {
-                        auto& entry = scan.entries[i];
+                    for (size_t k = first; k < std::min(last, shown.size()); ++k) {
+                        auto& entry = scan.entries[shown[k]];
                         if (entry.metadata_loaded) continue;
                         entry.metadata_loaded = true;
                         requested.push_back(entry);
                     }
                 };
-                want(page, page + PageSize);
-                want(page + PageSize, page + 2 * PageSize);
+                want(page, page + PageVisible);
+                want(page + PageVisible, page + PageVisible + PageSize);
                 want(window_first, page);
                 request.icons = true;
             } else {
@@ -1320,10 +1615,14 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             const GameOptionsView options_view{
                 game_options, game_options.open && game_options.game < scan.entries.size() ? &scan.entries[game_options.game] : nullptr,
                 cheat_session ? &*cheat_session : nullptr, cheats_page, options_notice, content_session.get(),
-                mod_session.get(), &mods_page};
+                mod_session.get(), &mods_page,
+                game_options.game < scan.entries.size() &&
+                    std::find(favorites.begin(), favorites.end(), scan.entries[game_options.game].launch_path) != favorites.end()};
+            rebuild_shown();
             canvas->Draw({scan, selected, loading, settings, setting_row, options, notice, panel,
                           configuration, system_page, options_view, missing_content, home, home_row,
-                          about});
+                          about, library_tab, library_focus, &shown, &favorites, query,
+                          search_editor ? &*search_editor : nullptr, about_credits});
             dirty = false;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds{16});

@@ -1,4 +1,4 @@
-# Instala o HueHue Switch no runner Windows, abre a biblioteca e tira prints das telas principais.
+# Instala o NS HUEHUE no runner Windows, abre a biblioteca e tira prints das telas principais.
 # Os PNGs ficam em $Out. Roda num PC sem GPU (Microsoft Basic Render Driver): o desenho dos menus
 # e o mesmo codigo Direct2D do Xbox, so a escala da janela muda.
 param([string] $Pkg = "pkg", [string] $Out = "shots")
@@ -18,7 +18,7 @@ function Shot([string] $name) {
     Write-Host "print: $name"
 }
 function Key([string] $keys) {
-    $null = $shell.AppActivate("NX Zero HueHue Switch")
+    $null = $shell.AppActivate("NS HUEHUE")
     Start-Sleep -Milliseconds 400
     [System.Windows.Forms.SendKeys]::SendWait($keys)
     Start-Sleep -Seconds 2
@@ -49,45 +49,81 @@ function Close {
     Start-Sleep -Seconds 3
 }
 
+# Telas na ordem do pacote de design (design/ns-huehue-v1): 01 inicio, 42-43 sobre e creditos,
+# 18 controles, 11 configuracoes, 09 biblioteca vazia; depois com jogos: 02 grade, 07 opcoes,
+# favorito, 05 busca, 03 favoritos.
 # 1. Primeira abertura: biblioteca vazia.
 Launch
-Shot "1-inicio"
+Shot "01-inicio"
 Key "{DOWN}"
 Key "{DOWN}"
 Key "{DOWN}"
 Key "{DOWN}"
 Key "{ENTER}"
-Shot "2-sobre"
+Shot "42-sobre"
+Key "{ENTER}"
+Shot "43-creditos"
+Key "{ESC}"
 Key "{ESC}"
 Key "{UP}"
 Key "{ENTER}"
-Shot "3-controles"
+Shot "18-controles"
 Key "{ESC}"
 Key "{UP}"
 Key "{ENTER}"
-Shot "4-configuracoes"
+Shot "11-configuracoes"
+Key "{ENTER}"
+Shot "11b-sistema"
+Key "{ESC}"
 Key "{ESC}"
 Key "{UP}"
 Key "{ENTER}"
-Shot "5-biblioteca-vazia"
+Shot "09-biblioteca-vazia"
 Close
 
 $games = Join-Path $env:LOCALAPPDATA "Packages\$($app.PackageFamilyName)\LocalState\games"
 New-Item -ItemType Directory -Force $games | Out-Null
-foreach ($n in @("Turbo Rally", "Reino Perdido", "Gol de Placa Arena", "Pulo Estelar", "Corrida Espacial", "Ilha do Tesouro")) {
+foreach ($n in @("Turbo Rally", "Reino Perdido", "Gol de Placa Arena", "Pulo Estelar", "Corrida Espacial",
+                 "Ilha do Tesouro", "Fazendinha Feliz", "Robo Futebol", "Castelo de Cartas", "Tuba Tuba Party",
+                 "Mestre do Kart", "Ninja das Ruas")) {
     New-Item -ItemType File -Force (Join-Path $games "$n.nsp") | Out-Null
 }
 Launch
-Shot "6-inicio-continuar"
+Shot "01b-inicio-com-jogos"
 Key "{DOWN}"
 Key "{ENTER}"
-Shot "7-biblioteca"
+Shot "02-meus-jogos"
 Key "{RIGHT}"
-Shot "8-selecao"
-Key "{F2}"
-Shot "9-opcoes-do-jogo"
+Shot "02b-selecao"
+Key "x"
+Shot "07-opcoes-do-jogo"
+Key "{DOWN}"
+Key "{DOWN}"
+Key "{DOWN}"
+Key "{DOWN}"
+Key "{DOWN}"
+Key "{ENTER}"
+Shot "07b-favorito-adicionado"
+Key "{ESC}"
+Key "y"
+Shot "05-buscar"
+Key "tu"
+Key "{ENTER}"
+Shot "05b-resultado-da-busca"
+Key "y"
+Key "{BACKSPACE}{BACKSPACE}"
+Key "{ENTER}"
+Key "{UP}"
+Key "{RIGHT}"
+Key "{ENTER}"
+Shot "03-favoritos"
+Key "{RIGHT}"
+Key "{ENTER}"
+Shot "04-recentes"
+Key "e"
+Shot "lb-rb-configuracoes"
 Key "{ESC}"
 Key "{ESC}"
-Shot "10-volta-ao-inicio"
+Shot "01c-volta-ao-inicio"
 Close
 Get-ChildItem $Out

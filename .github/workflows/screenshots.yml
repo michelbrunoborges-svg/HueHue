@@ -6,11 +6,17 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release a fotografar (ex.: v0.3.9.0)"
-        required: true
+        description: "Release a fotografar (ex.: v0.3.9.0); vazio usa o artifact de run_id"
+        required: false
+        default: ""
+      run_id:
+        description: "Run do Build Xbox cujo artifact fotografar (branches de trabalho)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   shots:
@@ -19,11 +25,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Baixar o Release
+      - name: Baixar o Release ou o artifact
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release download "${{ inputs.tag }}" -R "${{ github.repository }}" -D pkg
+        run: |
+          if ("${{ inputs.tag }}") { gh release download "${{ inputs.tag }}" -R "${{ github.repository }}" -D pkg }
+          else {
+            gh run download "${{ inputs.run_id }}" -R "${{ github.repository }}" -p "huehue-switch-*" -D dl
+            New-Item -ItemType Directory -Force pkg | Out-Null
+            Get-ChildItem dl -Recurse -File | Copy-Item -Destination pkg
+          }
 
       - name: Instalar, abrir e tirar os prints
         shell: powershell
@@ -34,9 +46,9 @@ jobs:
         shell: pwsh
         run: |
           if (-not (Test-Path shots)) { New-Item -ItemType Directory shots | Out-Null }
-          "release ${{ inputs.tag }} / run ${{ github.run_id }} / ${{ job.status }}" | Set-Content shots\RUN.txt
+          "release ${{ inputs.tag }}${{ inputs.run_id }} / run ${{ github.run_id }} / ${{ job.status }}" | Set-Content shots\RUN.txt
           Set-Location shots
           git init -q -b screenshots
           git config user.name "huehue-ci"; git config user.email "ci@users.noreply.github.com"
-          git add -A; git commit -q -m "prints ${{ inputs.tag }}"
+          git add -A; git commit -q -m "prints ${{ inputs.tag }}${{ inputs.run_id }}"
           git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" screenshots
