@@ -201,6 +201,8 @@ jobs:
           if-no-files-found: error
 
       - name: Publicar Release
+        # Branches de trabalho so deixam o artifact; Release sai da main.
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.APP_VERSION }}
