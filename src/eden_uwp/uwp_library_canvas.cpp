@@ -651,7 +651,7 @@ private:
         brush->SetColor(D2D1::ColorF(0, 0, 0, 0.86f));
         target->FillRectangle(D2D1::RectF(0, 0, 1280, 720), brush.Get());
         Round(L::EditorX, L::EditorY, K::Width, K::Height, 12, Palette::Panel);
-        DrawTextEntryPanel(*this, {editor, Tr(T::NsSearchGames), Tr(T::NameEditorHint), std::wstring_view{}},
+        DrawTextEntryPanel(*this, {editor, Tr(T::NsSearchGames), std::wstring_view{}, std::wstring_view{}},
                            L::EditorX, L::EditorY);
         const float left = L::EditorX + K::Left;
         const float footer = L::EditorY + K::Footer;
