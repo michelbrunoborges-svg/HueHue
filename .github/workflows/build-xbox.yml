@@ -266,7 +266,8 @@ jobs:
           if-no-files-found: error
 
       - name: Conferir o pacote (assinatura, conteudo e instalacao como atualizacao)
-        shell: pwsh
+        # Windows PowerShell: o Add-AppxPackage nao funciona no pwsh 7 (0x80131539).
+        shell: powershell
         env:
           GH_TOKEN: ${{ github.token }}
         run: .github\scripts\check-package.ps1 -Pkg build-uwp\package -Version $env:APP_VERSION -Repo "${{ github.repository }}"
