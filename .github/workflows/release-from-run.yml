@@ -40,7 +40,7 @@ jobs:
           ls -la pkg
           echo "::notice::artifact $art, versao $version, commit $sha"
           flag=""; [ "${{ inputs.prerelease }}" = "true" ] && flag="--prerelease"
-          if ! gh release create "v$version" pkg/* -R "$REPO" --target "$sha" --title "${{ inputs.name }} $version" $flag \
+          if ! gh release create "v$version" pkg/* -R "$REPO" --title "${{ inputs.name }} $version" $flag \
             --notes "Pacote do build ${{ inputs.run_id }} (commit $sha). Instale o .cer, o VCLibs e o .appx pelo Device Portal." > out.txt 2>&1; then
             echo "::error::gh release create: $(tr '\n' ' ' < out.txt)"
             exit 1
