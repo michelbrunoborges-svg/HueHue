@@ -46,6 +46,9 @@ constexpr std::string_view ENGINE = "virtual_gamepad";
 constexpr std::size_t PLAYER = 0;
 /// Eden's handheld controller reads virtual_gamepad port 8; it gets the same input as player 1.
 constexpr std::size_t HANDHELD_PORT = 8;
+/// NS HUEHUE local multiplayer: the other connected pads become players 2 to 4 (ports 1-3), in
+/// the order the console lists them.
+constexpr std::size_t EXTRA_PLAYERS = 3;
 static_assert(static_cast<size_t>(VirtualButton::ButtonCapture) + 1 == KeyboardButtonCount);
 static_assert(static_cast<u32>(VirtualButton::ButtonSL) == PadBit::SLLeft &&
               static_cast<u32>(VirtualButton::ButtonCapture) == PadBit::Capture);
@@ -447,6 +450,11 @@ void ApplyControllerStyleSettings(ConsoleControllerStyle style) {
     players[PLAYER].controller_type = ToSettingsType(style);
     players[HANDHELD_PORT].connected = handheld;
     players[HANDHELD_PORT].controller_type = Settings::ControllerType::Handheld;
+    // Players 2-4 connect once a second pad is there (GamepadInput::SyncExtraPlayers).
+    for (std::size_t port = 1; port <= EXTRA_PLAYERS; ++port) {
+        players[port].connected = false;
+        players[port].controller_type = Settings::ControllerType::ProController;
+    }
     if (handheld) {
         // A console with its Joy-Cons attached is undocked; Eden's settings force the same.
         Settings::values.use_docked_mode.SetValue(Settings::ConsoleMode::Handheld);
@@ -506,6 +514,45 @@ ConsoleControllerStyle GamepadInput::SyncControllerStyle() {
              ConsoleControllerStyleLogName(current),
              ConsoleControllerStyleLogName(wanted));
     return seen();
+}
+
+void GamepadInput::ReleasePort(std::size_t port) {
+    for (u32 button = 0; button < NUM_BUTTONS; ++button)
+        gamepad->SetButtonState(port, static_cast<int>(button), false);
+    gamepad->SetStickPosition(port, VirtualStick::Left, 0.0f, 0.0f);
+    gamepad->SetStickPosition(port, VirtualStick::Right, 0.0f, 0.0f);
+}
+
+void GamepadInput::SyncExtraPlayers(const std::array<std::optional<ControllerDevice>, 3>& pads,
+                                    std::array<bool, 3>& connected, ConsoleControllerStyle player_style) {
+    using Core::HID::NpadIdType;
+    using Core::HID::NpadStyleIndex;
+    const auto tag = hid->GetSupportedStyleTag();
+    // Players 2-4 hold a Pro Controller, or a pair of Joy-Cons when the game takes only those
+    // (or player 1 holds a pair).
+    const bool dual = tag.joycon_dual != 0 && (tag.fullkey == 0 || player_style == ConsoleControllerStyle::DualJoycon);
+    const auto wanted = dual ? NpadStyleIndex::JoyconDual : NpadStyleIndex::Fullkey;
+    const bool accepted = tag.fullkey != 0 || tag.joycon_dual != 0;
+    static constexpr std::array ids{NpadIdType::Player2, NpadIdType::Player3, NpadIdType::Player4};
+    for (std::size_t i = 0; i < ids.size(); ++i) {
+        auto* controller = hid->GetEmulatedController(ids[i]);
+        if (!controller) continue;
+        const bool want = pads[i].has_value() && accepted;
+        if (!want) {
+            if (controller->IsConnected()) controller->Disconnect();
+            connected[i] = false;
+            continue;
+        }
+        if (controller->IsConnected() && controller->GetNpadStyleIndex() == wanted) {
+            connected[i] = true;
+            continue;
+        }
+        controller->Disconnect();
+        controller->SetNpadStyleIndex(wanted);
+        controller->Connect();
+        connected[i] = controller->IsConnected();
+        LOG_INFO(Input, "UWP input: player {} connected as {}", i + 2, dual ? "dual Joy-Con" : "Pro Controller");
+    }
 }
 
 std::vector<MenuAction> GamepadInput::TakeMenuActions() {
@@ -575,6 +622,10 @@ void GamepadInput::Run(std::stop_token stop) {
     MenuInputCapture menu_capture;
     ControllerCatalog<ControllerDevice> controllers;
     std::vector<bool> announced(script.size());
+    // Players 2-4: the other pads, each fed to its own port.
+    std::array<std::optional<ControllerDevice>, EXTRA_PLAYERS> extra;
+    std::array<PadState, EXTRA_PLAYERS> extra_applied{};
+    std::array<bool, EXTRA_PLAYERS> extra_connected{};
     while (!stop.stop_requested()) {
         // The gamepad list is cheap to query but changes rarely: look again twice a second.
         const ControllerOptions current_options = Options();
@@ -588,6 +639,26 @@ void GamepadInput::Run(std::stop_token stop) {
                     (pad && selected && pad->id != selected->id);
                 if (catalog_changed || selection_changed)
                     pad = selected ? std::optional<ControllerDevice>{*selected} : std::nullopt;
+                if (catalog_changed || selection_changed) {
+                    // The next pads in the list, after player 1's, are players 2, 3 and 4.
+                    std::size_t next = 0;
+                    std::array<std::optional<ControllerDevice>, EXTRA_PLAYERS> found;
+                    for (const auto& device : devices) {
+                        if (next == EXTRA_PLAYERS) break;
+                        if (!bool(device) || (pad && device.id == pad->id)) continue;
+                        found[next++] = device;
+                    }
+                    for (std::size_t i = 0; i < EXTRA_PLAYERS; ++i) {
+                        const bool same = bool(found[i]) == bool(extra[i]) &&
+                                          (!found[i] || found[i]->id == extra[i]->id);
+                        if (same) continue;
+                        extra[i] = found[i];
+                        extra_applied[i] = {};
+                        ReleasePort(1 + i);
+                        LOG_INFO(Input, "UWP input: player {} is {}", i + 2,
+                                 extra[i] ? winrt::to_string(extra[i]->name) : std::string{"not connected"});
+                    }
+                }
                 if (selection_changed) {
                     if (pad) {
                         LOG_INFO(Input, "UWP input: player 1 is {} ({}, {} layout, {} connected)",
@@ -606,6 +677,7 @@ void GamepadInput::Run(std::stop_token stop) {
         // Games declare the controllers they accept after boot: check again twice a second, and
         // at once after the menu picked another style.
         if (style_polls++ % 125 == 0 || style_changed.load()) style = SyncControllerStyle();
+        if (hid && style_polls % 25 == 1) SyncExtraPlayers(extra, extra_connected, style);
         PadState state{};
         if (pad) {
             try {
@@ -707,6 +779,37 @@ void GamepadInput::Run(std::stop_token stop) {
                 }
             }
             applied = state;
+        }
+        for (std::size_t i = 0; i < EXTRA_PLAYERS; ++i) {
+            if (!extra[i] || !extra_connected[i]) continue;
+            PadState other{};
+            try {
+                other = ReadGamepad(*extra[i], current_options);
+            } catch (...) {
+                extra[i].reset();
+                ReleasePort(1 + i);
+                continue;
+            }
+            const StylePad mapped = MapPadToStyle(
+                {other.buttons, other.left_x, other.left_y, other.right_x, other.right_y},
+                style == ConsoleControllerStyle::DualJoycon ? ConsoleControllerStyle::DualJoycon
+                                                            : ConsoleControllerStyle::Pro);
+            other = {mapped.buttons, mapped.left_x, mapped.left_y, mapped.right_x, mapped.right_y};
+            // The guest must not see what player 1 uses to drive the in-game menu.
+            if (in_menu) other = {};
+            PadState& last = extra_applied[i];
+            if (other == last) continue;
+            const std::size_t port = 1 + i;
+            for (u32 button = 0; button < NUM_BUTTONS; ++button) {
+                const u32 bit = 1U << button;
+                if ((other.buttons ^ last.buttons) & bit)
+                    gamepad->SetButtonState(port, static_cast<int>(button), (other.buttons & bit) != 0);
+            }
+            if (other.left_x != last.left_x || other.left_y != last.left_y)
+                gamepad->SetStickPosition(port, VirtualStick::Left, other.left_x, other.left_y);
+            if (other.right_x != last.right_x || other.right_y != last.right_y)
+                gamepad->SetStickPosition(port, VirtualStick::Right, other.right_x, other.right_y);
+            last = other;
         }
         std::this_thread::sleep_for(POLL_INTERVAL);
     }

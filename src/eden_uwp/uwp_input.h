@@ -9,6 +9,8 @@
 // Both drive Eden's "virtual_gamepad" input engine, which hid_core binds to every player.
 
 #pragma once
+#include <array>
+#include <optional>
 
 #include <atomic>
 #include <memory>
@@ -32,6 +34,7 @@ class VirtualGamepad;
 }
 
 namespace EdenXbox {
+struct ControllerDevice;
 
 /// One step of a boot.cfg input script: hold `buttons` (VirtualButton bits) and the stick
 /// directions from `at_ms` after the guest starts, for `duration_ms`.
@@ -109,6 +112,11 @@ private:
     void Run(std::stop_token stop);
     /// The style the guest currently sees; in Auto, switches to one the game supports first.
     ConsoleControllerStyle SyncControllerStyle();
+    /// NS HUEHUE: connects players 2-4 for the pads in `pads` (and disconnects the rest).
+    void SyncExtraPlayers(const std::array<std::optional<ControllerDevice>, 3>& pads, std::array<bool, 3>& connected,
+                          ConsoleControllerStyle player_style);
+    /// Lets go of every button and centers the sticks of virtual_gamepad port `port`.
+    void ReleasePort(std::size_t port);
 
     std::shared_ptr<InputCommon::VirtualGamepad> gamepad;
     std::vector<InputStep> script;

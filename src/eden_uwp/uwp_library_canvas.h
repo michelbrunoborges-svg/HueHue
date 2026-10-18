@@ -12,6 +12,7 @@
 #include "eden_uwp/game_options_page.h"
 #include "eden_uwp/mods/mod_session.h"
 #include "eden_uwp/mods/mods_page.h"
+#include "eden_uwp/game_profile.h"
 #include "eden_uwp/online_settings.h"
 #include "eden_uwp/system_page.h"
 #include "eden_uwp/text_entry_panel.h"
@@ -36,7 +37,13 @@ struct GameOptionsView {
     const Content::ContentSession* content{};
     const Mods::ModSession* mods{};      ///< The open mods page's.
     const Mods::ModsPage* mods_page{};
-    std::uint8_t profile{}; ///< NS HUEHUE: the game's GameProfile (game_profile.h).
+    // NS HUEHUE: what the game has, shown on its rows (empty / 0 when none).
+    std::wstring_view update_version{}; ///< The active update's version.
+    std::size_t dlc_count{};            ///< DLC turned on.
+    std::size_t mods_count{};           ///< Mods turned on.
+    std::uint8_t profile{}; ///< NS HUEHUE: the game's GameProfile, for its row.
+    const GameTuning* tuning{}; ///< NS HUEHUE: the Desempenho e graficos page, while open.
+    std::size_t tuning_row{};
     bool favorite{}; ///< NS HUEHUE: the game is a favorite (the list's last row adds or removes it).
 };
 /// Everything one frame of the library shows.

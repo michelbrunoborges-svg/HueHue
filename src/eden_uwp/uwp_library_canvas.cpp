@@ -664,18 +664,29 @@ private:
                 value = swap_prompt_faces ? L"B" : L"A";
             } else if (i <= options.size()) {
                 title = Tr(GameOptionTitle(options[i - 1]));
+                // What the game has, so the player sees it without opening each page.
+                if (options[i - 1] == GameOption::Updates)
+                    value = view.update_version.empty() ? std::wstring{Tr(T::NsNoneActive)}
+                                                        : I18n::Format(T::NsUpdateActive, {std::wstring{view.update_version}});
+                else if (options[i - 1] == GameOption::Dlc)
+                    value = view.dlc_count ? I18n::Plural(T::NsDlcActiveOne, T::NsDlcActiveOther, view.dlc_count)
+                                           : std::wstring{Tr(T::NsNoneActive)};
+                else if (options[i - 1] == GameOption::Mods)
+                    value = view.mods_count ? I18n::Plural(T::NsModsActiveOne, T::NsModsActiveOther, view.mods_count)
+                                            : std::wstring{Tr(T::NsNoneActive)};
                 if (options[i - 1] == GameOption::Pulse)
                     value = game.pulse_saved.empty() ? std::wstring{Tr(T::PulseNone)}
                           : I18n::Format(game.pulse_current ? T::PulseSavedOn : T::PulseSavedOther, {game.pulse_saved});
             } else if (i == options.size() + 1) {
-                title = Tr(T::NsProfile);
-                value = Tr(GameProfileText(static_cast<GameProfile>(view.profile)));
+                title = Tr(T::NsTuning);
+                value = std::wstring{Tr(GameProfileText(static_cast<GameProfile>(view.profile)))} + L"  ›";
             } else {
                 title = Tr(view.favorite ? T::NsFavoriteRemove : T::NsFavoriteAdd);
                 value = L"☆";
             }
             NsRow(441, y, 1038, title, value, i == view.page.selected, 26, row_height);
         }
+        Text(Tr(T::NsContentHint), 441, 925, 19, Palette::TextSecondary, 1038, 50, false, true);
         if (!view.notice.empty()) NsToast(view.notice);
         NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Back}});
     }
@@ -713,6 +724,47 @@ private:
         target->PopAxisAlignedClip();
         NsFooter({{L'A', Palette::Accent, T::TypeKey}, {L'X', Ns::KeyX, T::DeleteKey}, {L'Y', Ns::KeyY, T::SpaceKey},
                   {L'\u2261', Palette::Text, T::DoneKey}, {L'B', Ns::Error, T::Cancel}});
+    }
+
+    // Desempenho e graficos (per game): profile, resolution, FPS limit, frame skip and shaders.
+    void DrawNsTuning(const GameTuning& tuning, size_t selected, const LibraryEntry& game, std::wstring_view notice) {
+        DesignSpace space(target.Get());
+        NsBackdrop(false);
+        NsHeader(1);
+        NsTitle(Tr(T::NsTuning));
+        NsFill(400, 286, 1120, 696, 12, Palette::Panel, 0.95f);
+        NsStroke(400.5f, 286.5f, 1119, 695, 12, 1, Ns::Line);
+        Text(game.name, 441, 328, 34, Palette::Text, 1040, 50, true);
+        Round(441, 392, 1038, 1, 0, Ns::Line);
+        const auto fps_text = [&]() -> std::wstring {
+            switch (tuning.fps) {
+            case FpsLimit::Fps60: return I18n::Format(T::NsFpsValue, {L"60"});
+            case FpsLimit::Fps30: return I18n::Format(T::NsFpsValue, {L"30"});
+            case FpsLimit::Manual: return std::wstring{Tr(T::NsFpsManual)};
+            case FpsLimit::Auto: break;
+            }
+            return std::wstring{Tr(T::NsAutomatic)};
+        };
+        const std::array<std::pair<T, std::wstring>, TuningRowCount> rows{{
+            {T::NsProfile, std::wstring{Tr(GameProfileText(tuning.profile))}},
+            {T::NsTuningResolution, std::wstring{Tr(tuning.resolution == GameResolution::Portable ? T::NsResolutionPortable
+                                                                                              : T::NsResolutionTv)}},
+            {T::NsTuningFps, fps_text()},
+            {T::NsTuningFpsManual, I18n::Format(T::NsFpsValue, {std::to_wstring(tuning.fps_manual)})},
+            {T::NsTuningSkip, tuning.frame_skip == 0 ? std::wstring{Tr(T::NsSkipAuto)}
+                                                     : I18n::Format(T::NsSkipValue, {std::to_wstring(tuning.frame_skip + 1)})},
+            {T::NsTuningShaders, std::wstring{Tr(tuning.shaders == ShaderBuild::Fast ? T::NsShadersFast : T::NsShadersBalanced)}}}};
+        for (size_t i = 0; i < rows.size(); ++i) {
+            const bool muted = i == static_cast<size_t>(TuningRow::FpsManual) && tuning.fps != FpsLimit::Manual;
+            NsRow(441, 412 + static_cast<float>(i) * 70, 1038, Tr(rows[i].first),
+                  L"\u2039  " + rows[i].second + L"  \u203A", i == selected, 26, 70);
+            if (muted) NsFill(442, 412 + static_cast<float>(i) * 70, 1036, 69, 0, Palette::Backdrop, 0.45f);
+        }
+        static constexpr std::array<T, TuningRowCount> hints{T::NsHintProfile, T::NsHintResolution, T::NsHintFps,
+                                                             T::NsHintFps, T::NsHintSkip, T::NsHintShaders};
+        Text(Tr(hints[std::min(selected, hints.size() - 1)]), 441, 846, 21, Palette::TextSecondary, 1038, 120, false, true);
+        if (!notice.empty()) NsToast(notice);
+        NsFooter({{L'\u2194', Palette::Text, T::Change}, {L'B', Ns::Error, T::Back}});
     }
 
     // 05, 51 · Buscar jogos: the box, the first result and the shared keyboard's keys.
@@ -1163,6 +1215,7 @@ private:
     }
     /// The game's options, and the option page open over them.
     void DrawGameOptions(const GameOptionsView& view) {
+        if (view.tuning && view.game) { DrawNsTuning(*view.tuning, view.tuning_row, *view.game, view.notice); return; }
         if (view.content) { Content::DrawContentPanel(*this, *view.content, view.game ? view.game->name : Tr(T::ContentOverview)); return; }
         const LibraryEntry& game = *view.game;
         Round(0, 0, 1280, 720, 0, Palette::Backdrop);

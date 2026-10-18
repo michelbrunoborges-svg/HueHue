@@ -2,16 +2,25 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
-// NS HUEHUE: a performance profile per game, picked in the game's options and applied when the
-// game boots. The Xbox runs the console's own D3D12 driver (a UWP app cannot load another), so a
-// profile chooses among what the emulator itself can trade: the CPU's accuracy, shaders built on
-// workers and how the image is enlarged. Kept by launch path in LocalState/ns_profiles.tsv.
+// NS HUEHUE: performance and image settings per game, picked in the game's options (Desempenho e
+// graficos) and applied when the game boots (uwp_boot.cpp). The Xbox runs the console's own D3D12
+// driver (a UWP app cannot load another), so these choose among what the emulator itself can
+// trade:
+//  - profile: CPU accuracy, shaders built on workers and how the image is enlarged;
+//  - resolution: the console docked (the game's TV resolution, up to 1080p) or in handheld mode
+//    (the game's portable resolution, usually 720p, lighter on the GPU);
+//  - FPS limit and frame skip: frames the screen does not show are not composited or presented
+//    (the game itself keeps its speed);
+//  - shaders: how many threads build them.
+// Kept by launch path in LocalState/ns_profiles.tsv.
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <sstream>
 #include <span>
 #include <string>
 
@@ -22,6 +31,31 @@
 namespace EdenXbox {
 
 enum class GameProfile : std::uint8_t { Default, Performance, Compatibility, Quality };
+enum class GameResolution : std::uint8_t { Tv, Portable };
+enum class FpsLimit : std::uint8_t { Auto, Fps60, Fps30, Manual };
+enum class ShaderBuild : std::uint8_t { Balanced, Fast };
+
+struct GameTuning {
+    GameProfile profile{GameProfile::Default};
+    GameResolution resolution{GameResolution::Tv};
+    FpsLimit fps{FpsLimit::Auto};
+    std::uint8_t fps_manual{45};  ///< 10 to 60, in steps of 5 (FpsLimit::Manual).
+    std::uint8_t frame_skip{};    ///< 0 (automatic: none) to 3 frames skipped for each one shown.
+    ShaderBuild shaders{ShaderBuild::Balanced};
+
+    bool operator==(const GameTuning&) const = default;
+
+    /// The frame rate the screen shows at most; 0 leaves it to the game.
+    [[nodiscard]] std::uint32_t MaxFps() const {
+        switch (fps) {
+        case FpsLimit::Fps60: return 60;
+        case FpsLimit::Fps30: return 30;
+        case FpsLimit::Manual: return fps_manual;
+        case FpsLimit::Auto: break;
+        }
+        return 0;
+    }
+};
 
 inline std::span<const GameProfile> GameProfiles() {
     static constexpr std::array profiles{GameProfile::Default, GameProfile::Performance,
@@ -43,6 +77,31 @@ inline GameProfile NextGameProfile(GameProfile profile) {
     return static_cast<GameProfile>((static_cast<std::size_t>(profile) + 1) % GameProfiles().size());
 }
 
+/// The rows of the Desempenho e graficos page, in order.
+enum class TuningRow : std::uint8_t { Profile, Resolution, Fps, FpsManual, FrameSkip, Shaders };
+inline constexpr std::size_t TuningRowCount = 6;
+
+/// Left/Right (back = Left) on a row steps its value.
+inline void StepTuning(GameTuning& tuning, TuningRow row, bool back) {
+    const auto cycle = [back](auto value, std::size_t count) {
+        const auto index = static_cast<std::size_t>(value);
+        return static_cast<decltype(value)>((index + (back ? count - 1 : 1)) % count);
+    };
+    switch (row) {
+    case TuningRow::Profile: tuning.profile = cycle(tuning.profile, GameProfiles().size()); break;
+    case TuningRow::Resolution: tuning.resolution = cycle(tuning.resolution, 2); break;
+    case TuningRow::Fps: tuning.fps = cycle(tuning.fps, 4); break;
+    case TuningRow::FpsManual: {
+        const int next = tuning.fps_manual + (back ? -5 : 5);
+        tuning.fps_manual = static_cast<std::uint8_t>(next > 60 ? 10 : next < 10 ? 60 : next);
+        tuning.fps = FpsLimit::Manual;
+        break;
+    }
+    case TuningRow::FrameSkip: tuning.frame_skip = static_cast<std::uint8_t>((tuning.frame_skip + (back ? 3 : 1)) % 4); break;
+    case TuningRow::Shaders: tuning.shaders = cycle(tuning.shaders, 2); break;
+    }
+}
+
 namespace GameProfileDetail {
 inline std::filesystem::path File() {
     try {
@@ -51,38 +110,60 @@ inline std::filesystem::path File() {
                L"ns_profiles.tsv";
     } catch (...) { return {}; }
 }
-inline std::map<std::string, GameProfile> Load() {
-    std::map<std::string, GameProfile> profiles;
+/// "path \t profile [\t resolution \t fps \t manual \t skip \t shaders]" (older lines hold only
+/// the profile).
+inline std::map<std::string, GameTuning> Load() {
+    std::map<std::string, GameTuning> all;
     const auto file = File();
-    if (file.empty()) return profiles;
+    if (file.empty()) return all;
     std::ifstream in(file, std::ios::binary);
     for (std::string line; std::getline(in, line);) {
-        const auto tab = line.rfind('\t');
-        if (tab == std::string::npos || tab + 1 >= line.size()) continue;
-        const int value = line[tab + 1] - '0';
-        if (value > 0 && value < static_cast<int>(GameProfiles().size()))
-            profiles[line.substr(0, tab)] = static_cast<GameProfile>(value);
+        const auto tab = line.find('\t');
+        if (tab == std::string::npos) continue;
+        std::istringstream fields(line.substr(tab + 1));
+        int profile = 0, resolution = 0, fps = 0, manual = 45, skip = 0, shaders = 0;
+        fields >> profile;
+        if (!(fields >> resolution >> fps >> manual >> skip >> shaders)) {
+            resolution = fps = skip = shaders = 0; // an older line: the profile only
+            manual = 45;
+        }
+        GameTuning tuning;
+        tuning.profile = static_cast<GameProfile>(std::clamp(profile, 0, 3));
+        tuning.resolution = static_cast<GameResolution>(std::clamp(resolution, 0, 1));
+        tuning.fps = static_cast<FpsLimit>(std::clamp(fps, 0, 3));
+        tuning.fps_manual = static_cast<std::uint8_t>(std::clamp(manual / 5 * 5, 10, 60));
+        tuning.frame_skip = static_cast<std::uint8_t>(std::clamp(skip, 0, 3));
+        tuning.shaders = static_cast<ShaderBuild>(std::clamp(shaders, 0, 1));
+        all[line.substr(0, tab)] = tuning;
     }
-    return profiles;
+    return all;
 }
 } // namespace GameProfileDetail
 
-/// The profile kept for the game at `launch_path` (Default when none).
-inline GameProfile LoadGameProfile(const std::string& launch_path) {
-    const auto profiles = GameProfileDetail::Load();
-    const auto found = profiles.find(launch_path);
-    return found == profiles.end() ? GameProfile::Default : found->second;
+/// What is kept for the game at `launch_path` (the defaults when nothing is).
+inline GameTuning LoadGameTuning(const std::string& launch_path) {
+    const auto all = GameProfileDetail::Load();
+    const auto found = all.find(launch_path);
+    return found == all.end() ? GameTuning{} : found->second;
 }
 
-/// Keeps `profile` for the game; false when it could not be written.
-inline bool SaveGameProfile(const std::string& launch_path, GameProfile profile) {
-    auto profiles = GameProfileDetail::Load();
-    if (profile == GameProfile::Default) profiles.erase(launch_path);
-    else profiles[launch_path] = profile;
+inline GameProfile LoadGameProfile(const std::string& launch_path) {
+    return LoadGameTuning(launch_path).profile;
+}
+
+/// Keeps `tuning` for the game; false when it could not be written.
+inline bool SaveGameTuning(const std::string& launch_path, const GameTuning& tuning) {
+    auto all = GameProfileDetail::Load();
+    if (tuning == GameTuning{}) all.erase(launch_path);
+    else all[launch_path] = tuning;
     const auto file = GameProfileDetail::File();
     if (file.empty()) return false;
     std::ofstream out(file, std::ios::binary | std::ios::trunc);
-    for (const auto& [path, value] : profiles) out << path << '\t' << static_cast<int>(value) << '\n';
+    for (const auto& [path, value] : all) {
+        out << path << '\t' << static_cast<int>(value.profile) << '\t' << static_cast<int>(value.resolution)
+            << '\t' << static_cast<int>(value.fps) << '\t' << static_cast<int>(value.fps_manual) << '\t'
+            << static_cast<int>(value.frame_skip) << '\t' << static_cast<int>(value.shaders) << '\n';
+    }
     return static_cast<bool>(out);
 }
 

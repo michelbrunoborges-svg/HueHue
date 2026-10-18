@@ -125,6 +125,8 @@ void SetMaterialGpuProbeEnabled(bool enabled);
 void SetSkippedShader(u64 unique_hash);
 void SetGeometryDroppedShader(u64 unique_hash);
 void SetFrameDiagnostics(bool enabled);
+void SetPresentPacing(u32 max_fps, u32 skip);  // NS HUEHUE (renderer_d3d12.h)
+void SetPipelineWorkerLimit(u32 workers);       // NS HUEHUE (d3d12_pipeline_cache.cpp)
 void SetPsoCostProbe(bool enabled);      // d3d12_graphics_pipeline.h
 std::string DescribePsoCost();            // likewise
 void ShowLoadProgress(VideoCore::RendererBase& renderer, size_t done, size_t total);
@@ -319,6 +321,12 @@ struct BootConfig {
     /// This boot's image upscaling instead of the saved one, for test runs ("upscaling=fsr";
     /// upscaling.h ParseUpscaling lists the values). Not saved.
     std::optional<Upscaling> upscaling;
+    /// NS HUEHUE (game_profile.h): the console in handheld mode, so the game renders at its
+    /// portable resolution; frame pacing; pipeline builder threads (0: default).
+    bool portable{};
+    u32 max_fps{};
+    u32 frame_skip{};
+    u32 pipeline_workers{};
     /// Make the D3D12 command list calls on a thread of their own, so the GPU thread only records
     /// them ("async_record=1"). Off by default until it has been played through on the console.
     bool async_record{};
@@ -420,6 +428,13 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
               std::to_string(std::chrono::duration<double, std::milli>(timer_resolution).count()) +
               " ms");
     ApplyHeadlessBootSettings(config.null_renderer ? BootSurface{} : surface);
+    // NS HUEHUE: one process boots several games: each boot sets the console mode and pacing it
+    // wants (a Handheld controller style already undocks the console).
+    if (config.portable) Settings::values.use_docked_mode.SetValue(Settings::ConsoleMode::Handheld);
+    else if (LoadControllerOptions().style != ConsoleControllerStyle::Handheld)
+        Settings::values.use_docked_mode.SetValue(Settings::ConsoleMode::Docked);
+    D3D12::SetPresentPacing(config.max_fps, config.frame_skip);
+    D3D12::SetPipelineWorkerLimit(config.pipeline_workers);
     if (config.null_audio) {
         Settings::values.sink_id = Settings::AudioEngine::Null;
     }
@@ -2632,8 +2647,16 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                         config.play = true;
                         config.run_seconds = 0;
                         config.pulse_sessions = true;
-                        // NS HUEHUE: the game's performance profile (game_profile.h).
-                        switch (EdenXbox::LoadGameProfile(*library_game)) {
+                        // NS HUEHUE: the game's performance and image settings (game_profile.h).
+                        const auto tuning = EdenXbox::LoadGameTuning(*library_game);
+                        config.portable = tuning.resolution == EdenXbox::GameResolution::Portable;
+                        config.max_fps = tuning.MaxFps();
+                        config.frame_skip = tuning.frame_skip;
+                        config.pipeline_workers = tuning.shaders == EdenXbox::ShaderBuild::Fast ? 6 : 0;
+                        WriteDiag("tuning: " + std::string(config.portable ? "portable" : "tv") + " fps<=" +
+                                  std::to_string(config.max_fps) + " skip " + std::to_string(config.frame_skip) +
+                                  " workers " + std::to_string(config.pipeline_workers));
+                        switch (tuning.profile) {
                         case EdenXbox::GameProfile::Performance:
                             config.cpu_accuracy = Settings::CpuAccuracy::Auto;
                             config.async_shaders = true;

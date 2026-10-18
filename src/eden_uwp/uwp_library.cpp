@@ -32,6 +32,8 @@
 #include "eden_uwp/online_settings.h"
 #include "eden_uwp/content/auto_import.h"
 #include "eden_uwp/content/content_view.h"
+#include "eden_uwp/content/content_service.h"
+#include "eden_uwp/mods/mod_settings.h"
 #include "eden_uwp/mods/cnx_index.h"
 #include "eden_uwp/mods/mod_installer.h"
 #include "eden_uwp/mods/mod_session.h"
@@ -224,6 +226,28 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     std::vector<bool> translated; ///< By entry: the game has a translation in the index.
     std::optional<std::string> pending_translation; ///< The entry the mods page downloads once listed.
     bool open_mods_page = false;
+    // NS HUEHUE: the game's Desempenho e graficos page (game_profile.h).
+    bool tuning_page = false;
+    size_t tuning_row = 0;
+    GameTuning tuning;
+    // NS HUEHUE: what the game whose options are open has (update, DLC, mods), for its rows.
+    std::wstring status_update;
+    std::size_t status_dlc = 0, status_mods = 0;
+    auto refresh_status = [&](const LibraryEntry& game) {
+        status_update.clear();
+        status_dlc = status_mods = 0;
+        if (!game.title_loaded || game.program_id == 0) return;
+        const auto application = FileSys::GetBaseTitleID(game.program_id);
+        Content::Catalog catalog;
+        if (Content::DefaultStore().Load(catalog) == Content::Error::None) {
+            for (const auto& revision : catalog.revisions) {
+                if (revision.application != application || !revision.enabled) continue;
+                if (revision.kind == Content::Kind::Update) status_update = Wide(revision.display_version);
+                else ++status_dlc;
+            }
+        }
+        try { status_mods = Mods::ActiveMods(Mods::DefaultModPaths(), application); } catch (...) {}
+    };
     const auto translation_of = [&](const LibraryEntry& entry) -> const std::vector<Mods::Cnx::Entry>* {
         if (!entry.title_loaded || entry.program_id == 0) return nullptr;
         const auto found = translations.find(Mods::TitleFolder(FileSys::GetBaseTitleID(entry.program_id)));
@@ -1077,6 +1101,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         }
         if (game_options.open) {
             // A rescan may have replaced the list under the page.
+            if (!game_options.open) tuning_page = false;
             if (!content_session && game_options.game >= scan.entries.size()) {
                 game_options = {};
                 cheat_session.reset();
@@ -1295,6 +1320,17 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 send(Refresh, MenuAction::Refresh);
                 if (cheat_session) send(Quit, MenuAction::Back);
                 dirty = true;
+            } else if (tuning_page && actions) {
+                // Desempenho e graficos: Up/Down pick a row, Left/Right (or A) change it, B goes back.
+                if (actions & Up) tuning_row = (tuning_row + TuningRowCount - 1) % TuningRowCount;
+                if (actions & Down) tuning_row = (tuning_row + 1) % TuningRowCount;
+                if (actions & (Left | Right | Play)) {
+                    StepTuning(tuning, static_cast<TuningRow>(tuning_row), (actions & Left) != 0);
+                    notify(SaveGameTuning(scan.entries[game_options.game].launch_path, tuning) ? T::NsTuningSaved
+                                                                                             : T::SystemSaveFailed);
+                }
+                if (actions & Quit) tuning_page = false;
+                dirty = true;
             } else if (actions || open_mods_page) {
                 open_mods_page = false;
                 const auto send = [&](unsigned bit, GameOptionsInput input) {
@@ -1311,11 +1347,11 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     game_options = {};
                     launch_from_options = true;
                 } else if (game_options.extra == 1u) {
-                    // NS HUEHUE: the performance profile row steps to the next profile.
+                    // NS HUEHUE: Desempenho e graficos opens the game's tuning page.
                     game_options.extra.reset();
-                    const auto& path = scan.entries[game_options.game].launch_path;
-                    const auto next_profile = NextGameProfile(LoadGameProfile(path));
-                    notify(SaveGameProfile(path, next_profile) ? T::NsProfileSaved : T::SystemSaveFailed);
+                    tuning = LoadGameTuning(scan.entries[game_options.game].launch_path);
+                    tuning_page = true;
+                    tuning_row = 0;
                 } else if (game_options.extra) {
                     // NS HUEHUE: the last row adds the game to the favorites or removes it.
                     game_options.extra.reset();
@@ -1777,13 +1813,16 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             resize = false;
             dirty = true;
         }
+        if (dirty && game_options.open && !game_options.page && game_options.game < scan.entries.size())
+            refresh_status(scan.entries[game_options.game]);
         if (dirty) {
             const GameOptionsView options_view{
                 game_options, game_options.open && game_options.game < scan.entries.size() ? &scan.entries[game_options.game] : nullptr,
                 cheat_session ? &*cheat_session : nullptr, cheats_page, options_notice, content_session.get(),
-                mod_session.get(), &mods_page,
+                mod_session.get(), &mods_page, status_update, status_dlc, status_mods,
                 game_options.open && game_options.game < scan.entries.size()
                     ? static_cast<std::uint8_t>(LoadGameProfile(scan.entries[game_options.game].launch_path)) : std::uint8_t{},
+                tuning_page ? &tuning : nullptr, tuning_row,
                 game_options.game < scan.entries.size() &&
                     std::find(favorites.begin(), favorites.end(), scan.entries[game_options.game].launch_path) != favorites.end()};
             rebuild_shown();

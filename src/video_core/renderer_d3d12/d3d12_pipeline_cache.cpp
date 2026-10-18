@@ -307,9 +307,13 @@ Shader::RuntimeInfo MakeRuntimeInfo(std::span<const Shader::IR::Program> program
 
 /// Pipeline workers. Capped: each one holds a recompiler and a translator's worth of memory, and
 /// the console's game partition has 5 GB in total.
+std::atomic<u32> pipeline_worker_limit{0};
+
 size_t GetTotalPipelineWorkers() {
     const size_t threads = std::max<size_t>(std::thread::hardware_concurrency(), 2) - 1;
-    return std::min<size_t>(threads, 4);
+    // NS HUEHUE "Shaders: rapido" asks for more builders; never more than the cores less one.
+    const u32 limit = pipeline_worker_limit.load(std::memory_order_relaxed);
+    return std::min<size_t>(threads, limit != 0 ? std::min<u32>(limit, 6) : 4);
 }
 
 /// Shader capabilities from D3D12's feature queries (logged at boot by Device::LogCapabilities).
@@ -1066,6 +1070,10 @@ std::unique_ptr<ComputePipeline> PipelineCache::CreateComputePipeline(
     LOG_ERROR(Render, "D3D12: building compute pipeline {:016x} failed: {}", key.unique_hash,
               exception.what());
     return nullptr;
+}
+
+void SetPipelineWorkerLimit(u32 workers) {
+    pipeline_worker_limit.store(workers, std::memory_order_relaxed);
 }
 
 } // namespace D3D12

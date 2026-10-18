@@ -60,6 +60,30 @@ void TraceNextFrames(u32 count) {
     trace_requested.store(std::max<u32>(count, 1), std::memory_order_relaxed);
 }
 
+namespace {
+std::atomic<u32> pacing_max_fps{0};
+std::atomic<u32> pacing_skip{0};
+} // Anonymous namespace
+
+void SetPresentPacing(u32 max_fps, u32 skip) {
+    pacing_max_fps.store(std::min<u32>(max_fps, 240), std::memory_order_relaxed);
+    pacing_skip.store(std::min<u32>(skip, 3), std::memory_order_relaxed);
+}
+
+bool RendererD3D12::ShowThisFrame() {
+    const u32 skip = pacing_skip.load(std::memory_order_relaxed);
+    const u32 max_fps = pacing_max_fps.load(std::memory_order_relaxed);
+    const u64 frame = paced_frames++;
+    if (skip != 0 && frame % (skip + 1) != 0) return false;
+    if (max_fps == 0) return true;
+    const auto now = std::chrono::steady_clock::now();
+    const auto period = std::chrono::nanoseconds{1'000'000'000LL / max_fps};
+    // A little early is fine: the display's own refresh decides the exact moment.
+    if (now + period / 8 < next_shown) return false;
+    next_shown = std::max(next_shown + period, now);
+    return true;
+}
+
 void SetFrameDiagnostics(bool enabled) {
     frame_diagnostics.store(enabled, std::memory_order_relaxed);
 }
@@ -177,7 +201,7 @@ void RendererD3D12::Composite(std::span<const Tegra::FramebufferConfig> framebuf
         return;
     }
     last_framebuffer = framebuffers.front();
-    if (!present_failed) {
+    if (!present_failed && ShowThisFrame()) {
         try {
             if (std::optional<std::string> error = present_manager.TakeError()) {
                 throw std::runtime_error(*error);

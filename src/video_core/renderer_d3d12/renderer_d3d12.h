@@ -37,6 +37,13 @@ namespace D3D12 {
 /// "trace_frames=").
 void SetTracedFrame(u32 frame, u32 count = 1);
 
+/// NS HUEHUE frame pacing: shows at most `max_fps` frames a second (0: the game's own rate) and,
+/// with `skip` 1-3, only one frame in `skip + 1`. Frames not shown are neither composited nor
+/// presented; the game keeps its speed. Any thread, before or during play.
+void SetPresentPacing(u32 max_fps, u32 skip);
+/// NS HUEHUE: the pipeline builder threads (0: the default, up to 4). Read when the renderer starts.
+void SetPipelineWorkerLimit(u32 workers);
+
 /// Traces the draws of the next `count` presented frames (and writes their render targets), even
 /// in a session played by hand. Any thread.
 void TraceNextFrames(u32 count);
@@ -206,6 +213,10 @@ private:
     int crop_width{};
     int crop_height{};
     bool present_failed{};
+    /// NS HUEHUE frame pacing (SetPresentPacing): whether this guest frame is shown.
+    [[nodiscard]] bool ShowThisFrame();
+    std::chrono::steady_clock::time_point next_shown{};
+    u64 paced_frames{};
     /// The frontend menu while open, and the last framebuffer composited, to redraw it paused.
     std::optional<MenuImage> game_menu;
     std::optional<Tegra::FramebufferConfig> last_framebuffer;
