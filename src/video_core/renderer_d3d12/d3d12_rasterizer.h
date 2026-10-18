@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright 2026 Eden Emulator Project
+// SPDX-FileCopyrightText: Copyright 2026 Jadyx Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
@@ -23,6 +23,7 @@
 #include "video_core/renderer_d3d12/d3d12_conditional_rendering.h"
 #include "video_core/renderer_d3d12/d3d12_query_cache.h"
 #include "video_core/renderer_d3d12/d3d12_texture_cache.h"
+#include "video_core/renderer_d3d12/diagnostics/d3d12_draw_hunt.h"
 #include "video_core/renderer_d3d12/diagnostics/d3d12_material_trace.h"
 #include "video_core/renderer_vulkan/vk_state_tracker.h"
 
@@ -103,6 +104,11 @@ public:
     /// Submits between draws once the list being recorded holds many uploads.
     void FlushIfUploadHeavy();
     void TickFrame() override;
+
+    /// The bottleneck hunt; the renderer ends its frames.
+    [[nodiscard]] DrawHunt& BottleneckHunt() noexcept {
+        return draw_hunt;
+    }
     bool AccelerateConditionalRendering() override;
     bool AccelerateSurfaceCopy(const Tegra::Engines::Fermi2D::Surface&,
                                const Tegra::Engines::Fermi2D::Surface&,
@@ -256,6 +262,7 @@ private:
         u32 num_color_targets{};
         SIZE_T depth_target{};
         std::array<float, 4> blend_factor{};
+        std::array<float, 2> depth_bounds{0.0f, 1.0f};
         u32 stencil_ref{};
         D3D12_PRIMITIVE_TOPOLOGY topology{D3D_PRIMITIVE_TOPOLOGY_UNDEFINED};
         ViewportState viewport{};
@@ -278,6 +285,7 @@ private:
     ConditionalRendering conditional_rendering;
     AccelerateDMA accelerate_dma;
     FenceManager fence_manager;
+    DrawHunt draw_hunt;
     bool logged_integer_clear{};
     bool logged_draw_texture{};
     bool logged_first_draw{};

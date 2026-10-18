@@ -6,7 +6,10 @@
   (branch `codex/ns-huehue-design-v1`, 52 telas, HANDOFF.md, styles.css, assets).
 - Aprovado por Michel em 17/10/2026: **"Aprovo como está"**.
 - Base do emulador: **Eden (HueHue Switch)**, com o motor atualizado do eden-xbox
-  (JulianDr14) até 0.2.92.1, o último antes do rename `src/eden_uwp` → `src/jadyx`.
+  (JulianDr14, hoje Jadyx) até **0.2.93.3**: o motor (core, video_core/D3D12, áudio, dynarmic e o
+  patch do Mesa) vem inteiro do upstream; o frontend continua em `src/eden_uwp` com o visual do NS
+  HUEHUE. A pasta de dados segue `LocalState\eden` (o upstream passou a usar `jadyx`), para manter
+  chaves, firmware e saves.
 - Identidade do pacote mantida (`HueHue.HueHueSwitch`, `CN=HueHueSwitch`): instala por
   cima do HueHue Switch e preserva saves, chaves, firmware e jogos importados.
 

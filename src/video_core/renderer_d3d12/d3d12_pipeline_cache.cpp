@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright 2026 Eden Emulator Project
+// SPDX-FileCopyrightText: Copyright 2026 Jadyx Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <algorithm>
@@ -868,6 +868,7 @@ std::unique_ptr<GraphicsPipeline> PipelineCache::CreateGraphicsPipeline(
 
     const Shader::IR::Program* previous_stage{};
     Shader::Backend::Bindings binding;
+    GraphicsPipeline::FragmentHelpers fragment_helpers{};
     for (size_t index = uses_vertex_a && uses_vertex_b ? 1 : 0; index < Maxwell::MaxShaderProgram;
          ++index) {
         const bool is_emulated_stage = layer_source_program != nullptr &&
@@ -894,10 +895,26 @@ std::unique_ptr<GraphicsPipeline> PipelineCache::CreateGraphicsPipeline(
         auto runtime_info{MakeRuntimeInfo(programs, key, program, previous_stage)};
         runtime_info.lower_noperspective_mask = lower_noperspective_mask;
         ConvertLegacyToGeneric(program, runtime_info);
-        const auto merged_demote_returns = Shader::Optimization::DemoteReturnPass(program);
+        Shader::Optimization::DemoteReturnVerdict demote_return{};
+        const auto merged_demote_returns =
+            Shader::Optimization::DemoteReturnPass(program, &demote_return);
         if (merged_demote_returns && IsDumpedShader(key.unique_hashes[index])) {
             LOG_INFO(Render, "D3D12 helper-preserving discard: PS={:016x} terminal_returns={} (compile-time)",
                      key.unique_hashes[index], merged_demote_returns);
+        }
+        if (program.stage == Shader::Stage::Fragment) {
+            fragment_helpers = {demote_return, program.info.uses_quad_shuffles,
+                                program.info.uses_derivatives};
+            // A terminal discard the pass cannot rewrite stops its lanes before the derivatives
+            // of their quad neighbours: wrong mips or normals along triangle edges.
+            if (Shader::Optimization::IsRejected(demote_return)) {
+                BUG_TRACK_KEY(UnsupportedState, key.unique_hashes[index],
+                              "PS {:016x} keeps a terminal discard return ({}): helper lanes "
+                              "end before derivatives (quad_shuffles={} derivatives={})",
+                              key.unique_hashes[index],
+                              Shader::Optimization::Name(demote_return),
+                              program.info.uses_quad_shuffles, program.info.uses_derivatives);
+            }
         }
         spirv[stage_index] = EmitSPIRV(profile, runtime_info, program, binding);
         if (IsDumpedShader(key.unique_hashes[index])) [[unlikely]] {
@@ -914,7 +931,7 @@ std::unique_ptr<GraphicsPipeline> PipelineCache::CreateGraphicsPipeline(
     auto compile_dxil = [this, spirv = std::move(spirv), stage_indices, dumps_dxil,
                          vertex_shader = key.unique_hashes[1],
                          fragment_shader = key.unique_hashes[5],
-                         pipeline_key = key.Hash()](u64 trace_pipeline) {
+                         pipeline_key = key.Hash()](u64 trace_pipeline, bool flatten_vertex) {
         boost::container::static_vector<ShaderCompiler::PipelineStage, Maxwell::MaxShaderStage>
             stages;
         for (const size_t stage_index : stage_indices) {
@@ -927,14 +944,16 @@ std::unique_ptr<GraphicsPipeline> PipelineCache::CreateGraphicsPipeline(
         const ShaderCompiler::PipelineOptions options{
             .yz_flip = DXIL_SPIRV_YZ_FLIP_CONDITIONAL,
             .first_vertex_and_base_instance = DXIL_SPIRV_SYSVAL_TYPE_RUNTIME_DATA,
+            .flatten_vertex = flatten_vertex,
         };
         boost::container::static_vector<LinkedShaderStage, Maxwell::MaxShaderStage> key_stages;
         for (const auto& stage : stages) {
             key_stages.push_back({stage.spirv, static_cast<u32>(stage.stage)});
         }
-        const std::array<u32, 4> key_options{
+        const std::array<u32, 5> key_options{
             static_cast<u32>(options.yz_flip), options.y_flip_mask, options.z_flip_mask,
-            static_cast<u32>(options.first_vertex_and_base_instance)};
+            static_cast<u32>(options.first_vertex_and_base_instance),
+            static_cast<u32>(options.flatten_vertex)};
         auto key = MakeLinkedShaderKey(std::span(key_stages.data(), key_stages.size()), key_options);
         const auto cached = linked_shaders.Get(std::move(key), [&] {
             auto compiled = compiler.CompilePipeline(std::span(stages.data(), stages.size()), options,
@@ -965,10 +984,12 @@ std::unique_ptr<GraphicsPipeline> PipelineCache::CreateGraphicsPipeline(
     };
 
     Common::ThreadWorker* const thread_worker{build_in_parallel ? &workers : nullptr};
-    return std::make_unique<GraphicsPipeline>(device, texture_runtime, &shader_notify,
-                                              thread_worker, key, std::move(compile_dxil), infos,
-                                              layout, build_pso, &graphics_psos,
-                                              lower_noperspective_mask);
+    auto pipeline = std::make_unique<GraphicsPipeline>(device, texture_runtime, &shader_notify,
+                                                       thread_worker, key, std::move(compile_dxil),
+                                                       infos, layout, build_pso, &graphics_psos,
+                                                       lower_noperspective_mask);
+    pipeline->SetFragmentHelpers(fragment_helpers);
+    return pipeline;
 
 } catch (const Shader::Exception& exception) {
     BUG_TRACK_KEY(ShaderCompile, key.unique_hashes[1] ^ std::rotl(key.unique_hashes[5], 1),

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright 2026 Eden Emulator Project
+// SPDX-FileCopyrightText: Copyright 2026 Jadyx Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
@@ -6,9 +6,11 @@
 #include <array>
 #include <optional>
 #include <span>
+#include <vector>
 #include <fmt/format.h>
 
 #include "video_core/renderer_d3d12/d3d12_command_recorder.h"
+#include "video_core/renderer_d3d12/d3d12_command_validation.h"
 #include "video_core/renderer_d3d12/d3d12_device.h"
 
 namespace D3D12 {
@@ -51,6 +53,22 @@ public:
                     TraceGpuDetail(fmt::format("alias barrier before={} after={}",
                         static_cast<void*>(b.Aliasing.pResourceBefore), static_cast<void*>(b.Aliasing.pResourceAfter)));
                 }
+            }
+        }
+        // An invalid barrier would fail the whole list at Close: drop it, keep the rest.
+        for (UINT i = 0; i < count; ++i) {
+            if (!ValidBarrier(barriers[i])) {
+                std::vector<D3D12_RESOURCE_BARRIER> valid;
+                valid.reserve(count);
+                for (UINT j = 0; j < count; ++j) {
+                    if (j < i || (j > i && ValidBarrier(barriers[j]))) {
+                        valid.push_back(barriers[j]);
+                    }
+                }
+                if (!valid.empty()) {
+                    ResourceBarrier(static_cast<UINT>(valid.size()), valid.data());
+                }
+                return;
             }
         }
         Array(barriers, count, [count](List* list, const D3D12_RESOURCE_BARRIER* copy) {
@@ -181,6 +199,16 @@ public:
         recorder.Record(
             [copy](List* list) { list->OMSetBlendFactor(copy ? copy->data() : nullptr); });
     }
+    /// Needs ID3D12GraphicsCommandList1; callers set it only when a pipeline tests the bounds
+    /// and the values change, so the interface query stays off the per-draw path.
+    void OMSetDepthBounds(FLOAT min, FLOAT max) {
+        recorder.Record([min, max](List* list) {
+            ComPtr<ID3D12GraphicsCommandList1> list1;
+            if (SUCCEEDED(list->QueryInterface(IID_PPV_ARGS(&list1)))) {
+                list1->OMSetDepthBounds(min, max);
+            }
+        });
+    }
     void OMSetStencilRef(UINT reference) {
         recorder.Record([reference](List* list) { list->OMSetStencilRef(reference); });
     }
@@ -255,6 +283,9 @@ public:
 
     void CopyBufferRegion(ID3D12Resource* dst, UINT64 dst_offset, ID3D12Resource* src,
                           UINT64 src_offset, UINT64 bytes) {
+        if (!ValidCopyBufferRegion(dst, dst_offset, src, src_offset, bytes)) {
+            return;
+        }
         const u64 token = GpuDiagnosticsEnabled() ? TraceGpuDetail(fmt::format("CopyBuffer dst={} offset={} src={} offset={} bytes={}",
             static_cast<void*>(dst), dst_offset, static_cast<void*>(src), src_offset, bytes)) : 0;
         Breadcrumb(token, false);
@@ -271,6 +302,9 @@ public:
     }
     void CopyTextureRegion(const D3D12_TEXTURE_COPY_LOCATION* dst, UINT x, UINT y, UINT z,
                            const D3D12_TEXTURE_COPY_LOCATION* src, const D3D12_BOX* box) {
+        if (!ValidCopyTextureRegion(*dst, x, y, z, *src, box)) {
+            return;
+        }
         const u64 token = GpuDiagnosticsEnabled() ? TraceGpuDetail(fmt::format("CopyTexture dst={} type={} sub_or_format={} xyz={},{},{} src={} type={} sub_or_format={} box={}",
             static_cast<void*>(dst->pResource), static_cast<u32>(dst->Type),
             dst->Type == D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX ? dst->SubresourceIndex : static_cast<u32>(dst->PlacedFootprint.Footprint.Format),

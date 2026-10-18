@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright 2026 Eden Emulator Project
+// SPDX-FileCopyrightText: Copyright 2026 Jadyx Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
@@ -123,6 +123,15 @@ enum class Counter : size_t {
     MaxwellDirtyUnchanged,
     ClearNs,
     DispatchNs,
+    IndexRewrites,         ///< index lists converted (quads, fans, loops, u8) and cached
+    IndexRewriteReuses,    ///< draws that bound a cached conversion without reading the guest
+    IndexRewriteRechecks,  ///< cached conversions confirmed by comparing the guest bytes
+    IndexRewriteNs,        ///< time spent finding, checking and converting index lists
+    ConstBufferRuns,       ///< CB_DATA packets stored as one block instead of word by word
+    ConstBufferRunWords,   ///< words those packets carried
+    BlitUploadsSkipped,    ///< CPU-modified blit destinations not uploaded: the blit rewrote them
+    BlitUploadBytesSkipped,
+    BlitDiscardsRestored,  ///< skipped uploads put back because the backend drew nothing
     GuestGpuWaits,         ///< guest fence waits (nvhost_ctrl events) that the GPU signalled later
     GuestGpuWaitUs,        ///< time from each of those waits to its signal; waits can overlap
     // The frame chain: game -> GPU thread -> composite -> vsync.
@@ -149,6 +158,9 @@ using Snapshot = std::array<u64, NUM_COUNTERS>;
 inline std::array<std::atomic<u64>, NUM_COUNTERS> counters{};
 inline std::atomic<bool> detailed_gpu_profile{};
 inline std::atomic<bool> force_swap_interval_one{};
+/// Guest macro method running on this thread (the GPU thread), 0 outside macros. The
+/// bottleneck hunt tags each draw with the macro that issued it.
+inline thread_local u32 current_macro{};
 
 constexpr size_t NUM_GUEST_SYNCPOINTS = 256;
 struct GuestWaitSiteCounters {

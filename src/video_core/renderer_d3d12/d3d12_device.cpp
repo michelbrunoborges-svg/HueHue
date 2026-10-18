@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright 2026 Eden Emulator Project
+// SPDX-FileCopyrightText: Copyright 2026 Jadyx Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <algorithm>
@@ -311,6 +311,11 @@ Device::Device() {
 
     CreateBreadcrumbBuffer(device.Get());
     LogCapabilities();
+    if (SUCCEEDED(device.As(&device2))) {
+        D3D12_FEATURE_DATA_D3D12_OPTIONS2 options2{};
+        depth_bounds = Query(device.Get(), D3D12_FEATURE_D3D12_OPTIONS2, options2) &&
+                       options2.DepthBoundsTestSupported;
+    }
     initial_budget = QueryVideoMemory().Budget;
     // On a unified architecture (the Xbox) texture and buffer heaps are app commit too.
     D3D12_FEATURE_DATA_ARCHITECTURE1 arch{};
@@ -505,7 +510,7 @@ void Device::ReportDeviceRemoved() {
     }
     const HRESULT reason = device->GetDeviceRemovedReason();
     BUG_TRACK_KEY(DeviceRemoved, static_cast<u32>(reason),
-                  "device removed, reason 0x{:08X} (DRED details in eden_log.txt with dred=1)",
+                  "device removed, reason 0x{:08X} (DRED details in jadyx_log.txt with dred=1)",
                   static_cast<u32>(reason));
     {
         const Common::BugTracker::TapMute bug_tracker_mute;

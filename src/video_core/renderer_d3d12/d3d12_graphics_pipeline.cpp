@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright 2026 Eden Emulator Project
+// SPDX-FileCopyrightText: Copyright 2026 Jadyx Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <algorithm>
@@ -9,6 +9,7 @@
 #include <cstring>
 #include <mutex>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include <boost/container/small_vector.hpp>
@@ -26,6 +27,7 @@
 #include "video_core/renderer_d3d12/d3d12_descriptor_heap.h"
 #include "video_core/renderer_d3d12/d3d12_draw_targets.h"
 #include "video_core/renderer_d3d12/d3d12_draw_metrics.h"
+#include "video_core/renderer_d3d12/d3d12_driver_guard.h"
 #include "video_core/renderer_d3d12/d3d12_graphics_pipeline.h"
 #include "video_core/renderer_d3d12/d3d12_log.h"
 #include "video_core/renderer_d3d12/d3d12_maxwell_to_d3d12.h"
@@ -95,6 +97,32 @@ size_t NumAttachments(const FixedPipelineState& state) {
 D3D12_SHADER_BYTECODE Bytecode(const std::vector<u8>& code) {
     return {.pShaderBytecode = code.empty() ? nullptr : code.data(),
             .BytecodeLength = code.size()};
+}
+
+/// True when some drawn target's color equation reads the blend constant and every such read is
+/// a constant-alpha factor. A mix of constant color and constant alpha cannot share D3D12's single
+/// constant; it keeps the color (the draw's RGB) and is reported.
+bool ReadsOnlyConstantAlpha(const FixedPipelineState& state, u8 drawn_targets) {
+    using MaxwellToD3D12::BlendConstantRead;
+    bool alpha = false;
+    bool color = false;
+    for (size_t index = 0; index < NumAttachments(state); ++index) {
+        const auto& blend = state.attachments[index];
+        if (blend.enable == 0 || (drawn_targets & (1U << index)) == 0) {
+            continue;
+        }
+        for (const auto factor : {blend.SourceRGBFactor(), blend.DestRGBFactor()}) {
+            const BlendConstantRead read = MaxwellToD3D12::ColorBlendConstantRead(factor);
+            alpha |= read == BlendConstantRead::Alpha;
+            color |= read == BlendConstantRead::Color;
+        }
+    }
+    if (alpha && color) {
+        BUG_TRACK(UnsupportedState, "constant color and constant alpha blend factors in one "
+                                    "pipeline; constant alpha reads the color");
+        return false;
+    }
+    return alpha;
 }
 
 D3D12_DEPTH_STENCILOP_DESC StencilFace(const auto& face) {
@@ -196,7 +224,7 @@ GraphicsPipeline::GraphicsPipeline(const Device& device_,
                                    VideoCore::ShaderNotify* shader_notify,
                                    Common::ThreadWorker* worker_thread,
                                    const GraphicsPipelineCacheKey& key_,
-                                   std::function<SharedDxilStages(u64)> compile_dxil,
+                                   CompileDxil compile_dxil,
                                    const std::array<const Shader::Info*, NUM_STAGES>& infos,
                                    const PipelineLayout& layout_, bool build_pso,
                                    GraphicsPsoCache* pso_cache_, u32 lower_noperspective_mask_)
@@ -218,6 +246,9 @@ GraphicsPipeline::GraphicsPipeline(const Device& device_,
     if (!bound_color_targets && valid_targets) {
         bound_color_targets = valid_targets & static_cast<u8>(-valid_targets);
     }
+    depth_bounds = device.SupportsDepthBounds() && key.state.depth_enabled != 0 &&
+                   key.state.dynamic_state.depth_bounds_enable != 0;
+    blend_constant_alpha = ReadsOnlyConstantAlpha(key.state, bound_color_targets);
     if (shader_notify) {
         shader_notify->MarkShaderBuilding();
     }
@@ -242,7 +273,7 @@ GraphicsPipeline::GraphicsPipeline(const Device& device_,
         bool compiled = false;
         try {
             FT::ScopedSpan dxil_span{FT::Event::PipelineDxilLong, trace_pipeline};
-            dxil = compile_dxil(trace_pipeline);
+            dxil = compile_dxil(trace_pipeline, false);
             compiled = true;
         } catch (const std::exception& exception) {
             // Handle() stays null: draws with this pipeline are skipped.
@@ -254,7 +285,35 @@ GraphicsPipeline::GraphicsPipeline(const Device& device_,
                       key.unique_hashes[1], key.unique_hashes[5], exception.what());
         }
         if (compiled && build_pso) {
-            Build();
+            Build(true);
+        }
+        if (flatten_retry) {
+            // The console's shader compiler faults on some vertex shaders with large branches
+            // around the position, and builds them once every branch is a select. A pipeline
+            // first built by Wake() has no SPIR-V left to retry with: its draws are skipped for
+            // this session, but trying to draw it makes it one of the pipelines built at boot.
+            flatten_retry = false;
+            try {
+                dxil = compile_dxil(trace_pipeline, true);
+                flattened_vertex = true;
+            } catch (const std::exception& exception) {
+                BUG_TRACK_KEY(PipelineRejected, key.Hash(),
+                              "the driver faulted building the pipeline of VS {:016x} PS {:016x} "
+                              "and flattening its vertex shader failed: {}",
+                              key.unique_hashes[1], key.unique_hashes[5], exception.what());
+                const Common::BugTracker::TapMute bug_tracker_mute;
+                LOG_ERROR(Render, "D3D12: flattening VS {:016x} failed: {}", key.unique_hashes[1],
+                          exception.what());
+            }
+            if (flattened_vertex) {
+                Build();
+                if (pipeline_state) {
+                    LOG_INFO(Render,
+                             "D3D12: pipeline for VS {:016x} PS {:016x} built with the vertex "
+                             "shader's branches flattened (the driver faulted on the original)",
+                             key.unique_hashes[1], key.unique_hashes[5]);
+                }
+            }
         }
         FT::Mark(FT::Event::PipelineBuildDone, trace_pipeline, pipeline_state.Get() != nullptr);
         // Without a PSO yet, a pipeline whose DXIL failed is still ready: its draws are skipped.
@@ -664,7 +723,7 @@ D3D12_GRAPHICS_PIPELINE_STATE_DESC GraphicsPipeline::Describe(
         desc.DSVFormat = texture_runtime.Format(PixelFormatFromDepthFormat(depth_format)).dsv;
     }
     const bool has_depth = desc.DSVFormat != DXGI_FORMAT_UNKNOWN;
-    if (dynamic.depth_bounds_enable != 0) {
+    if (dynamic.depth_bounds_enable != 0 && !depth_bounds) {
         WarnOnce(warned_depth_bounds, "the depth bounds test");
     }
     desc.DepthStencilState = {
@@ -766,15 +825,135 @@ ComPtr<ID3D12PipelineState> GraphicsPipeline::CreateMaterialProbePipeline(
     return result;
 }
 
-void GraphicsPipeline::Build() try {
+namespace {
+template <D3D12_PIPELINE_STATE_SUBOBJECT_TYPE Type, typename T>
+struct alignas(void*) Subobject {
+    D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type = Type;
+    T value{};
+};
+
+/// The description as a pipeline state stream, with DEPTH_STENCIL1 to enable the depth bounds
+/// test (D3D12_GRAPHICS_PIPELINE_STATE_DESC has no field for it). Same state otherwise.
+HRESULT CreateWithDepthBounds(ID3D12Device2* device, const D3D12_GRAPHICS_PIPELINE_STATE_DESC& desc,
+                              ComPtr<ID3D12PipelineState>& out) {
+    struct Stream {
+        Subobject<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE, ID3D12RootSignature*> root;
+        Subobject<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VS, D3D12_SHADER_BYTECODE> vs;
+        Subobject<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PS, D3D12_SHADER_BYTECODE> ps;
+        Subobject<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DS, D3D12_SHADER_BYTECODE> ds;
+        Subobject<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_HS, D3D12_SHADER_BYTECODE> hs;
+        Subobject<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_GS, D3D12_SHADER_BYTECODE> gs;
+        Subobject<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_STREAM_OUTPUT, D3D12_STREAM_OUTPUT_DESC> so;
+        Subobject<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_BLEND, D3D12_BLEND_DESC> blend;
+        Subobject<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_MASK, UINT> sample_mask;
+        Subobject<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER, D3D12_RASTERIZER_DESC> raster;
+        Subobject<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL1, D3D12_DEPTH_STENCIL_DESC1>
+            depth;
+        Subobject<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_INPUT_LAYOUT, D3D12_INPUT_LAYOUT_DESC> input;
+        Subobject<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_IB_STRIP_CUT_VALUE,
+                  D3D12_INDEX_BUFFER_STRIP_CUT_VALUE>
+            strip_cut;
+        Subobject<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PRIMITIVE_TOPOLOGY,
+                  D3D12_PRIMITIVE_TOPOLOGY_TYPE>
+            topology;
+        Subobject<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RENDER_TARGET_FORMATS, D3D12_RT_FORMAT_ARRAY>
+            rtvs;
+        Subobject<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL_FORMAT, DXGI_FORMAT> dsv;
+        Subobject<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_DESC, DXGI_SAMPLE_DESC> samples;
+        Subobject<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_NODE_MASK, UINT> node_mask;
+        Subobject<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_FLAGS, D3D12_PIPELINE_STATE_FLAGS> flags;
+    } stream;
+    stream.root.value = desc.pRootSignature;
+    stream.vs.value = desc.VS;
+    stream.ps.value = desc.PS;
+    stream.ds.value = desc.DS;
+    stream.hs.value = desc.HS;
+    stream.gs.value = desc.GS;
+    stream.so.value = desc.StreamOutput;
+    stream.blend.value = desc.BlendState;
+    stream.sample_mask.value = desc.SampleMask;
+    stream.raster.value = desc.RasterizerState;
+    const D3D12_DEPTH_STENCIL_DESC& depth = desc.DepthStencilState;
+    stream.depth.value = {
+        .DepthEnable = depth.DepthEnable,
+        .DepthWriteMask = depth.DepthWriteMask,
+        .DepthFunc = depth.DepthFunc,
+        .StencilEnable = depth.StencilEnable,
+        .StencilReadMask = depth.StencilReadMask,
+        .StencilWriteMask = depth.StencilWriteMask,
+        .FrontFace = depth.FrontFace,
+        .BackFace = depth.BackFace,
+        .DepthBoundsTestEnable = TRUE,
+    };
+    stream.input.value = desc.InputLayout;
+    stream.strip_cut.value = desc.IBStripCutValue;
+    stream.topology.value = desc.PrimitiveTopologyType;
+    stream.rtvs.value.NumRenderTargets = desc.NumRenderTargets;
+    std::copy(std::begin(desc.RTVFormats), std::end(desc.RTVFormats),
+              std::begin(stream.rtvs.value.RTFormats));
+    stream.dsv.value = desc.DSVFormat;
+    stream.samples.value = desc.SampleDesc;
+    stream.node_mask.value = desc.NodeMask;
+    stream.flags.value = desc.Flags;
+    const D3D12_PIPELINE_STATE_STREAM_DESC stream_desc{.SizeInBytes = sizeof(stream),
+                                                       .pPipelineStateSubobjectStream = &stream};
+    return device->CreatePipelineState(&stream_desc, IID_PPV_ARGS(&out));
+}
+/// Whether a pipeline with this key fails for the first time.
+bool FirstFailure(u64 key_hash) {
+    static std::mutex mutex;
+    static std::unordered_set<u64> failed;
+    std::scoped_lock lock{mutex};
+    return failed.insert(key_hash).second;
+}
+} // Anonymous namespace
+
+void GraphicsPipeline::Build(bool flatten_on_fault) try {
     const auto& stages = *dxil;
     std::vector<D3D12_INPUT_ELEMENT_DESC> elements;
     auto desc = Describe(elements);
     const size_t num_attachments = desc.NumRenderTargets;
+    // Only with a depth target: without one there is nothing to test against.
+    const bool bounds_test = depth_bounds && desc.DSVFormat != DXGI_FORMAT_UNKNOWN;
     auto host_key = MakeGraphicsPsoKey(desc, dxil);
+    host_key.state.push_back(bounds_test ? 1U : 0U);
     const u64 index_bytes = sizeof(GraphicsPsoCache::Entry) + 128 +
                             host_key.state.capacity() * sizeof(u32);
     HRESULT hr = S_OK;
+    const bool may_flatten = flatten_on_fault && !flattened_vertex;
+    const auto log_driver_fault = [&](DWORD code, ComPtr<ID3D12PipelineState>& handle) {
+        handle.Detach(); // whatever the driver left there is not an object to release
+        if (may_flatten) {
+            return; // the caller retries with flattened branches
+        }
+        BUG_TRACK_KEY(PipelineRejected, key.Hash(),
+                      "the driver faulted (0x{:08X}) building the pipeline of VS {:016x} PS "
+                      "{:016x}; its draws are skipped",
+                      static_cast<u32>(code), key.unique_hashes[1], key.unique_hashes[5]);
+    };
+    const auto create_pso = [&](ComPtr<ID3D12PipelineState>& handle) {
+        DWORD fault = 0;
+        if (bounds_test) {
+            const HRESULT stream_hr = CallDriverGuarded(
+                [&] { return CreateWithDepthBounds(device.Get2(), desc, handle); }, fault);
+            if (SUCCEEDED(stream_hr)) {
+                return stream_hr;
+            }
+            if (stream_hr == DRIVER_FAULT_HRESULT) {
+                log_driver_fault(fault, handle);
+                return stream_hr;
+            }
+            // The option bit is not a promise the driver takes the stream: draw without the test.
+            WarnOnce(warned_depth_bounds, "the depth bounds test (pipeline stream rejected)");
+        }
+        ID3D12Device* const raw = device.Get();
+        const HRESULT plain_hr = CallDriverGuarded(
+            [&] { return raw->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&handle)); }, fault);
+        if (plain_hr == DRIVER_FAULT_HRESULT) {
+            log_driver_fault(fault, handle);
+        }
+        return plain_hr;
+    };
     const auto create = [&] {
         VideoCore::Perf::ScopedTimer timer{VideoCore::Perf::Counter::PsoCreateUs};
         VideoCore::Perf::Add(VideoCore::Perf::Counter::PsoCreates, 1);
@@ -786,12 +965,12 @@ void GraphicsPipeline::Build() try {
         if (pso_probe_enabled.load(std::memory_order_relaxed)) {
             std::scoped_lock probe_lock{pso_probe_mutex};
             const s64 before = PrivateCommit();
-            hr = device.Get()->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&result.handle));
+            hr = create_pso(result.handle);
             if (SUCCEEDED(hr) && before != 0) {
                 pso_probe_samples.push_back(PrivateCommit() - before);
             }
         } else {
-            hr = device.Get()->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&result.handle));
+            hr = create_pso(result.handle);
         }
         // Failed entries must not poison the index. All current waiters receive the HRESULT.
         if (FAILED(hr)) {
@@ -831,6 +1010,15 @@ void GraphicsPipeline::Build() try {
         return fmt::format("graphics PSO for VS {:016x} PS {:016x} (HRESULT 0x{:08X})",
                            key.unique_hashes[1], key.unique_hashes[5], static_cast<u32>(hr));
     });
+    if (hr == DRIVER_FAULT_HRESULT && may_flatten) {
+        LOG_INFO(Render, "D3D12: the driver faulted building the pipeline for VS {:016x} PS "
+                         "{:016x}; retrying with the vertex shader's branches flattened",
+                 key.unique_hashes[1], key.unique_hashes[5]);
+        flatten_retry = true;
+        pipeline_state.Reset();
+        shared_pso.reset();
+        return;
+    }
     if (FAILED(hr)) {
         BUG_TRACK_KEY(PipelineRejected, key.Hash(),
                       "CreateGraphicsPipelineState failed (HRESULT 0x{:08X}) for VS {:016x} PS "
@@ -848,7 +1036,11 @@ void GraphicsPipeline::Build() try {
                   ShaderFeatureFlags(stages[4]));
         if (hr == E_OUTOFMEMORY) {
             VideoCommon::GPUThread::ReportException("D3D12 graphics PSO allocation exhausted memory");
-        } else {
+        } else if (FirstFailure(key.Hash())) {
+            // Every pipeline object with these shaders fails again; diagnose the first.
+            if (hr == DRIVER_FAULT_HRESULT) {
+                DumpFaultedPipeline(key.unique_hashes[1], key.unique_hashes[5], stages);
+            }
             DiagnoseFailedPipeline(device.Get(), desc);
         }
         pipeline_state.Reset();

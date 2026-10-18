@@ -40,6 +40,7 @@
 
 #include "common/bug_tracker.h"
 #include "common/fs/path_util.h"
+#include "common/log_rotation.h"
 #include "common/host_memory.h"
 #include "common/logging.h"
 #include "common/pulse_diagnostics.h"
@@ -1368,6 +1369,8 @@ void WriteDiag(const std::string& msg) {
             g_diag_path =
                 winrt::to_string(Windows::Storage::ApplicationData::Current().LocalFolder().Path()) +
                 "\\eden_uwp_diag.txt";
+            // Appends across launches: past 8 MiB it moves to its .old copy (as upstream 0.2.92.9).
+            Common::RotateLogIfLarger(std::filesystem::path{winrt::to_hstring(g_diag_path).c_str()}, 8ULL << 20);
         }
         std::ofstream f(g_diag_path, std::ios::app);
         f << line;
@@ -1385,6 +1388,7 @@ void WritePulseLog(const std::string& msg) {
             g_pulse_path =
                 winrt::to_string(Windows::Storage::ApplicationData::Current().LocalFolder().Path()) +
                 "\\eden_pulse.txt";
+            Common::RotateLogIfLarger(std::filesystem::path{winrt::to_hstring(g_pulse_path).c_str()}, 8ULL << 20);
         }
         std::ofstream f(g_pulse_path, std::ios::app);
         f << TakePulseRepeats() << line;
@@ -2145,6 +2149,9 @@ void SeedDirectory(const std::filesystem::path& from, const std::filesystem::pat
 
 void SeedUserData(const std::filesystem::path& install, const std::filesystem::path& local) {
     const std::filesystem::path userdata = install / "userdata";
+    // The data folders the core writes into without creating them (play_time, ...), as the
+    // desktop frontends do at startup (upstream 0.2.92.4).
+    Common::FS::CreateEdenPaths();
     SeedDirectory(userdata / "keys", local / "eden" / "keys", "keys");
     SeedDirectory(userdata / "firmware", local / "eden" / "nand" / "system" / "Contents" / "registered",
                   "firmware");

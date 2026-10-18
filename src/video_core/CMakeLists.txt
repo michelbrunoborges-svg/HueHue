@@ -260,6 +260,8 @@ add_library(video_core STATIC
     textures/astc.cpp
     textures/bcn.cpp
     textures/bcn.h
+    textures/etc2.cpp
+    textures/etc2.h
     textures/decoders.cpp
     textures/decoders.h
     textures/texture.cpp
@@ -481,8 +483,11 @@ if (ENABLE_D3D12)
         renderer_d3d12/d3d12_blit_image.h
         renderer_d3d12/d3d12_buffer_cache.cpp
         renderer_d3d12/d3d12_buffer_cache.h
+        renderer_d3d12/d3d12_index_rewrite_cache.h
         renderer_d3d12/d3d12_command_recorder.h
         renderer_d3d12/d3d12_command_stream.h
+        renderer_d3d12/d3d12_command_validation.cpp
+        renderer_d3d12/d3d12_command_validation.h
         renderer_d3d12/d3d12_compute_pipeline.cpp
         renderer_d3d12/d3d12_compute_pipeline.h
         renderer_d3d12/d3d12_conditional_rendering.cpp
@@ -490,11 +495,14 @@ if (ENABLE_D3D12)
         renderer_d3d12/d3d12_descriptor_heap.cpp
         renderer_d3d12/d3d12_descriptor_heap.h
         renderer_d3d12/diagnostics/d3d12_astc_verify.cpp
+        renderer_d3d12/diagnostics/d3d12_draw_hunt.cpp
+        renderer_d3d12/diagnostics/d3d12_draw_hunt.h
         renderer_d3d12/diagnostics/d3d12_draw_trace.cpp
         renderer_d3d12/diagnostics/d3d12_frame_dump.cpp
         renderer_d3d12/diagnostics/d3d12_pipeline_diagnostics.cpp
         renderer_d3d12/diagnostics/d3d12_pipeline_diagnostics.h
         renderer_d3d12/diagnostics/d3d12_perf_report.cpp
+        renderer_d3d12/diagnostics/hunt_capture.h
         renderer_d3d12/d3d12_fence_manager.cpp
         renderer_d3d12/d3d12_fence_manager.h
         renderer_d3d12/d3d12_graphics_pipeline.cpp
@@ -525,6 +533,8 @@ if (ENABLE_D3D12)
         renderer_d3d12/d3d12_present_fsr.h
         renderer_d3d12/d3d12_device.cpp
         renderer_d3d12/d3d12_device.h
+        renderer_d3d12/d3d12_driver_guard.cpp
+        renderer_d3d12/d3d12_driver_guard.h
         renderer_d3d12/d3d12_scheduler.cpp
         renderer_d3d12/d3d12_scheduler.h
         renderer_d3d12/d3d12_query_cache.cpp

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright 2026 Eden Emulator Project
+// SPDX-FileCopyrightText: Copyright 2026 Jadyx Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
@@ -30,6 +30,12 @@ D3D12_BLEND_OP BlendOp(Maxwell::Blend::Equation equation);
 /// D3D12 splits color and alpha factors: the alpha ones may not name a color (D3D12_BLEND_SRC_COLOR
 /// is invalid in SrcBlendAlpha), so for_alpha picks the alpha equivalent.
 D3D12_BLEND BlendFactor(Maxwell::Blend::Factor factor, bool for_alpha);
+
+/// What a color-equation factor reads from the blend constant. D3D12 has one constant whose RGB
+/// feeds the color equation, so the constant-alpha factors become D3D12_BLEND_BLEND_FACTOR and
+/// the draw replicates the constant's alpha into RGB (see GraphicsPipeline::BlendConstantAlpha).
+enum class BlendConstantRead : u8 { None, Color, Alpha };
+BlendConstantRead ColorBlendConstantRead(Maxwell::Blend::Factor factor);
 
 D3D12_CULL_MODE CullMode(bool enabled, Maxwell::CullFace face);
 

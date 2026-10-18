@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright 2026 Eden Emulator Project
+// SPDX-FileCopyrightText: Copyright 2026 Jadyx Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <windows.h>
@@ -114,7 +114,7 @@ public:
                                                    MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE));
         if (std::FILE* file = OpenOutput(output_started ? L"a" : L"w")) {
             output_started = true;
-            std::fputs("# eden sampling profile v1\n", file);
+            std::fputs("# jadyx sampling profile v1\n", file);
             WriteModuleIdentity(file);
             std::fclose(file);
         }
