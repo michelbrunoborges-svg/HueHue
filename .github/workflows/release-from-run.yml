@@ -1,0 +1,42 @@
+# Publica como Release o pacote que um "Build Xbox" de branch de trabalho ja compilou (o build
+# so publica Release a partir da main). Rodar pela aba Actions -> Publicar Release de um build.
+name: Publicar Release de um build
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Run do Build Xbox cujo artifact publicar"
+        required: true
+      name:
+        description: "Nome do Release"
+        required: false
+        default: "NS HUEHUE"
+      prerelease:
+        description: "Marcar como teste (pre-release)"
+        required: false
+        default: "true"
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o artifact e publicar
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -e
+          gh run download "${{ inputs.run_id }}" -R "$REPO" -p "huehue-switch-*" -D dl
+          art=$(ls dl)
+          version=${art#huehue-switch-}
+          sha=$(gh api "repos/$REPO/actions/runs/${{ inputs.run_id }}" --jq .head_sha)
+          mkdir pkg && find dl -type f -exec cp {} pkg/ \;
+          ls -la pkg
+          flag=""; [ "${{ inputs.prerelease }}" = "true" ] && flag="--prerelease"
+          gh release create "v$version" pkg/* -R "$REPO" --target "$sha" --title "${{ inputs.name }} $version" $flag \
+            --notes "Pacote do build ${{ inputs.run_id }} (commit $sha). Instale o .cer, o VCLibs e o .appx pelo Device Portal."
