@@ -10,6 +10,11 @@ on:
     branches: [main]
     paths-ignore: ["**.md", "docs/**"]
   workflow_dispatch:
+    inputs:
+      clean:
+        description: "Compilar do zero (sem reaproveitar a compilacao anterior)"
+        required: false
+        default: "false"
 
 permissions:
   contents: write
@@ -186,6 +191,7 @@ jobs:
 
       - name: Restaurar compilacao anterior (cache)
         id: buildcache
+        if: inputs.clean != 'true'
         uses: actions/cache/restore@v4
         with:
           path: build-uwp
@@ -193,7 +199,7 @@ jobs:
           restore-keys: build-uwp-
 
       - name: Ajustar datas para recompilar so o que mudou
-        if: steps.buildcache.outputs.cache-matched-key != ''
+        if: inputs.clean != 'true' && steps.buildcache.outputs.cache-matched-key != ''
         shell: pwsh
         run: |
           # O checkout deixa todos os fontes com a data de agora, o que faria o ninja recompilar tudo.
@@ -248,6 +254,49 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           Get-ChildItem build-uwp\package -Filter *.appx
           Get-ChildItem build-uwp\package -Filter *.cer
+
+      - name: Conferir o pacote (assinatura, conteudo e instalacao como atualizacao)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $pkg = "build-uwp\package"
+          $appx = "$pkg\huehue-switch.appx"
+          # 1. Assinatura valida com o certificado publicado junto.
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
+            Where-Object FullName -match "x64" | Sort-Object FullName -Descending | Select-Object -First 1
+          Import-Certificate -FilePath "$pkg\huehue-switch.cer" -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
+          Import-Certificate -FilePath "$pkg\huehue-switch.cer" -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+          & $signtool.FullName verify /pa /v $appx | Select-Object -Last 4
+          if ($LASTEXITCODE) { throw "assinatura invalida" }
+          # 2. Conteudo: manifesto com a versao do build, identidade de sempre e os arquivos do app.
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [IO.Compression.ZipFile]::OpenRead((Resolve-Path $appx))
+          $names = $zip.Entries | ForEach-Object FullName
+          $manifest = (New-Object IO.StreamReader(($zip.Entries | Where-Object FullName -eq "AppxManifest.xml").Open())).ReadToEnd()
+          $zip.Dispose()
+          foreach ($n in @("eden-uwp.exe","dxil.dll","spirv_to_dxil.dll","opengl32.dll","libgallium_wgl.dll","libglapi.dll","AppxManifest.xml","AppxBlockMap.xml","AppxSignature.p7x")) {
+            if ($names -notcontains $n) { throw "falta $n no pacote" }
+          }
+          if ($manifest -notmatch 'Name="HueHue.HueHueSwitch"') { throw "identidade do pacote mudou" }
+          if ($manifest -notmatch "Version=`"$env:APP_VERSION`"") { throw "versao do manifesto diferente de $env:APP_VERSION" }
+          Write-Host "conteudo ok: $($names.Count) arquivos, versao $env:APP_VERSION"
+          # 3. Instala a ultima versao que funcionou no Xbox (0.3.21.0) e depois esta, por cima.
+          $unlock = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock"
+          New-Item -Path $unlock -Force | Out-Null
+          Set-ItemProperty $unlock AllowDevelopmentWithoutDevLicense 1 -Type DWord
+          Set-ItemProperty $unlock AllowAllTrustedApps 1 -Type DWord
+          gh release download v0.3.21.0 -R "${{ github.repository }}" -D old
+          Import-Certificate -FilePath "old\huehue-switch.cer" -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
+          Import-Certificate -FilePath "old\huehue-switch.cer" -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+          Add-AppxPackage -Path "old\huehue-switch.appx" -DependencyPath "old\Microsoft.VCLibs.x64.14.00.appx"
+          Write-Host "instalada: $((Get-AppxPackage -Name HueHue.HueHueSwitch).Version)"
+          Add-AppxPackage -Path $appx -DependencyPath "$pkg\Microsoft.VCLibs.x64.14.00.appx"
+          $now = (Get-AppxPackage -Name HueHue.HueHueSwitch).Version
+          Write-Host "atualizada para: $now"
+          if ($now -ne $env:APP_VERSION) { throw "a atualizacao nao entrou ($now)" }
+          Remove-AppxPackage (Get-AppxPackage -Name HueHue.HueHueSwitch).PackageFullName
 
       - name: Guardar o pacote (artefato do build)
         uses: actions/upload-artifact@v4
