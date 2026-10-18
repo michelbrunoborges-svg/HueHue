@@ -15,7 +15,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: build-xbox
+  group: build-xbox-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
