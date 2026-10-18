@@ -7,6 +7,9 @@
 
 add_executable(eden-uwp WIN32
     headless_emu_window.h
+    gl_window.cpp
+    gl_window.h
+    diagnostic.h
     uwp_boot.cpp
     pulse_gate.cpp
     pulse_gate.h

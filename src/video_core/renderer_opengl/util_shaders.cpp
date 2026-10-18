@@ -4,6 +4,8 @@
 // SPDX-FileCopyrightText: Copyright 2020 yuzu Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include <cstdlib>
+#include <mutex>
 #include <span>
 #include <string_view>
 
@@ -25,6 +27,7 @@
 #include "video_core/renderer_opengl/gl_staging_buffer_pool.h"
 #include "video_core/renderer_opengl/gl_texture_cache.h"
 #include "video_core/renderer_opengl/util_shaders.h"
+#include "video_core/surface.h"
 #include "video_core/texture_cache/accelerated_swizzle.h"
 #include "video_core/texture_cache/types.h"
 #include "video_core/texture_cache/util.h"
@@ -57,10 +60,11 @@ UtilShaders::UtilShaders(ProgramManager& program_manager_)
       block_linear_unswizzle_3d_program(MakeProgram(BLOCK_LINEAR_UNSWIZZLE_3D_COMP)),
       pitch_unswizzle_program(MakeProgram(PITCH_UNSWIZZLE_COMP)),
       copy_bc4_program(MakeProgram(OPENGL_COPY_BC4_COMP)),
-      convert_s8d24_program(MakeProgram(OPENGL_CONVERT_S8D24_COMP)),
-      convert_ms_to_nonms_program(MakeProgram(CONVERT_MSAA_TO_NON_MSAA_COMP)),
-      convert_nonms_to_ms_program(MakeProgram(CONVERT_NON_MSAA_TO_MSAA_COMP))
-{
+      convert_s8d24_program(MakeProgram(OPENGL_CONVERT_S8D24_COMP)) {
+#ifndef NXBOX_NO_MSAA_STORAGE_IMAGES
+    convert_ms_to_nonms_program = MakeProgram(CONVERT_MSAA_TO_NON_MSAA_COMP);
+    convert_nonms_to_ms_program = MakeProgram(CONVERT_NON_MSAA_TO_MSAA_COMP);
+#endif
 }
 
 UtilShaders::~UtilShaders() = default;
@@ -77,6 +81,23 @@ void UtilShaders::ASTCDecode(Image& image, const StagingBufferMap& map,
     };
     program_manager.BindComputeProgram(astc_decoder_program.handle);
     glFlushMappedNamedBufferRange(map.buffer, map.offset, image.guest_size_bytes);
+
+    // NXBOX_ASTC_SRGB_VIA_UNORM=1: on D3D12 without relaxed format casting an sRGB texture has no
+    // UAV, so the RGBA8 store view of it cannot be written. Decode into a plain RGBA8 texture and
+    // copy each level into the sRGB one (same format family, so the copy is a raw one).
+    static const bool srgb_via_unorm = [] {
+        const char* value = std::getenv("NXBOX_ASTC_SRGB_VIA_UNORM");
+        return value != nullptr && value[0] == '1';
+    }();
+    OGLTexture scratch;
+    GLuint output_handle = image.StorageHandle();
+    if (srgb_via_unorm && VideoCore::Surface::IsPixelFormatSRGB(image.info.format)) {
+        scratch.Create(GL_TEXTURE_2D_ARRAY);
+        glTextureStorage3D(scratch.handle, image.info.resources.levels, GL_RGBA8,
+                           image.info.size.width, image.info.size.height,
+                           image.info.resources.layers);
+        output_handle = scratch.handle;
+    }
     glUniform2ui(1, tile_size.width, tile_size.height);
 
     // Ensure buffer data is valid before dispatching
@@ -100,10 +121,19 @@ void UtilShaders::ASTCDecode(Image& image, const StagingBufferMap& map,
         // ASTC texture data
         glBindBufferRange(GL_SHADER_STORAGE_BUFFER, BINDING_INPUT_BUFFER, map.buffer, input_offset,
                           image.guest_size_bytes - swizzle.buffer_offset);
-        glBindImageTexture(BINDING_OUTPUT_IMAGE, image.StorageHandle(), swizzle.level, GL_TRUE, 0,
+        glBindImageTexture(BINDING_OUTPUT_IMAGE, output_handle, swizzle.level, GL_TRUE, 0,
                            GL_WRITE_ONLY, GL_RGBA8);
 
         glDispatchCompute(num_dispatches_x, num_dispatches_y, image.info.resources.layers);
+    }
+    if (scratch.handle != 0) {
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_UPDATE_BARRIER_BIT);
+        for (const SwizzleParameters& swizzle : swizzles) {
+            const Extent3D size = VideoCommon::MipSize(image.info.size, swizzle.level);
+            glCopyImageSubData(scratch.handle, GL_TEXTURE_2D_ARRAY, swizzle.level, 0, 0, 0,
+                               image.Handle(), GL_TEXTURE_2D_ARRAY, swizzle.level, 0, 0, 0,
+                               size.width, size.height, image.info.resources.layers);
+        }
     }
     // Precautionary barrier to ensure the compute shader is done decoding prior to texture access.
     // GL_TEXTURE_FETCH_BARRIER_BIT and GL_SHADER_IMAGE_ACCESS_BARRIER_BIT are used in a separate
@@ -273,6 +303,40 @@ void UtilShaders::ConvertS8D24(Image& dst_image, std::span<const ImageCopy> copi
 
 void UtilShaders::CopyMSAA(Image& dst_image, Image& src_image,
                            std::span<const VideoCommon::ImageCopy> copies) {
+#ifdef NXBOX_NO_MSAA_STORAGE_IMAGES
+    // D3D12 has no multisampled UAVs, and Mesa's D3D12 backend aborts while linking the compute
+    // programs the desktop path uses here instead of reporting a link error. glBlitFramebuffer's
+    // multisample resolve does the same conversion without image load/store, and Mesa's D3D12
+    // backend implements it through the driver's native resolve.
+    if (msaa_blit_read_fbo.handle == 0) {
+        msaa_blit_read_fbo.Create();
+        msaa_blit_draw_fbo.Create();
+    }
+    GLint prev_read = 0;
+    GLint prev_draw = 0;
+    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prev_read);
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prev_draw);
+    for (const VideoCommon::ImageCopy& copy : copies) {
+        ASSERT(copy.src_subresource.base_layer == 0);
+        ASSERT(copy.src_subresource.num_layers == 1);
+        ASSERT(copy.dst_subresource.base_layer == 0);
+        ASSERT(copy.dst_subresource.num_layers == 1);
+
+        glNamedFramebufferTexture(msaa_blit_read_fbo.handle, GL_COLOR_ATTACHMENT0,
+                                  src_image.Handle(), copy.src_subresource.base_level);
+        glNamedFramebufferTexture(msaa_blit_draw_fbo.handle, GL_COLOR_ATTACHMENT0,
+                                  dst_image.Handle(), copy.dst_subresource.base_level);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, msaa_blit_read_fbo.handle);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, msaa_blit_draw_fbo.handle);
+        glBlitFramebuffer(
+            copy.src_offset.x, copy.src_offset.y, copy.src_offset.x + copy.extent.width,
+            copy.src_offset.y + copy.extent.height, copy.dst_offset.x, copy.dst_offset.y,
+            copy.dst_offset.x + copy.extent.width, copy.dst_offset.y + copy.extent.height,
+            GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    }
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, static_cast<GLuint>(prev_read));
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, static_cast<GLuint>(prev_draw));
+#else
     const bool is_ms_to_non_ms = src_image.info.num_samples > 1 && dst_image.info.num_samples == 1;
     const auto program_handle =
         is_ms_to_non_ms ? convert_ms_to_nonms_program.handle : convert_nonms_to_ms_program.handle;
@@ -296,6 +360,7 @@ void UtilShaders::CopyMSAA(Image& dst_image, Image& src_image,
         glDispatchCompute(num_dispatches_x, num_dispatches_y, num_dispatches_z);
     }
     program_manager.RestoreGuestCompute();
+#endif
 }
 
 GLenum StoreFormat(u32 bytes_per_block) {

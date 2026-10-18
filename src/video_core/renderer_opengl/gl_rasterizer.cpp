@@ -16,6 +16,9 @@
 #include "common/assert.h"
 #include "common/logging.h"
 #include "common/math_util.h"
+#include "common/nxbox_draw_guest_diag.h"
+#include "common/nxbox_shader_probe_uwp.h"
+#include "common/nxbox_upload_diag.h"
 #include "common/scope_exit.h"
 #include "common/settings.h"
 #include "video_core/control/channel_state.h"
@@ -80,7 +83,15 @@ RasterizerOpenGL::RasterizerOpenGL(Core::Frontend::EmuWindow& emu_window_, Tegra
                    program_manager, state_tracker, gpu.ShaderNotify()),
       query_cache(*this, device_memory_), accelerate_dma(buffer_cache, texture_cache),
       fence_manager(*this, gpu, texture_cache, buffer_cache, query_cache),
-      blit_image(program_manager_) {}
+      blit_image(program_manager_) {
+#ifdef NXBOX_UWP
+    nxbox_shader_probe_enabled = NxboxShaderProbe::Settings().DrawEnabled();
+    if (nxbox_shader_probe_enabled) {
+        NxboxShaderProbe::FrameState() = {};
+        NxboxShaderProbe::CycleFrameState() = {};
+    }
+#endif
+}
 
 RasterizerOpenGL::~RasterizerOpenGL() = default;
 
@@ -228,6 +239,7 @@ void RasterizerOpenGL::PrepareDraw(bool is_indexed, Func&& draw_func) {
     };
     gpu_memory->FlushCaching();
 
+    NxboxUpload::Publish();
     GraphicsPipeline* const pipeline{shader_cache.CurrentGraphicsPipeline()};
     if (!pipeline) {
         return;
@@ -244,6 +256,42 @@ void RasterizerOpenGL::PrepareDraw(bool is_indexed, Func&& draw_func) {
         return;
 
     SyncState();
+
+#ifdef NXBOX_UWP
+    if (nxbox_shader_probe_enabled) {
+        const auto& config = NxboxShaderProbe::Settings();
+        auto& frames = NxboxShaderProbe::FrameState();
+        NxboxShaderProbe::BeginCycleFrame(config);
+        if (config.SkipEnabled() || (config.ids && frames.frame % config.every == 0)) {
+            const auto& key = pipeline->Key();
+            const auto hash = key.Hash();
+            const bool skip = config.Skip(
+                hash, config.cycle.count != 0 ? NxboxShaderProbe::CycleFrameState().phase : 0);
+            frames.Record(config, hash, key.unique_hashes, skip);
+            if (skip) {
+                return;
+            }
+        }
+    }
+#endif
+
+#ifdef NXBOX_UWP
+    // Mesa does not advertise NV_viewport_swizzle. Observe the guest request before it is lost.
+    bool viewport_swizzle = false;
+    if (nxbox_guest_draw_diag_enabled() && maxwell3d->regs.viewport_scale_offset_enabled) {
+        for (const auto& viewport : maxwell3d->regs.viewport_transform) {
+            if (viewport.scale_x == 0.0f || viewport.scale_y == 0.0f) {
+                continue;
+            }
+            const auto& swizzle = viewport.swizzle;
+            viewport_swizzle |= swizzle.x != Maxwell::ViewportSwizzle::PositiveX ||
+                                swizzle.y != Maxwell::ViewportSwizzle::PositiveY ||
+                                swizzle.z != Maxwell::ViewportSwizzle::PositiveZ ||
+                                swizzle.w != Maxwell::ViewportSwizzle::PositiveW;
+        }
+    }
+    nxbox_record_guest_viewport_swizzle(viewport_swizzle);
+#endif
 
     const auto& draw_state = maxwell3d->draw_manager.draw_state;
 
@@ -666,6 +714,14 @@ void RasterizerOpenGL::FlushCommands() {
 }
 
 void RasterizerOpenGL::TickFrame() {
+#ifdef NXBOX_UWP
+    if (nxbox_shader_probe_enabled) {
+        NxboxShaderProbe::FrameState().End(NxboxShaderProbe::Settings(), EdenXbox::Diagnostic);
+        if (NxboxShaderProbe::Settings().cycle.count != 0) {
+            NxboxShaderProbe::CycleFrameState().frame_begun = false;
+        }
+    }
+#endif
     // Ticking a frame means that buffers will be swapped, calling glFlush implicitly.
     num_queued_commands = 0;
 
@@ -738,6 +794,16 @@ std::optional<FramebufferTextureInfo> RasterizerOpenGL::AccelerateDisplay(
     std::scoped_lock lock{texture_cache.mutex};
     const auto [image_view, scaled] =
         texture_cache.TryFindFramebufferImageView(config, framebuffer_addr);
+#ifdef _WIN32
+    {
+        static unsigned calls = 0;
+        if (++calls % 90 == 1) {
+            LOG_CRITICAL(Render_OpenGL,
+                         "NXBOX AccelerateDisplay addr={:#x} stride={} accelerated={} scaled={}",
+                         framebuffer_addr, pixel_stride, image_view != nullptr, scaled);
+        }
+    }
+#endif
     if (!image_view) {
         return {};
     }

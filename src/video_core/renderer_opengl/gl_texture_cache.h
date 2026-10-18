@@ -89,6 +89,10 @@ public:
 
     u64 GetDeviceMemoryUsage() const;
 
+#ifdef NXBOX_UWP
+    void ApplyMemoryBudgetOverride(u64& expected, u64& critical) const;
+#endif
+
     bool CanReportMemoryUsage() const {
         return device.CanReportMemoryUsage();
     }
@@ -126,6 +130,12 @@ public:
 
     void InsertUploadMemoryBarrier();
 
+    /// NXBOX_ASTC_CHECK: whether the next GPU-decoded ASTC upload should be compared with the CPU
+    /// decoder, and the comparison itself (logged per mip level as NXBOX_ASTC_CHECK).
+    bool NxboxAstcCheckWanted() const noexcept;
+    void NxboxCompareAstcUpload(Image& image, std::span<const u8> expected,
+                                std::span<const VideoCommon::BufferImageCopy> copies);
+
     void TransitionImageLayout(Image& image) {}
 
     FormatProperties FormatInfo(VideoCommon::ImageType type, GLenum internal_format) const;
@@ -152,6 +162,7 @@ public:
     }
 
 private:
+    u32 nxbox_astc_checks = 0;
     const Device& device;
     StateTracker& state_tracker;
     StagingBufferPool& staging_buffer_pool;

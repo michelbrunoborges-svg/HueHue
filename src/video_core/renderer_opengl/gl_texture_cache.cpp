@@ -7,11 +7,22 @@
 #include <algorithm>
 #include <array>
 #include <bit>
+#include <cstdlib>
+#include <cstring>
+#include <vector>
 #include <string>
 
 #include <glad/glad.h>
 
 #include "common/bit_util.h"
+#include "common/nxbox_gl_readback.h"
+#include "common/nxbox_upload_diag.h"
+#ifdef NXBOX_UWP
+#include "common/nxbox_stall.h"
+// Declared directly: windows.h in GL code clashes with glad.
+extern "C" __declspec(dllimport) unsigned long __stdcall GetEnvironmentVariableA(const char*, char*,
+                                                                                 unsigned long);
+#endif
 #include "common/literals.h"
 #include "common/settings.h"
 #include "video_core/renderer_opengl/gl_device.h"
@@ -546,13 +557,20 @@ TextureCacheRuntime::TextureCacheRuntime(const Device& device_, ProgramManager& 
         if (device.CanReportMemoryUsage()) {
             return device.GetCurrentDedicatedVideoMemory() + 512_MiB;
         }
+#ifdef NXBOX_UWP
+        return 1_GiB; // Mesa d3d12 cannot report memory; the Xbox app budget is shared with DRAM
+#else
         return 2_GiB; // Return minimum requirements
+#endif
     }();
 }
 
 TextureCacheRuntime::~TextureCacheRuntime() = default;
 
 void TextureCacheRuntime::Finish() {
+#ifdef NXBOX_UWP
+    NxboxStall::Scope stall_scope{NxboxStall::Kind::GlFinish};
+#endif
     glFinish();
 }
 
@@ -568,11 +586,39 @@ void TextureCacheRuntime::FreeDeferredStagingBuffer(StagingBufferMap& buffer) {
     staging_buffer_pool.FreeDeferredStagingBuffer(buffer);
 }
 
+#ifdef NXBOX_UWP
+// NXBOX_TEXCACHE_MB=<n> caps the texture cache at n MiB (critical at 1.25 n): the Xbox GPU's
+// dedicated segment is only 512 MiB and anything beyond it is paged in and out.
+void TextureCacheRuntime::ApplyMemoryBudgetOverride(u64& expected, u64& critical) const {
+    char value[16]{};
+    if (GetEnvironmentVariableA("NXBOX_TEXCACHE_MB", value, sizeof(value)) != 0) {
+        const u64 megabytes = std::strtoull(value, nullptr, 10);
+        if (megabytes != 0) {
+            expected = megabytes * 1_MiB;
+            critical = expected + expected / 4;
+        }
+    }
+}
+#endif
+
 u64 TextureCacheRuntime::GetDeviceMemoryUsage() const {
     if (device.CanReportMemoryUsage()) {
         return device_access_memory - device.GetCurrentDedicatedVideoMemory();
     }
+#ifdef NXBOX_UWP
+    // Mesa d3d12 cannot report memory through GL, but its residency manager publishes the video
+    // memory usage in an environment variable. A constant here keeps the cache's collector in
+    // aggressive mode forever, evicting and re-uploading textures every frame.
+    char report[200]{};
+    if (GetEnvironmentVariableA("NXBOX_D3D12_VIDMEM", report, sizeof(report)) != 0) {
+        if (const char* usage = std::strstr(report, "usage=")) {
+            return std::strtoull(usage + 6, nullptr, 10);
+        }
+    }
+    return 0;
+#else
     return 2_GiB;
+#endif
 }
 
 void TextureCacheRuntime::CopyImage(Image& dst_image, Image& src_image,
@@ -670,6 +716,58 @@ void TextureCacheRuntime::AccelerateImageUpload(Image& image, const StagingBuffe
     }
 }
 
+bool TextureCacheRuntime::NxboxAstcCheckWanted() const noexcept {
+    static const bool wanted = std::getenv("NXBOX_ASTC_CHECK") != nullptr;
+    return wanted && nxbox_astc_checks < 24;
+}
+
+void TextureCacheRuntime::NxboxCompareAstcUpload(
+    Image& image, std::span<const u8> expected,
+    std::span<const VideoCommon::BufferImageCopy> copies) {
+    const u32 check = ++nxbox_astc_checks;
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+    const NxboxPackBufferGuard guard;
+    std::vector<u8> actual;
+    for (const VideoCommon::BufferImageCopy& copy : copies) {
+        const u32 level = copy.image_subresource.base_level;
+        const size_t size = static_cast<size_t>(copy.image_extent.width) *
+                            copy.image_extent.height * copy.image_extent.depth *
+                            copy.image_subresource.num_layers * 4;
+        actual.assign(size, 0xCD);
+        while (glGetError() != GL_NO_ERROR) {
+        }
+        glGetTextureImage(image.Handle(), static_cast<GLint>(level), GL_RGBA, GL_UNSIGNED_BYTE,
+                          static_cast<GLsizei>(size), actual.data());
+        const GLenum error = glGetError();
+        const auto reference = expected.subspan(copy.buffer_offset, size);
+        size_t mismatched = 0;
+        size_t first = size;
+        for (size_t i = 0; i < size; ++i) {
+            if (actual[i] != reference[i]) {
+                first = (std::min)(first, i);
+                ++mismatched;
+            }
+        }
+        u32 gpu_word = 0;
+        u32 cpu_word = 0;
+        if (first < size && first + 4 <= size) {
+            const size_t aligned = first & ~size_t{3};
+            std::memcpy(&gpu_word, actual.data() + aligned, 4);
+            std::memcpy(&cpu_word, reference.data() + aligned, 4);
+        }
+        LOG_WARNING(Render_OpenGL,
+                    "NXBOX_ASTC_CHECK #{} format={} srgb={} size={}x{}x{} levels={} level={} "
+                    "extent={}x{} bytes={} mismatched={} first={} gpu={:08x} cpu={:08x} "
+                    "gl_error={:#x}",
+                    check, static_cast<u32>(image.info.format),
+                    VideoCore::Surface::IsPixelFormatSRGB(image.info.format) ? 1 : 0,
+                    image.info.size.width, image.info.size.height,
+                    image.info.resources.layers, image.info.resources.levels, level,
+                    copy.image_extent.width, copy.image_extent.height, size, mismatched,
+                    first, gpu_word, cpu_word, error);
+    }
+}
+
 void TextureCacheRuntime::InsertUploadMemoryBarrier() {
     glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 }
@@ -742,7 +840,13 @@ void Image::UploadMemory(GLuint buffer_handle, size_t buffer_offset,
         ScaleDown(true);
     }
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, buffer_handle);
-    glFlushMappedBufferRange(GL_PIXEL_UNPACK_BUFFER, buffer_offset, unswizzled_size_bytes);
+    // Converted ASTC/BCn data can be much larger than the compressed guest payload.
+    // Publish the entire CPU output before any mip/layer is copied from noncoherent staging.
+    const auto upload_size = VideoCommon::MapSizeBytes(*this);
+    if (upload_size > unswizzled_size_bytes) {
+        NxboxUpload::Record(NxboxUpload::Event::ExpandedFlush);
+    }
+    glFlushMappedBufferRange(GL_PIXEL_UNPACK_BUFFER, buffer_offset, upload_size);
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
@@ -911,6 +1015,9 @@ void Image::CopyBufferToImage(const VideoCommon::BufferImageCopy& copy, size_t b
 }
 
 void Image::CopyImageToBuffer(const VideoCommon::BufferImageCopy& copy, size_t buffer_offset) {
+#ifdef NXBOX_UWP
+    NxboxStall::Scope stall_scope{NxboxStall::Kind::Readback};
+#endif
     const GLint x_offset = copy.image_offset.x;
     const GLsizei width = copy.image_extent.width;
 
@@ -1394,6 +1501,9 @@ FormatConversionPass::FormatConversionPass(UtilShaders& util_shaders_)
 
 void FormatConversionPass::ConvertImage(Image& dst_image, Image& src_image,
                                         std::span<const VideoCommon::ImageCopy> copies) {
+#ifdef NXBOX_UWP
+    NxboxStall::Scope stall_scope{NxboxStall::Kind::Readback};
+#endif
     const GLenum dst_target = ImageTarget(dst_image.info);
     const GLenum src_target = ImageTarget(src_image.info);
     const u32 img_bpp = BytesPerBlock(src_image.info.format);

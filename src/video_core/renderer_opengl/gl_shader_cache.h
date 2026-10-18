@@ -31,6 +31,12 @@ using ShaderWorker = Common::StatefulThreadWorker<ShaderContext::Context>;
 
 class ShaderCache : public VideoCommon::ShaderCache {
 public:
+    /// Appends the pipelines of `incoming` that `local` does not have yet (entries are compared by
+    /// their exact bytes). Both must be OpenGL pipeline caches of the current version; returns
+    /// how many entries were added, or -1 when `incoming` is not a valid cache.
+    static long MergeCacheFiles(const std::filesystem::path& local,
+                                const std::filesystem::path& incoming);
+
     explicit ShaderCache(Tegra::MaxwellDeviceMemoryManager& device_memory_,
                          Core::Frontend::EmuWindow& emu_window_, const Device& device_,
                          TextureCache& texture_cache_, BufferCache& buffer_cache_,
@@ -77,6 +83,9 @@ private:
     const bool use_asynchronous_shaders;
     const bool strict_context_required;
 
+#ifdef NXBOX_UWP
+    std::string last_dump_selection;
+#endif
     GraphicsPipelineKey graphics_key{};
     GraphicsPipeline* current_pipeline{};
 

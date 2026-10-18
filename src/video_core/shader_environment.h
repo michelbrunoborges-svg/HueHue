@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <filesystem>
 #include <iosfwd>
@@ -63,6 +64,14 @@ public:
     [[nodiscard]] u64 CalculateHash() const;
 
     void Dump(u64 pipeline_hash, u64 shader_hash) override;
+
+#ifdef NXBOX_UWP
+    // NS HUEHUE: the OpenGL (Mesa) renderer brought from NXbox dumps a shader's guest code.
+    std::vector<u64> GuestCode() const;
+    u32 GuestCodeAddress() const {
+        return (std::min)(cached_lowest, read_lowest);
+    }
+#endif
 
     void Serialize(std::ofstream& file) const;
 
@@ -207,6 +216,15 @@ public:
     }
 
     void Dump(u64 pipeline_hash, u64 shader_hash) override;
+
+#ifdef NXBOX_UWP
+    std::vector<u64> GuestCode() const {
+        return code;
+    }
+    u32 GuestCodeAddress() const {
+        return read_lowest;
+    }
+#endif
 
 private:
     std::vector<u64> code;

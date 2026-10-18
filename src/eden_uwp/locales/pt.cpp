@@ -624,5 +624,9 @@ const Catalog PortugueseCatalog = MakeCatalog({
     {Text::NsHintSkip, L"Mostra só 1 quadro a cada 2, 3 ou 4. Alivia a parte de mostrar a imagem; o jogo continua rodando completo."},
     {Text::NsHintShaders, L"Rápido usa mais núcleos para preparar os shaders: menos travadas na primeira vez, mas disputa CPU com o jogo."},
     {Text::NsTuningSaved, L"Salvo: vale na próxima vez que o jogo abrir"},
+    {Text::NsTuningRenderer, L"Renderizador"},
+    {Text::NsRendererD3d12, L"D3D12 (rápido)"},
+    {Text::NsRendererOpenGl, L"OpenGL (compatibilidade)"},
+    {Text::NsHintRenderer, L"D3D12 é o mais rápido. OpenGL (Mesa, o caminho do NX Zero) é mais lento, mas roda jogos que fecham ou travam no D3D12. Sem Pulse no OpenGL."},
 });
 } // namespace EdenXbox::I18n

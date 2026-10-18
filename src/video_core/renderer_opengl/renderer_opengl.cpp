@@ -7,15 +7,22 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdlib>
+#include <chrono>
+#include <cstdio>
+#include <filesystem>
+#include <fstream>
 #include <memory>
+#include <vector>
 
 #include <glad/glad.h>
 
 #include "common/assert.h"
 #include "common/logging.h"
+#include "common/nxbox_shader_probe_uwp.h"
 #include "common/settings.h"
 #include "core/core_timing.h"
 #include "core/frontend/emu_window.h"
+#include "core/frontend/framebuffer_layout.h"
 #include "video_core/capture.h"
 #include "video_core/present.h"
 #include "video_core/renderer_opengl/gl_blit_screen.h"
@@ -141,6 +148,7 @@ void RendererOpenGL::Composite(std::span<const Tegra::FramebufferConfig> framebu
 
     RenderAppletCaptureLayer(framebuffers);
     RenderScreenshot(framebuffers);
+    DumpProbeFrame(framebuffers);
 
     state_tracker.BindFramebuffer(0);
     blit_screen->DrawScreen(framebuffers, emu_window.GetFramebufferLayout(), false);
@@ -152,6 +160,97 @@ void RendererOpenGL::Composite(std::span<const Tegra::FramebufferConfig> framebu
 
     context->SwapBuffers();
     render_window.OnFrameDisplayed();
+}
+
+// Diagnostic frame probe: with NXBOX_FRAME_DUMP_DIR set, every 150th composed frame is drawn
+// into a small off-screen target (the same pass the screenshot uses) and written as a PPM, with
+// its peak and mean brightness logged. The console's own screenshots of the app come out black,
+// so this is the only way to see what the game actually produced. A pipeline cycle instead
+// captures one frame at each phase's midpoint, using the phase that rendered this frame.
+void RendererOpenGL::DumpProbeFrame(std::span<const Tegra::FramebufferConfig> framebuffers) {
+    static const char* const dump_dir = std::getenv("NXBOX_FRAME_DUMP_DIR");
+    if (dump_dir == nullptr || *dump_dir == '\0') {
+        return;
+    }
+    // A game that crawls would take minutes to reach the next 150th frame, so a dump is also
+    // taken once 20 seconds have passed since the last one.
+    static auto last_dump = std::chrono::steady_clock::now();
+    const auto now = std::chrono::steady_clock::now();
+    bool cycle_dump = false;
+    u64 cycle_phase = 0;
+#ifdef NXBOX_UWP
+    const auto& cycle = NxboxShaderProbe::Settings().cycle;
+    if (cycle.count != 0) {
+        auto& state = NxboxShaderProbe::CycleFrameState();
+        if (!state.TakeProbe(cycle, NxboxShaderProbe::CycleTick())) {
+            return;
+        }
+        cycle_dump = true;
+        cycle_phase = state.phase;
+    }
+#endif
+    if (!cycle_dump && m_current_frame % 150 != 0 && now - last_dump < std::chrono::seconds(20)) {
+        return;
+    }
+    last_dump = now;
+    constexpr u32 width = 480;
+    constexpr u32 height = 270;
+    std::vector<u8> pixels(size_t{width} * height * 4);
+    RenderToBuffer(framebuffers, Layout::DefaultFrameLayout(width, height), pixels.data());
+
+    u32 peak = 0;
+    u64 sum = 0;
+    for (size_t i = 0; i < pixels.size(); i += 4) {
+        const u32 value = std::max({pixels[i], pixels[i + 1], pixels[i + 2]});
+        peak = std::max(peak, value);
+        sum += value;
+    }
+    const u64 mean_x100 = sum * 100 / (size_t{width} * height);
+    // Also the first layer's guest pixel format and blending, and the mean of each channel, so a
+    // tinted picture (only red, say) can be traced to a format.
+    u64 channel_sum[3]{};
+    for (size_t i = 0; i < pixels.size(); i += 4) {
+        for (size_t c = 0; c < 3; ++c) {
+            channel_sum[c] += pixels[i + c];
+        }
+    }
+    const size_t count = size_t{width} * height;
+    LOG_INFO(Render_OpenGL, "FRAME_PROBE_FORMAT pixel_format={} blending={} rgb_mean={},{},{}",
+             framebuffers.empty() ? -1 : static_cast<int>(framebuffers[0].pixel_format),
+             framebuffers.empty() ? -1 : static_cast<int>(framebuffers[0].blending),
+             channel_sum[0] / count, channel_sum[1] / count, channel_sum[2] / count);
+    LOG_INFO(Render_OpenGL, "FRAME_PROBE frame={} peak={} mean_x100={} layers={} tick_ms={}",
+             m_current_frame, peak, mean_x100, framebuffers.size(),
+             std::chrono::duration_cast<std::chrono::milliseconds>(
+                 std::chrono::steady_clock::now().time_since_epoch())
+                 .count());
+
+    std::error_code ec;
+    std::filesystem::create_directories(dump_dir, ec);
+    const std::filesystem::path file =
+        std::filesystem::path(dump_dir) /
+        (cycle_dump ? fmt::format("frame_{:06}_phase_{}.ppm", m_current_frame, cycle_phase)
+                    : fmt::format("frame_{:06}.ppm", m_current_frame));
+#ifdef NXBOX_UWP
+    if (cycle_dump) {
+        EdenXbox::Diagnostic(fmt::format(
+            "FRAME_PROBE frame={} phase={} start_tick={} file={}", m_current_frame, cycle_phase,
+            NxboxShaderProbe::CycleFrameState().start_tick, file.filename().string()));
+    }
+#endif
+    std::ofstream out(file, std::ios::binary);
+    out << "P6\n" << width << ' ' << height << "\n255\n";
+    std::vector<char> rgb(size_t{width} * height * 3);
+    // glReadPixels returns bottom-up BGRA.
+    for (u32 y = 0; y < height; ++y) {
+        const u8* row = pixels.data() + size_t{height - 1 - y} * width * 4;
+        for (u32 x = 0; x < width; ++x) {
+            rgb[(size_t{y} * width + x) * 3 + 0] = static_cast<char>(row[x * 4 + 2]);
+            rgb[(size_t{y} * width + x) * 3 + 1] = static_cast<char>(row[x * 4 + 1]);
+            rgb[(size_t{y} * width + x) * 3 + 2] = static_cast<char>(row[x * 4 + 0]);
+        }
+    }
+    out.write(rgb.data(), static_cast<std::streamsize>(rgb.size()));
 }
 
 void RendererOpenGL::AddTelemetryFields() {

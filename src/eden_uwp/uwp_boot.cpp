@@ -90,6 +90,7 @@
 #include "eden_uwp/cheats/cheats_page.h"
 #include "eden_uwp/cheats/cheats_view.h"
 #include "eden_uwp/game_menu_surface.h"
+#include "eden_uwp/gl_window.h"
 #include "eden_uwp/headless_emu_window.h"
 #include "eden_uwp/prewarm_budget.h"
 #include "eden_uwp/pulse_gate.h"
@@ -325,6 +326,8 @@ struct BootConfig {
     /// NS HUEHUE (game_profile.h): the console in handheld mode, so the game renders at its
     /// portable resolution; frame pacing; pipeline builder threads (0: default).
     bool portable{};
+    /// The game runs on Eden's OpenGL renderer through Mesa (gl_window.h) instead of D3D12.
+    bool opengl{};
     u32 max_fps{};
     u32 frame_skip{};
     u32 pipeline_workers{};
@@ -568,7 +571,56 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
         }
     }
 
-    HeadlessEmuWindow emu_window{surface.core_window, surface.width, surface.height};
+    // NS HUEHUE: the game's renderer (Desempenho e graficos). OpenGL goes through Mesa's d3d12
+    // driver, as NXbox (NX Zero) does; when Mesa cannot start, the game runs on D3D12.
+    // (EmuWindow's destructor is protected: each kind is held by its own type.)
+    std::unique_ptr<GlWindow> gl_owner;
+    std::unique_ptr<HeadlessEmuWindow> headless_owner;
+    GlWindow* gl_window = nullptr;
+    if (config.opengl && surface.core_window != nullptr && !config.null_renderer) {
+        try {
+            gl_owner = std::make_unique<GlWindow>(surface.core_window, surface.width, surface.height);
+            gl_window = gl_owner.get();
+            // As NXbox on Mesa d3d12: GLSL from Eden's unchanged backend, shaders built on the
+            // renderer's context, ASTC and video decoded on the CPU (the GPU paths leave garbage
+            // or freeze there), native resolution.
+            Settings::values.renderer_backend = Settings::RendererBackend::OpenGL_GLSL;
+            Settings::values.use_asynchronous_shaders = false;
+            Settings::values.accelerate_astc.SetValue(Settings::AstcDecodeMode::Cpu);
+            Settings::values.nvdec_emulation.SetValue(Settings::NvdecEmulation::Cpu);
+            Settings::values.resolution_setup.SetValue(Settings::ResolutionSetup::Res1X);
+            WriteDiag("renderer: OpenGL through Mesa d3d12 | " + MemoryReport());
+        } catch (const std::exception& e) {
+            WriteDiag(std::string("renderer: OpenGL unavailable (") + e.what() + "), using D3D12");
+            gl_window = nullptr;
+            gl_owner.reset();
+        }
+    }
+    if (!gl_owner) {
+        headless_owner = std::make_unique<HeadlessEmuWindow>(surface.core_window, surface.width, surface.height);
+    }
+    Core::Frontend::EmuWindow& emu_window =
+        gl_owner ? static_cast<Core::Frontend::EmuWindow&>(*gl_owner) : *headless_owner;
+    // The in-game menu and the game's keyboard: the D3D12 renderer draws them over its frame, the
+    // OpenGL window over its own.
+    const auto menu_screen_size = [&]() -> std::pair<u32, u32> {
+        return gl_window ? gl_window->ScreenSize() : D3D12::GameMenuScreenSize(system.Renderer());
+    };
+    const auto show_menu_image = [&](D3D12::MenuImage image, bool paused) {
+        if (gl_window) {
+            gl_window->SetOverlay(std::move(image));
+            if (paused) system.GPU().RunOnGpuThread([&] { gl_window->PresentOverlayNow(); });
+            return;
+        }
+        system.GPU().RunOnGpuThread([&] { D3D12::ShowGameMenu(system.Renderer(), std::move(image)); });
+    };
+    const auto hide_menu_image = [&] {
+        if (gl_window) {
+            gl_window->SetOverlay(std::nullopt);
+            return;
+        }
+        system.GPU().RunOnGpuThread([&] { D3D12::HideGameMenu(system.Renderer()); });
+    };
 
     // Before Load, so HID starts with player 1 connected and bound to the gamepad engine.
     GamepadInput input{config.input_script};
@@ -657,7 +709,8 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
     };
     // Pulse: the identity this boot would save under, and the session it resumes if one matches.
     std::optional<Common::Pulse::Identity> pulse_identity;
-    if (config.pulse_sessions && PulseSessions::Enabled()) {
+    // Pulse saves and restores the D3D12 renderer's state: not with OpenGL.
+    if (config.pulse_sessions && !gl_window && PulseSessions::Enabled()) {
         try {
             const auto file = system.GetFilesystem()->OpenFile(nro_path, FileSys::OpenMode::Read);
             const auto user = system.GetProfileManager().GetUser(0);
@@ -765,13 +818,19 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
         WriteDiag("step: building the disk shader cache | " + MemoryReport());
         VideoCore::RendererBase& renderer = system.Renderer();
         if (pulse_screen) pulse_screen->ShadersStarting();
-        renderer.ReadRasterizer()->LoadDiskResources(
-            system.GetApplicationProcessProgramID(), std::stop_token{},
-            [&renderer, &pulse_screen](VideoCore::LoadCallbackStage, size_t done, size_t total) {
-                // A resume's screen shows the count itself; two presenters would race.
-                if (pulse_screen) pulse_screen->Shaders(done, total);
-                else D3D12::ShowLoadProgress(renderer, done, total);
-            });
+        const auto load_disk_shaders = [&] {
+            renderer.ReadRasterizer()->LoadDiskResources(
+                system.GetApplicationProcessProgramID(), std::stop_token{},
+                [&renderer, &pulse_screen](VideoCore::LoadCallbackStage, size_t done, size_t total) {
+                    // A resume's screen shows the count itself; two presenters would race.
+                    if (pulse_screen) pulse_screen->Shaders(done, total);
+                    else D3D12::ShowLoadProgress(renderer, done, total);
+                });
+        };
+        // OpenGL builds them on the renderer's own context (Mesa's WGL cannot make a second one
+        // current), which the GPU thread holds: the guest is not running yet.
+        if (gl_window) system.GPU().RunOnGpuThread(load_disk_shaders);
+        else load_disk_shaders();
         WriteDiag("step: disk shader cache built | " + MemoryReport());
     }
 
@@ -864,7 +923,7 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
         };
         const auto draw_menu = [&] {
             pulse_screen.reset(); // The menu takes the screen.
-            const auto screen = D3D12::GameMenuScreenSize(system.Renderer());
+            const auto screen = menu_screen_size();
             D3D12::MenuImage image;
             try {
                 menu_surface->SetPromptMapping(input.MenuPromptMapping());
@@ -876,7 +935,7 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                 WriteDiag("menu: not drawn: " + winrt::to_string(e.message()));
                 return;
             }
-            system.GPU().RunOnGpuThread([&] { D3D12::ShowGameMenu(system.Renderer(), std::move(image)); });
+            show_menu_image(std::move(image), menu.has_value());
         };
         // Shows, redraws or hides the game's keyboard after it changed (unless the menu covers it).
         const auto sync_keyboard = [&] {
@@ -900,7 +959,7 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
             } else if (was_shown) {
                 SetTextEntryActive(false);
                 menu_surface.reset();
-                system.GPU().RunOnGpuThread([&] { D3D12::HideGameMenu(system.Renderer()); });
+                hide_menu_image();
                 input.SetMenuOpen(false);
                 WriteDiag("keyboard: closed");
             }
@@ -1151,7 +1210,7 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                         draw_menu();
                     } else {
                         menu_surface.reset();
-                        system.GPU().RunOnGpuThread([&] { D3D12::HideGameMenu(system.Renderer()); });
+                        hide_menu_image();
                         input.SetMenuOpen(false);
                         keyboard_shown = false;
                     }
@@ -2660,6 +2719,8 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                         config.max_fps = tuning.MaxFps();
                         config.frame_skip = tuning.frame_skip;
                         config.pipeline_workers = tuning.shaders == EdenXbox::ShaderBuild::Fast ? 6 : 0;
+                        config.opengl = tuning.renderer == EdenXbox::GameRenderer::OpenGL;
+                        if (config.opengl) WriteDiag("tuning: OpenGL renderer (Mesa)");
                         WriteDiag("tuning: " + std::string(config.portable ? "portable" : "tv") + " fps<=" +
                                   std::to_string(config.max_fps) + " skip " + std::to_string(config.frame_skip) +
                                   " workers " + std::to_string(config.pipeline_workers));

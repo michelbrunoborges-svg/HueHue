@@ -12,6 +12,12 @@
 #include "video_core/renderer_opengl/gl_buffer_cache.h"
 #include "video_core/renderer_opengl/gl_device.h"
 #include "video_core/renderer_opengl/maxwell_to_gl.h"
+#ifdef NXBOX_UWP
+// Avoid windows.h: its OpenGL declarations conflict with glad.
+extern "C" __declspec(dllimport) int __stdcall SetEnvironmentVariableA(const char*, const char*);
+#include "common/nxbox_geometry_diag.h"
+#include "common/nxbox_stall.h"
+#endif
 
 namespace OpenGL {
 namespace {
@@ -71,6 +77,9 @@ void Buffer::ImmediateUpload(size_t offset, std::span<const u8> data) noexcept {
 }
 
 void Buffer::ImmediateDownload(size_t offset, std::span<u8> data) noexcept {
+#ifdef NXBOX_UWP
+    NxboxStall::Scope stall_scope{NxboxStall::Kind::Readback};
+#endif
     glGetNamedBufferSubData(buffer.handle, static_cast<GLintptr>(offset),
                             static_cast<GLsizeiptr>(data.size_bytes()), data.data());
 }
@@ -207,6 +216,9 @@ void BufferCacheRuntime::PostCopyBarrier() {
 }
 
 void BufferCacheRuntime::Finish() {
+#ifdef NXBOX_UWP
+    NxboxStall::Scope stall_scope{NxboxStall::Kind::GlFinish};
+#endif
     glFinish();
 }
 
@@ -273,6 +285,12 @@ void BufferCacheRuntime::BindVertexBuffers(VideoCommon::HostBindings<Buffer>& bi
 
 void BufferCacheRuntime::BindUniformBuffer(size_t stage, u32 binding_index, Buffer& buffer,
                                            u32 offset, u32 size) {
+#ifdef NXBOX_UWP
+    if (!use_assembly_shaders) {
+        nxbox_record_uniform_binding(static_cast<unsigned>(stage), binding_index, offset, size,
+                                     device.GetUniformBufferAlignment());
+    }
+#endif
     if (use_assembly_shaders) {
         GLuint handle;
         if (offset != 0) {
@@ -293,6 +311,12 @@ void BufferCacheRuntime::BindUniformBuffer(size_t stage, u32 binding_index, Buff
 
 void BufferCacheRuntime::BindComputeUniformBuffer(u32 binding_index, Buffer& buffer, u32 offset,
                                                   u32 size) {
+#ifdef NXBOX_UWP
+    if (!use_assembly_shaders) {
+        nxbox_record_uniform_binding(5, binding_index, offset, size,
+                                     device.GetUniformBufferAlignment());
+    }
+#endif
     if (use_assembly_shaders) {
         GLuint handle;
         if (offset != 0) {

@@ -4,18 +4,24 @@
 // SPDX-FileCopyrightText: Copyright 2018 yuzu Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include <array>
 #include <atomic>
 #include <fstream>
 #include <functional>
 #include <mutex>
 #include <string>
 #include <thread>
+#include <vector>
+#include <unordered_set>
 
 #include "common/alignment.h"
 #include "common/assert.h"
 #include "common/fs/fs.h"
 #include "common/fs/path_util.h"
 #include "common/logging.h"
+#include "common/nxbox_shader_probe_uwp.h"
+#include "common/nxbox_stall.h"
+#include "common/nxbox_upload_diag.h"
 #include "common/settings.h"
 #include "common/thread_worker.h"
 #include "shader_recompiler/backend/glasm/emit_glasm.h"
@@ -25,7 +31,6 @@
 #include "shader_recompiler/frontend/maxwell/control_flow.h"
 #include "shader_recompiler/frontend/maxwell/translate_program.h"
 #include "shader_recompiler/profile.h"
-#include "video_core/engines/maxwell_3d.h"
 #include "video_core/engines/kepler_compute.h"
 #include "video_core/engines/maxwell_3d.h"
 #include "video_core/memory_manager.h"
@@ -278,6 +283,88 @@ ShaderCache::ShaderCache(Tegra::MaxwellDeviceMemoryManager& device_memory_,
 
 ShaderCache::~ShaderCache() = default;
 
+namespace {
+/// Splits an OpenGL pipeline cache into its raw entries; empty when the header does not match.
+std::vector<std::string> ReadCacheEntries(const std::filesystem::path& path, bool& valid) {
+    std::vector<std::string> entries;
+    valid = false;
+    std::ifstream file(path, std::ios::binary | std::ios::ate);
+    if (!file.is_open()) {
+        return entries;
+    }
+    const auto end = file.tellg();
+    file.seekg(0, std::ios::beg);
+    std::array<char, 8> magic{};
+    u32 version{};
+    file.read(magic.data(), magic.size()).read(reinterpret_cast<char*>(&version), sizeof(version));
+    static constexpr std::array<char, 8> expected_magic{'y', 'u', 'z', 'u', 'c', 'a', 'c', 'h'};
+    if (!file || magic != expected_magic || version != CACHE_VERSION) {
+        return entries;
+    }
+    valid = true;
+    try {
+        file.exceptions(std::ifstream::failbit);
+        while (file.tellg() != end) {
+            const auto start = file.tellg();
+            u32 num_envs{};
+            file.read(reinterpret_cast<char*>(&num_envs), sizeof(num_envs));
+            if (num_envs == 0 || num_envs > 6) {
+                break;
+            }
+            std::vector<FileEnvironment> envs(num_envs);
+            for (FileEnvironment& env : envs) {
+                env.Deserialize(file);
+            }
+            if (envs.front().ShaderStage() == Shader::Stage::Compute) {
+                ComputePipelineKey key;
+                file.read(reinterpret_cast<char*>(&key), sizeof(key));
+            } else {
+                GraphicsPipelineKey key;
+                file.read(reinterpret_cast<char*>(&key), sizeof(key));
+            }
+            const auto stop = file.tellg();
+            std::string raw(static_cast<size_t>(stop - start), '\0');
+            file.seekg(start);
+            file.read(raw.data(), static_cast<std::streamsize>(raw.size()));
+            entries.push_back(std::move(raw));
+        }
+    } catch (const std::ios_base::failure&) {
+        // A truncated tail is dropped; the complete entries before it are kept.
+    }
+    return entries;
+}
+} // Anonymous namespace
+
+long ShaderCache::MergeCacheFiles(const std::filesystem::path& local,
+                                  const std::filesystem::path& incoming) {
+    bool incoming_valid = false;
+    const auto remote = ReadCacheEntries(incoming, incoming_valid);
+    if (!incoming_valid) {
+        return -1;
+    }
+    bool local_valid = false;
+    const auto existing = ReadCacheEntries(local, local_valid);
+    std::unordered_set<std::string> known(existing.begin(), existing.end());
+    if (!local_valid) {
+        // No usable local cache: start one with the incoming header.
+        std::ofstream out(local, std::ios::binary | std::ios::trunc);
+        static constexpr std::array<char, 8> magic{'y', 'u', 'z', 'u', 'c', 'a', 'c', 'h'};
+        const u32 version = CACHE_VERSION;
+        out.write(magic.data(), magic.size()).write(reinterpret_cast<const char*>(&version),
+                                                    sizeof(version));
+        known.clear();
+    }
+    std::ofstream out(local, std::ios::binary | std::ios::app);
+    long added = 0;
+    for (const std::string& entry : remote) {
+        if (known.insert(entry).second) {
+            out.write(entry.data(), static_cast<std::streamsize>(entry.size()));
+            ++added;
+        }
+    }
+    return added;
+}
+
 void ShaderCache::LoadDiskResources(u64 title_id, std::stop_token stop_loading,
                                     const VideoCore::DiskResourceLoadCallback& callback) {
     if (title_id == 0) {
@@ -296,7 +383,11 @@ void ShaderCache::LoadDiskResources(u64 title_id, std::stop_token stop_loading,
     }
     std::optional<Context> strict_context;
     if (strict_context_required) {
-        strict_context.emplace(emu_window);
+        if (emu_window.PrecompileOnCurrentContext()) {
+            strict_context.emplace();
+        } else {
+            strict_context.emplace(emu_window);
+        }
     }
 
     struct {
@@ -308,7 +399,10 @@ void ShaderCache::LoadDiskResources(u64 title_id, std::stop_token stop_loading,
 
     const auto queue_work{[&](Common::UniqueFunction<void, Context*>&& work) {
         if (strict_context_required) {
+            // Built inline while the file is still being read, so the total is not known yet:
+            // report how far the build got, which is what a hang or crash needs to show.
             work(&strict_context.value());
+            callback(VideoCore::LoadCallbackStage::Build, state.built, 0);
         } else {
             workers->QueueWork(std::move(work));
         }
@@ -334,7 +428,8 @@ void ShaderCache::LoadDiskResources(u64 title_id, std::stop_token stop_loading,
         GraphicsPipelineKey key;
         file.read(reinterpret_cast<char*>(&key), sizeof(key));
         queue_work([this, key, envs_ = std::move(envs), &state, &callback](Context* ctx) mutable {
-            boost::container::static_vector<Shader::Environment*, 5> env_ptrs;
+            boost::container::static_vector<Shader::Environment*, Maxwell::MaxShaderProgram>
+                env_ptrs;
             for (auto& env : envs_) {
                 env_ptrs.push_back(&env);
             }
@@ -370,6 +465,20 @@ void ShaderCache::LoadDiskResources(u64 title_id, std::stop_token stop_loading,
 }
 
 GraphicsPipeline* ShaderCache::CurrentGraphicsPipeline() {
+#ifdef NXBOX_UWP
+    const char* dump_value = std::getenv("NXBOX_DUMP_SHADERS");
+    const std::string_view dump_selection = dump_value ? dump_value : "";
+    if (dump_selection != last_dump_selection) {
+        last_dump_selection = dump_selection;
+        // Service every retained entry, including pipelines no longer used by this scene.
+        for (const auto& [key, pipeline] : graphics_cache) {
+            if (pipeline && pipeline->dump_artifacts) {
+                NxboxShaderProbe::DumpPipeline(*pipeline->dump_artifacts, key.Hash(),
+                                               key.unique_hashes);
+            }
+        }
+    }
+#endif
     if (!RefreshStages(graphics_key.unique_hashes)) {
         current_pipeline = nullptr;
         return nullptr;
@@ -408,9 +517,16 @@ GraphicsPipeline* ShaderCache::CurrentGraphicsPipelineSlowPath() {
 }
 
 GraphicsPipeline* ShaderCache::BuiltPipeline(GraphicsPipeline* pipeline) const noexcept {
+#ifdef NXBOX_UWP
+    if (pipeline->dump_artifacts) {
+        NxboxShaderProbe::DumpPipeline(*pipeline->dump_artifacts, pipeline->Key().Hash(),
+                                       pipeline->Key().unique_hashes);
+    }
+#endif
     if (pipeline->IsBuilt()) {
         return pipeline;
     }
+    NxboxUpload::Record(NxboxUpload::Event::PipelinePending);
     if (!use_asynchronous_shaders) {
         return pipeline;
     }
@@ -421,6 +537,7 @@ GraphicsPipeline* ShaderCache::BuiltPipeline(GraphicsPipeline* pipeline) const n
     if (draw_state.index_buffer.count <= 6 || draw_state.vertex_buffer.count <= 6) {
         return pipeline;
     }
+    NxboxUpload::Record(NxboxUpload::Event::PipelineSkipped);
     return nullptr;
 }
 
@@ -468,8 +585,12 @@ std::unique_ptr<GraphicsPipeline> ShaderCache::CreateGraphicsPipeline(
     ShaderContext::ShaderPools& pools, const GraphicsPipelineKey& key,
     std::span<Shader::Environment* const> envs, bool use_shader_workers,
     bool force_context_flush) try {
+    NxboxStall::Scope stall_scope{NxboxStall::Kind::Shader};
     auto hash = key.Hash();
     LOG_INFO(Render_OpenGL, "{:#016x}", hash);
+#ifdef NXBOX_UWP
+    const bool dump_pipeline = NxboxShaderProbe::DumpSelected(hash, key.unique_hashes);
+#endif
     size_t env_index{};
     u32 total_storage_buffers{};
     std::array<Shader::IR::Program, Maxwell::MaxShaderProgram> programs;
@@ -559,10 +680,91 @@ std::unique_ptr<GraphicsPipeline> ShaderCache::CreateGraphicsPipeline(
         }
         previous_program = &program;
     }
+#ifdef NXBOX_UWP
+    // Keeping every pipeline's guest code and host source costs RAM the 5 GiB app limit cannot
+    // spare, and copying guest code here faulted on some environments; only build the dump
+    // artifacts when a dump is requested or NXBOX_SHADER_RETAIN=1.
+    static const bool retain_artifacts = [] {
+        const char* dump = std::getenv("NXBOX_DUMP_SHADERS");
+        const char* keep = std::getenv("NXBOX_SHADER_RETAIN");
+        return (dump && *dump) || (keep && *keep == '1');
+    }();
+    std::unique_ptr<NxboxShaderProbe::DumpArtifacts> artifacts;
+    if (retain_artifacts || dump_pipeline) {
+    artifacts = std::make_unique<NxboxShaderProbe::DumpArtifacts>();
+    const auto prefix = NxboxShaderProbe::Hex(hash);
+    artifacts->Add("pipeline.key.bin", &key, key.Size());
+    std::string manifest = "pipeline=" + prefix + "\nstages=va,vb,tcs,tes,gs,fs\n";
+    std::size_t environment_index = 0;
+    for (std::size_t i = 0; i < key.unique_hashes.size(); ++i) {
+        if (key.unique_hashes[i] == 0) {
+            continue;
+        }
+        const auto& env = *envs[environment_index++];
+        std::vector<u64> code;
+        u32 code_address{};
+        if (const auto* live = dynamic_cast<const GenericEnvironment*>(&env)) {
+            code = live->GuestCode();
+            code_address = live->GuestCodeAddress();
+        } else if (const auto* cached = dynamic_cast<const FileEnvironment*>(&env)) {
+            code = cached->GuestCode();
+            code_address = cached->GuestCodeAddress();
+        }
+        const auto name = std::string(NxboxShaderProbe::GuestStages[i]);
+        artifacts->Add(name + ".maxwell.bin", code.data(), code.size() * sizeof(u64));
+        manifest += name + " hash=" + NxboxShaderProbe::Hex(key.unique_hashes[i]) +
+                    " address=" + std::to_string(code_address) +
+                    " start=" + std::to_string(env.StartAddress()) +
+                    " bytes=" + std::to_string(code.size() * sizeof(u64)) + "\n";
+    }
+    const auto replacement_folder = NxboxShaderProbe::ReplacementFolder();
+    for (std::size_t i = 0; i < sources.size(); ++i) {
+        if (sources[i].empty() && sources_spirv[i].empty()) {
+            continue;
+        }
+        // GLASM uses a different binding model; console experiments use GLSL/SPIR-V.
+        if (!use_glasm) {
+            try {
+                if (auto replacement =
+                        NxboxShaderProbe::ReadReplacement(replacement_folder, hash, i)) {
+                    sources[i] = std::move(*replacement);
+                    sources_spirv[i].clear();
+                    EdenXbox::Diagnostic("SHADER_REPLACE hash=" + prefix +
+                                         " stage=" + std::string(NxboxShaderProbe::HostStages[i]));
+                }
+            } catch (const std::exception& error) {
+                EdenXbox::Diagnostic("SHADER_REPLACE hash=" + prefix +
+                                     " stage=" + std::string(NxboxShaderProbe::HostStages[i]) +
+                                     " failed: " + error.what());
+            }
+        }
+        ++artifacts->stages;
+        const auto name = std::string(NxboxShaderProbe::HostStages[i]);
+        if (!sources[i].empty()) {
+            artifacts->Add(name + (use_glasm ? ".glasm" : ".glsl"), sources[i].data(),
+                           sources[i].size());
+        }
+        if (!sources_spirv[i].empty()) {
+            artifacts->Add(name + ".spv", sources_spirv[i].data(),
+                           sources_spirv[i].size() * sizeof(u32));
+        }
+    }
+    artifacts->Add("pipeline.txt", manifest.data(), manifest.size());
+    if (dump_pipeline) {
+        NxboxShaderProbe::DumpPipeline(*artifacts, hash, key.unique_hashes);
+    }
+    }
+#endif
     auto* const thread_worker{use_shader_workers ? workers.get() : nullptr};
-    return std::make_unique<GraphicsPipeline>(device, texture_cache, buffer_cache, program_manager,
-                                              state_tracker, thread_worker, &shader_notify, sources,
-                                              sources_spirv, infos, key, force_context_flush);
+    auto pipeline = std::make_unique<GraphicsPipeline>(
+        device, texture_cache, buffer_cache, program_manager, state_tracker, thread_worker,
+        &shader_notify, sources, sources_spirv, infos, key, force_context_flush);
+#ifdef NXBOX_UWP
+    if (retain_artifacts) {
+        pipeline->dump_artifacts = std::move(artifacts);
+    }
+#endif
+    return pipeline;
 
 } catch (Shader::Exception& exception) {
     LOG_ERROR(Render_OpenGL, "{}", exception.what());
@@ -589,6 +791,7 @@ std::unique_ptr<ComputePipeline> ShaderCache::CreateComputePipeline(
 std::unique_ptr<ComputePipeline> ShaderCache::CreateComputePipeline(
     ShaderContext::ShaderPools& pools, const ComputePipelineKey& key, Shader::Environment& env,
     bool force_context_flush) try {
+    NxboxStall::Scope stall_scope{NxboxStall::Kind::Shader};
     auto hash = key.Hash();
     LOG_INFO(Render_OpenGL, "{:#016x}", hash);
 
@@ -613,7 +816,12 @@ std::unique_ptr<ComputePipeline> ShaderCache::CreateComputePipeline(
         code = EmitGLASM(profile, info, program);
         break;
     case Settings::RendererBackend::OpenGL_SPIRV:
+#ifdef NXBOX_UWP
+        // Mesa's SPIR-V front end falls over on Breath of the Wild's compute shaders: they stay GLSL.
+        code = EmitGLSL(profile, program);
+#else
         code_spirv = EmitSPIRV(profile, program);
+#endif
         break;
     default:
         UNREACHABLE();

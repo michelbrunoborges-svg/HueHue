@@ -43,6 +43,10 @@ param(
     # Mesa's SPIR-V -> DXIL translator for the D3D12 renderer, built by build-spirv-to-dxil.ps1.
     # Without it the renderer still presents, through its CPU fallback.
     [string] $SpirvToDxil = "..\mesa-build\build-uwp\src\microsoft\spirv_to_dxil\spirv_to_dxil.dll",
+    # NS HUEHUE: Mesa's OpenGL over D3D12 (opengl32.dll, libgallium_wgl.dll, libglapi.dll), built by
+    # tools/nxbox/build-mesa.cmd, for the games set to the OpenGL renderer. Without it those games
+    # run on D3D12.
+    [string] $MesaGl = "",
     # Optional local diagnostic DXIL sidecars; never bundled by default.
     [string] $MaterialProbeShaders,
     [ValidateRange(6, 8)]
@@ -120,6 +124,21 @@ if (Test-Path $s2d) {
     }
 } else {
     Write-Warning "spirv_to_dxil.dll not found ($s2d): the D3D12 renderer will present through the CPU."
+}
+
+if ($MesaGl) {
+    $gl = if ([IO.Path]::IsPathRooted($MesaGl)) { $MesaGl } else { Join-Path $repo $MesaGl }
+    $glDlls = @(Get-ChildItem $gl -Recurse -Filter *.dll -ErrorAction SilentlyContinue)
+    foreach ($n in @("opengl32.dll", "libgallium_wgl.dll", "libglapi.dll")) {
+        if (-not ($glDlls | Where-Object Name -eq $n)) { throw "Mesa OpenGL without $n in $gl" }
+    }
+    # Only the OpenGL runtime: the package keeps its own dxil.dll and spirv_to_dxil.dll.
+    $glDlls | Where-Object { $_.Name -notin @("dxil.dll", "spirv_to_dxil.dll") } | ForEach-Object {
+        Copy-Item $_.FullName $layout -Force
+        Write-Host "opengl   : $($_.Name)"
+    }
+    $license = Get-ChildItem $gl -Recurse -Filter Mesa-LICENSE.rst -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($license) { Copy-Item $license.FullName (Join-Path $layout "Mesa-LICENSE.rst") }
 }
 
 if ($MaterialProbeShaders) {

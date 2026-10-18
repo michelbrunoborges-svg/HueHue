@@ -726,7 +726,8 @@ private:
                   {L'\u2261', Palette::Text, T::DoneKey}, {L'B', Ns::Error, T::Cancel}});
     }
 
-    // Desempenho e graficos (per game): profile, resolution, FPS limit, frame skip and shaders.
+    // Desempenho e graficos (per game): profile, renderer, resolution, FPS limit, frame skip and
+    // shaders.
     void DrawNsTuning(const GameTuning& tuning, size_t selected, const LibraryEntry& game, std::wstring_view notice) {
         DesignSpace space(target.Get());
         NsBackdrop(false);
@@ -747,6 +748,8 @@ private:
         };
         const std::array<std::pair<T, std::wstring>, TuningRowCount> rows{{
             {T::NsProfile, std::wstring{Tr(GameProfileText(tuning.profile))}},
+            {T::NsTuningRenderer, std::wstring{Tr(tuning.renderer == GameRenderer::OpenGL ? T::NsRendererOpenGl
+                                                                                      : T::NsRendererD3d12)}},
             {T::NsTuningResolution, std::wstring{Tr(tuning.resolution == GameResolution::Portable ? T::NsResolutionPortable
                                                                                               : T::NsResolutionTv)}},
             {T::NsTuningFps, fps_text()},
@@ -760,9 +763,9 @@ private:
                   L"\u2039  " + rows[i].second + L"  \u203A", i == selected, 26, 70);
             if (muted) NsFill(442, 412 + static_cast<float>(i) * 70, 1036, 69, 0, Palette::Backdrop, 0.45f);
         }
-        static constexpr std::array<T, TuningRowCount> hints{T::NsHintProfile, T::NsHintResolution, T::NsHintFps,
-                                                             T::NsHintFps, T::NsHintSkip, T::NsHintShaders};
-        Text(Tr(hints[std::min(selected, hints.size() - 1)]), 441, 846, 21, Palette::TextSecondary, 1038, 120, false, true);
+        static constexpr std::array<T, TuningRowCount> hints{T::NsHintProfile, T::NsHintRenderer, T::NsHintResolution,
+                                                             T::NsHintFps, T::NsHintFps, T::NsHintSkip, T::NsHintShaders};
+        Text(Tr(hints[std::min(selected, hints.size() - 1)]), 441, 412.0f + static_cast<float>(TuningRowCount) * 70 + 12, 21, Palette::TextSecondary, 1038, 120, false, true);
         if (!notice.empty()) NsToast(notice);
         NsFooter({{L'\u2194', Palette::Text, T::Change}, {L'B', Ns::Error, T::Back}});
     }

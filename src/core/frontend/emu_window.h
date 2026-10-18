@@ -98,6 +98,13 @@ public:
         return strict_context_required;
     }
 
+    /// The shader cache precompile runs on the context current on the calling thread instead of
+    /// creating a shared one (for drivers where a second context cannot be made current: Mesa's
+    /// WGL on the Xbox).
+    bool PrecompileOnCurrentContext() const {
+        return precompile_on_current_context;
+    }
+
     /**
      * Requests the internal configuration to be replaced by the specified argument at some point in
      * the future.
@@ -180,6 +187,7 @@ protected:
     WindowSystemInfo window_info;
 
     bool strict_context_required = false;
+    bool precompile_on_current_context = false;
 
 private:
     /**

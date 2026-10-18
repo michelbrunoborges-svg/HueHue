@@ -472,6 +472,11 @@ endif()
 
 if (ENABLE_OPENGL)
     target_compile_definitions(video_core PUBLIC HAS_OPENGL)
+    # NS HUEHUE: the OpenGL renderer came from NXbox with its Mesa d3d12 (Xbox) workarounds,
+    # which it keeps behind NXBOX_UWP.
+    if (CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
+        target_compile_definitions(video_core PRIVATE NXBOX_UWP=1 NXBOX_NO_MSAA_STORAGE_IMAGES)
+    endif()
 endif()
 
 if (ENABLE_D3D12)

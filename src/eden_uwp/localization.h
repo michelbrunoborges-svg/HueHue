@@ -648,6 +648,10 @@ enum class Text : std::uint16_t {
     NsHintSkip,
     NsHintShaders,
     NsTuningSaved,
+    NsTuningRenderer,
+    NsRendererD3d12,
+    NsRendererOpenGl,
+    NsHintRenderer,
 
 
     Count
