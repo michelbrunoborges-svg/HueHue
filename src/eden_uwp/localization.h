@@ -601,6 +601,12 @@ enum class Text : std::uint16_t {
     NsTranslationsHint,
     NsContentAddedOne,
     NsContentAddedOther,
+    NsProfile,
+    NsProfileDefault,
+    NsProfilePerformance,
+    NsProfileCompatibility,
+    NsProfileQuality,
+    NsProfileSaved,
 
 
     Count

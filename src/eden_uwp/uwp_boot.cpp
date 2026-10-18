@@ -81,6 +81,7 @@
 #include "video_core/renderer_base.h"
 #include "video_core/renderer_d3d12/d3d12_menu_image.h"
 
+#include "eden_uwp/game_profile.h"
 #include "eden_uwp/alloc_watch.h"
 #include "eden_uwp/cheats/cheat_session.h"
 #include "eden_uwp/cheats/cheats_page.h"
@@ -2616,6 +2617,26 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                         config.play = true;
                         config.run_seconds = 0;
                         config.pulse_sessions = true;
+                        // NS HUEHUE: the game's performance profile (game_profile.h).
+                        switch (EdenXbox::LoadGameProfile(*library_game)) {
+                        case EdenXbox::GameProfile::Performance:
+                            config.cpu_accuracy = Settings::CpuAccuracy::Auto;
+                            config.async_shaders = true;
+                            config.upscaling = EdenXbox::Upscaling::Bilinear;
+                            WriteDiag("profile: performance");
+                            break;
+                        case EdenXbox::GameProfile::Compatibility:
+                            config.cpu_accuracy = Settings::CpuAccuracy::Accurate;
+                            config.async_shaders = false;
+                            WriteDiag("profile: compatibility");
+                            break;
+                        case EdenXbox::GameProfile::Quality:
+                            config.upscaling = EdenXbox::Upscaling::FsrSharp;
+                            WriteDiag("profile: quality");
+                            break;
+                        case EdenXbox::GameProfile::Default:
+                            break;
+                        }
                     }
                     if (library_game || !config.game.empty()) {
                         nro_path = library_game ? *library_game : local_path + "\\games\\" + config.game;

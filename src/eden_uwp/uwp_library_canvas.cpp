@@ -18,6 +18,7 @@
 #include "eden_uwp/cheats/cheats_view.h"
 #include "eden_uwp/game_library.h"
 #include "eden_uwp/game_options_page.h"
+#include "eden_uwp/game_profile.h"
 #include "eden_uwp/content/content_view.h"
 #include "eden_uwp/mods/mods_view.h"
 #include "eden_uwp/localization.h"
@@ -635,12 +636,13 @@ private:
         NsTitle(Tr(T::NsGameOptions));
         NsFill(400, 286, 1120, 696, 12, Palette::Panel, 0.95f);
         NsStroke(400.5f, 286.5f, 1119, 695, 12, 1, Ns::Line);
+        constexpr float row_height = 68;
         Text(game.name, 441, 328, 34, Palette::Text, 1040, 50, true);
         Round(441, 392, 1038, 1, 0, Ns::Line);
         const auto options = GameOptions();
-        // The library's rows around Eden's: Iniciar jogo first, the favorite last.
-        for (size_t i = 0; i < options.size() + 2; ++i) {
-            const float y = 419 + static_cast<float>(i) * 77;
+        // The library's rows around Eden's: Iniciar jogo first, then the profile and the favorite.
+        for (size_t i = 0; i < options.size() + 3; ++i) {
+            const float y = 412 + static_cast<float>(i) * row_height;
             std::wstring title, value = L"›";
             if (i == 0) {
                 title = Tr(T::NsStartGame);
@@ -650,11 +652,14 @@ private:
                 if (options[i - 1] == GameOption::Pulse)
                     value = game.pulse_saved.empty() ? std::wstring{Tr(T::PulseNone)}
                           : I18n::Format(game.pulse_current ? T::PulseSavedOn : T::PulseSavedOther, {game.pulse_saved});
+            } else if (i == options.size() + 1) {
+                title = Tr(T::NsProfile);
+                value = Tr(GameProfileText(static_cast<GameProfile>(view.profile)));
             } else {
                 title = Tr(view.favorite ? T::NsFavoriteRemove : T::NsFavoriteAdd);
                 value = L"☆";
             }
-            NsRow(441, y, 1038, title, value, i == view.page.selected, 27, 77);
+            NsRow(441, y, 1038, title, value, i == view.page.selected, 26, row_height);
         }
         if (!view.notice.empty()) NsToast(view.notice);
         NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Back}});

@@ -35,6 +35,7 @@ struct GameOptionsView {
     const Content::ContentSession* content{};
     const Mods::ModSession* mods{};      ///< The open mods page's.
     const Mods::ModsPage* mods_page{};
+    std::uint8_t profile{}; ///< NS HUEHUE: the game's GameProfile (game_profile.h).
     bool favorite{}; ///< NS HUEHUE: the game is a favorite (the list's last row adds or removes it).
 };
 /// Everything one frame of the library shows.

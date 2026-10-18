@@ -577,5 +577,11 @@ const Catalog PortugueseCatalog = MakeCatalog({
     {Text::NsTranslationsHint, L"Traduções de fãs do índice CNX (nx-links). A baixa e instala a tradução do jogo."},
     {Text::NsContentAddedOne, L"{0} atualização ou DLC da pasta de jogos instalada"},
     {Text::NsContentAddedOther, L"{0} atualizações e DLCs da pasta de jogos instaladas"},
+    {Text::NsProfile, L"Perfil de desempenho"},
+    {Text::NsProfileDefault, L"Padrão"},
+    {Text::NsProfilePerformance, L"Desempenho"},
+    {Text::NsProfileCompatibility, L"Compatibilidade"},
+    {Text::NsProfileQuality, L"Qualidade"},
+    {Text::NsProfileSaved, L"Perfil salvo: vale na próxima vez que o jogo abrir"},
 });
 } // namespace EdenXbox::I18n

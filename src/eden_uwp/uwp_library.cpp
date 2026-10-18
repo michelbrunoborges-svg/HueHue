@@ -28,6 +28,7 @@
 #include "eden_uwp/cheats/cheats_page.h"
 #include "eden_uwp/game_library.h"
 #include "eden_uwp/game_options_page.h"
+#include "eden_uwp/game_profile.h"
 #include "eden_uwp/content/auto_import.h"
 #include "eden_uwp/content/content_view.h"
 #include "eden_uwp/mods/cnx_index.h"
@@ -1265,7 +1266,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             } else if (actions || open_mods_page) {
                 open_mods_page = false;
                 const auto send = [&](unsigned bit, GameOptionsInput input) {
-                    if (actions & bit) HandleGameOptionsInput(game_options, input, 1, 1);
+                    if (actions & bit) HandleGameOptionsInput(game_options, input, 1, 2);
                 };
                 send(Up, GameOptionsInput::Up);
                 send(Down, GameOptionsInput::Down);
@@ -1277,6 +1278,12 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     selected = game_options.game;
                     game_options = {};
                     launch_from_options = true;
+                } else if (game_options.extra == 1u) {
+                    // NS HUEHUE: the performance profile row steps to the next profile.
+                    game_options.extra.reset();
+                    const auto& path = scan.entries[game_options.game].launch_path;
+                    const auto next_profile = NextGameProfile(LoadGameProfile(path));
+                    notify(SaveGameProfile(path, next_profile) ? T::NsProfileSaved : T::SystemSaveFailed);
                 } else if (game_options.extra) {
                     // NS HUEHUE: the last row adds the game to the favorites or removes it.
                     game_options.extra.reset();
@@ -1721,6 +1728,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 game_options, game_options.open && game_options.game < scan.entries.size() ? &scan.entries[game_options.game] : nullptr,
                 cheat_session ? &*cheat_session : nullptr, cheats_page, options_notice, content_session.get(),
                 mod_session.get(), &mods_page,
+                game_options.open && game_options.game < scan.entries.size()
+                    ? static_cast<std::uint8_t>(LoadGameProfile(scan.entries[game_options.game].launch_path)) : std::uint8_t{},
                 game_options.game < scan.entries.size() &&
                     std::find(favorites.begin(), favorites.end(), scan.entries[game_options.game].launch_path) != favorites.end()};
             rebuild_shown();
