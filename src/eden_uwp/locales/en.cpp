@@ -568,5 +568,13 @@ const Catalog EnglishCatalog = MakeCatalog({
     {Text::NsRoleUi, L"Interface ideas"},
     {Text::NsRoleGraphics, L"Graphics infrastructure"},
     {Text::NsRoleEdition, L"Brazilian edition"},
+    {Text::NsTabTranslations, L"Translations"},
+    {Text::NsSearchingTranslations, L"Looking for translations…"},
+    {Text::NsNoTranslations, L"No translations found for your games."},
+    {Text::NsTranslationsOffline, L"Offline: the translations could not be looked up."},
+    {Text::NsInstallTranslation, L"Install translation"},
+    {Text::NsTranslationsHint, L"Fan translations from the CNX index (nx-links). A downloads and installs the game's translation."},
+    {Text::NsContentAddedOne, L"{0} update or DLC from the games folder installed"},
+    {Text::NsContentAddedOther, L"{0} updates and DLC from the games folder installed"},
 });
 } // namespace EdenXbox::I18n

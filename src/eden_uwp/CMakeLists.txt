@@ -72,6 +72,8 @@ add_executable(eden-uwp WIN32
     content/content_model.h
     content/content_inspector.cpp
     content/content_store.cpp
+    content/auto_import.cpp
+    content/auto_import.h
     content/content_service.cpp
     content/content_session.cpp
     content/content_view.cpp

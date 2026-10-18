@@ -63,6 +63,8 @@ struct LibraryView {
     std::wstring_view query{};
     const TextEntry* search{};                  ///< The search keyboard, while open.
     bool about_credits{};
+    const std::vector<bool>* translated{}; ///< By entry: a fan translation exists (Traducoes tab).
+    bool translations_ready{};             ///< The translation index was read (or could not be).
 };
 class LibraryCanvas {
 public:

@@ -70,6 +70,29 @@ std::vector<Entry> ParseIndex(std::string_view text, std::string_view title_id) 
     return entries;
 }
 
+std::map<std::string, std::vector<Entry>> ParseTranslations(std::string_view text) {
+    std::map<std::string, std::vector<Entry>> found;
+    const json root = json::parse(text, nullptr, false);
+    if (!root.is_object()) return found;
+    const auto list = root.find("translations");
+    if (list == root.end() || !list->is_object()) return found;
+    for (const auto& [name, entry] : list->items()) {
+        if (!entry.is_object() || !entry.value("enabled", false)) continue;
+        const auto title = EntryTitle(entry);
+        if (title.empty()) continue;
+        const auto link = entry.find("link");
+        if (link == entry.end() || !link->is_string()) continue;
+        const auto& url = link->get_ref<const std::string&>();
+        if (!url.starts_with("https://")) continue;
+        std::string key{title};
+        for (char& c : key) c = c >= 'a' && c <= 'f' ? static_cast<char>(c - 'a' + 'A') : c;
+        const auto size = entry.find("size");
+        found[key].push_back({name, Kind::Translation, url,
+                              size != entry.end() && size->is_string() ? size->get<std::string>() : ""});
+    }
+    return found;
+}
+
 std::uint64_t ParseSize(std::string_view text) {
     double value = 0;
     const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), value);

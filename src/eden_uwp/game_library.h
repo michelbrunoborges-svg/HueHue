@@ -32,6 +32,7 @@ struct LibraryScan {
     std::string error;
     bool limited{};
     bool missing_root{}; ///< The internal games folder does not exist.
+    std::size_t content_added{}; ///< NS HUEHUE: updates and DLC of the games folder installed by this scan.
 };
 
 // Only enumerate names: never open multi-gigabyte containers during a scan.

@@ -8,6 +8,7 @@
 // only when it changes.
 
 #include <cstdint>
+#include <map>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -29,6 +30,10 @@ struct Entry {
 /// The enabled entries for `title_id` (16 hex digits, any case). The title id of an entry is the
 /// name of the archive its link points to, or the first folder of the file it installs.
 std::vector<Entry> ParseIndex(std::string_view json, std::string_view title_id);
+
+/// Every enabled translation of the index, by title id (16 upper-case hex digits): what the library
+/// checks its games against to offer their translations (NS HUEHUE).
+std::map<std::string, std::vector<Entry>> ParseTranslations(std::string_view json);
 
 /// "53.7 MB" as bytes (0 when it cannot be read): enough to check free space before a download.
 std::uint64_t ParseSize(std::string_view text);

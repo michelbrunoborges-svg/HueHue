@@ -28,7 +28,10 @@
 #include "eden_uwp/cheats/cheats_page.h"
 #include "eden_uwp/game_library.h"
 #include "eden_uwp/game_options_page.h"
+#include "eden_uwp/content/auto_import.h"
 #include "eden_uwp/content/content_view.h"
+#include "eden_uwp/mods/cnx_index.h"
+#include "eden_uwp/mods/mod_installer.h"
 #include "eden_uwp/mods/mod_session.h"
 #include "eden_uwp/mods/mod_web.h"
 #include "eden_uwp/mods/mods_page.h"
@@ -199,6 +202,21 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     std::vector<std::string> recents = LoadList(L"ns_recent.txt");
     std::vector<size_t> shown;
     std::vector<size_t> position_of;
+    // NS HUEHUE: the fan translations of the CNX index, by base title id, read once after the scan;
+    // the Traducoes tab lists the games that have one and A downloads and installs it.
+    using TranslationIndex = std::map<std::string, std::vector<Mods::Cnx::Entry>>;
+    TranslationIndex translations;
+    std::future<std::optional<TranslationIndex>> translations_future;
+    std::jthread translations_worker;
+    bool translations_started = false, translations_ready = false;
+    std::vector<bool> translated; ///< By entry: the game has a translation in the index.
+    std::optional<std::string> pending_translation; ///< The entry the mods page downloads once listed.
+    bool open_mods_page = false;
+    const auto translation_of = [&](const LibraryEntry& entry) -> const std::vector<Mods::Cnx::Entry>* {
+        if (!entry.title_loaded || entry.program_id == 0) return nullptr;
+        const auto found = translations.find(Mods::TitleFolder(FileSys::GetBaseTitleID(entry.program_id)));
+        return found == translations.end() || found->second.empty() ? nullptr : &found->second;
+    };
     std::wstring filtered_query;
     bool launch_from_options = false;
     unsigned filtered_tab = 0;
@@ -215,6 +233,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         const auto matches = [&](const LibraryEntry& entry) {
             return folded.empty() || Fold(entry.name).find(folded) != std::wstring::npos;
         };
+        translated.assign(scan.entries.size(), false);
+        for (size_t i = 0; i < scan.entries.size(); ++i) translated[i] = translation_of(scan.entries[i]) != nullptr;
         if (library_tab == 2) {
             for (const auto& path : recents)
                 for (size_t i = 0; i < scan.entries.size(); ++i)
@@ -224,6 +244,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 const auto& entry = scan.entries[i];
                 if (library_tab == 1 && std::find(favorites.begin(), favorites.end(), entry.launch_path) == favorites.end())
                     continue;
+                if (library_tab == 3 && !translated[i]) continue;
                 if (matches(entry)) shown.push_back(i);
             }
         }
@@ -479,7 +500,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             actions |= Search;
         } else if (dx >= 96 && dx < 1000 && dy >= 285 && dy < 344) {
             // The tabs (their widths follow the text; about 200 each is close enough to pick one).
-            library_tab = std::min(2U, static_cast<unsigned>((dx - 96) / 200));
+            library_tab = std::min(3U, static_cast<unsigned>((dx - 96) / 200));
             library_focus = -1; metadata_dirty = true; dirty = true;
         } else if (!loading && dx >= 96 && dx < 1824 && dy >= 376 && dy < 376 + 2 * 319.0f) {
             // The grid: two rows of five 323x291 cards, 351 / 319 apart.
@@ -565,6 +586,25 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 const auto path = (root / entry.relative_path).u8string();
                 entry.launch_path.assign(reinterpret_cast<const char*>(path.data()), path.size());
                 entry.source_name = internal;
+            }
+            // NS HUEHUE: updates and DLC dropped in the games folder install by themselves and
+            // leave the list of games (the metadata reader has not started yet: one key user).
+            if (HasUsableHeaderKey() && !stop.stop_requested()) {
+                std::vector<std::string> packages;
+                for (const auto& entry : result.entries) {
+                    if (entry.relative_path.extension() == ".nsp" || entry.relative_path.extension() == ".NSP")
+                        packages.push_back(entry.launch_path);
+                }
+                try {
+                    auto imported = Content::AutoImportPackages(packages, ListPath(L"ns_content_scan.tsv"), stop);
+                    result.content_added = imported.added;
+                    std::erase_if(result.entries, [&](const LibraryEntry& entry) {
+                        return std::find(imported.content_files.begin(), imported.content_files.end(),
+                                         entry.launch_path) != imported.content_files.end();
+                    });
+                } catch (const std::exception& e) {
+                    LOG_ERROR(Frontend, "Content: auto-import failed: {}", e.what());
+                }
             }
             try {
                 if (added) RememberGameFolder(added);
@@ -944,11 +984,11 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         }
         // The library's top row: the three tabs and the search box (Up from the first grid row).
         if (library_top() && library_focus >= 0 && actions) {
-            if (actions & Left) library_focus = library_focus > 0 ? library_focus - 1 : 3;
-            if (actions & Right) library_focus = (library_focus + 1) % 4;
+            if (actions & Left) library_focus = library_focus > 0 ? library_focus - 1 : 4;
+            if (actions & Right) library_focus = (library_focus + 1) % 5;
             if (actions & (Down | Quit)) library_focus = -1;
             if (actions & Play) {
-                if (library_focus < 3) {
+                if (library_focus < 4) {
                     library_tab = static_cast<unsigned>(library_focus);
                     metadata_dirty = true;
                 } else {
@@ -982,6 +1022,18 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             }
             // Nothing on screen to start or to open options for.
             if (shown.empty()) actions &= ~(Play | Options);
+            // Traducoes: A opens the game's mods page on its translation and starts the download.
+            if (library_tab == 3 && (actions & Play) && library_focus < 0 && !shown.empty()) {
+                if (const auto* found = translation_of(scan.entries[selected])) {
+                    game_options = {true, selected};
+                    game_options.page = GameOption::Mods;
+                    pending_translation = found->front().name;
+                    open_mods_page = true;
+                    options_notice.clear();
+                }
+                actions &= ~Play;
+                dirty = true;
+            }
         }
         if (actions & Options && !game_options.open && !settings && !configuration.open &&
             !panel.keyboard.open && !loading && !picker && !validation.valid() && !scan.entries.empty()) {
@@ -1037,6 +1089,32 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             } else if (mod_session) {
                 using Kind = Mods::ModsCommand::Kind;
                 using Mods::ModJob;
+                if (pending_translation) {
+                    // The translation picked in the library: once the CNX list is in, open it and
+                    // queue its file; the page installs it when the download ends.
+                    const auto& store = mod_session->Store();
+                    if (store.source == Mods::StoreSource::Cnx && store.status == Mods::StoreStatus::Ready) {
+                        const auto card = std::find_if(store.cards.begin(), store.cards.end(),
+                                                       [&](const Mods::StoreCard& c) { return c.name == *pending_translation; });
+                        const size_t index = card == store.cards.end() ? 0 : static_cast<size_t>(card - store.cards.begin());
+                        mods_page.card = index;
+                        mods_page.screen = Mods::ModsScreen::Detail;
+                        mods_page.file = mods_page.image = 0;
+                        mod_session->OpenDetail(index);
+                        if (mod_session->Download(0)) {
+                            options_notice = I18n::Format(T::ModsDownloadQueued, {Wide(*pending_translation)});
+                            options_notice_until = now + std::chrono::seconds{6};
+                        } else {
+                            notify(T::ModsDownloadRefused);
+                        }
+                        pending_translation.reset();
+                        dirty = true;
+                    } else if (store.status == Mods::StoreStatus::Offline || store.status == Mods::StoreStatus::Empty) {
+                        notify(store.status == Mods::StoreStatus::Offline ? T::NsTranslationsOffline : T::NsNoTranslations);
+                        pending_translation.reset();
+                        dirty = true;
+                    }
+                }
                 const ModJob finished = mod_session->Poll();
                 if (finished != ModJob::None) {
                     const auto& result = mod_session->View();
@@ -1184,7 +1262,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 send(Refresh, MenuAction::Refresh);
                 if (cheat_session) send(Quit, MenuAction::Back);
                 dirty = true;
-            } else if (actions) {
+            } else if (actions || open_mods_page) {
+                open_mods_page = false;
                 const auto send = [&](unsigned bit, GameOptionsInput input) {
                     if (actions & bit) HandleGameOptionsInput(game_options, input, 1, 1);
                 };
@@ -1260,6 +1339,13 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                                                                          system_page.settings.show_adult_mods);
                         mods_page = {};
                         options_notice.clear();
+                        if (pending_translation) {
+                            // From the Traducoes tab: the store opens on the CNX index.
+                            mods_page.tab = Mods::ModsTab::Explore;
+                            mod_session->SwitchSource();
+                            options_notice = Tr(T::NsSearchingTranslations);
+                            options_notice_until = std::chrono::steady_clock::time_point::max();
+                        }
                     }
                 }
                 if (game_options.page == GameOption::Cheats) {
@@ -1368,6 +1454,30 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             if (notice.empty() && !initial_notice.empty()) notice = Wide(initial_notice);
             initial_notice = {};
             if (scan.limited) notice = Tr(T::ScanLimit);
+            if (notice.empty() && scan.content_added) {
+                library_say(I18n::Plural(T::NsContentAddedOne, T::NsContentAddedOther, scan.content_added),
+                            std::chrono::steady_clock::now() + std::chrono::seconds{6});
+            }
+            dirty = true;
+        }
+        if (!loading && !translations_started && !scan.entries.empty()) {
+            translations_started = true;
+            std::packaged_task<std::optional<TranslationIndex>(std::stop_token)> task{[](std::stop_token stop) {
+                winrt::init_apartment(winrt::apartment_type::multi_threaded);
+                struct Uninitialize { ~Uninitialize() { winrt::uninit_apartment(); } } guard;
+                const auto text = Mods::Web::GetCached(std::string{Mods::Cnx::IndexUrl},
+                                                       Mods::Web::CacheFolder() / "cnx-index.json", 60, stop);
+                return text ? std::optional{Mods::Cnx::ParseTranslations(*text)} : std::nullopt;
+            }};
+            translations_future = task.get_future();
+            translations_worker = std::jthread(std::move(task));
+        }
+        if (translations_future.valid() &&
+            translations_future.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
+            try {
+                if (auto index = translations_future.get()) translations = std::move(*index);
+            } catch (...) {}
+            translations_ready = true;
             dirty = true;
         }
         if (!auto_pick.empty() && !configuration.open && !loading && !picker && !validation.valid()) {
@@ -1617,7 +1727,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             canvas->Draw({scan, selected, loading, settings, setting_row, options, notice, panel,
                           configuration, system_page, options_view, missing_content, home, home_row,
                           false, library_tab, library_focus, &shown, &favorites, query,
-                          search_editor ? &*search_editor : nullptr, false});
+                          search_editor ? &*search_editor : nullptr, false, &translated, translations_ready});
             dirty = false;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds{16});

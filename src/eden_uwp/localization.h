@@ -593,6 +593,14 @@ enum class Text : std::uint16_t {
     NsRoleUi,
     NsRoleGraphics,
     NsRoleEdition,
+    NsTabTranslations,
+    NsSearchingTranslations,
+    NsNoTranslations,
+    NsTranslationsOffline,
+    NsInstallTranslation,
+    NsTranslationsHint,
+    NsContentAddedOne,
+    NsContentAddedOther,
 
 
     Count

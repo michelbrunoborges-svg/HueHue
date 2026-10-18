@@ -363,7 +363,11 @@ private:
     }
 
     /// One cover card of the grid (.game): cover, favorite star, name and a line under it.
-    void DrawNsCard(const LibraryView& view, const LibraryEntry& entry, float cx, float cy) {
+    static bool HasTranslation(const LibraryView& view, size_t index) {
+        return view.translated && index < view.translated->size() && (*view.translated)[index];
+    }
+    void DrawNsCard(const LibraryView& view, size_t index, float cx, float cy) {
+        const LibraryEntry& entry = view.scan.entries[index];
         NsFill(cx, cy, CardWidth, CardHeight, 8, Palette::Panel);
         NsStroke(cx + 0.5f, cy + 0.5f, CardWidth - 1, CardHeight - 1, 8, 1, Ns::Line);
         const D2D1_RECT_F cover = D2D1::RectF(cx + 8, cy + 8, cx + CardWidth - 8, cy + 207);
@@ -373,6 +377,11 @@ private:
         if (IsFavorite(view, entry)) {
             NsFill(cover.right - 50, cover.top + 10, 40, 40, 20, Palette::Backdrop, 0.7f);
             NsImage(NsIcon(L"star"), D2D1::RectF(cover.right - 44, cover.top + 16, cover.right - 16, cover.top + 44), false);
+        }
+        if (HasTranslation(view, index)) {
+            // A fan translation is in the CNX index (the Traducoes tab installs it).
+            NsFill(cover.left + 10, cover.top + 10, 86, 34, 6, Palette::Accent);
+            Text(L"PT-BR", cover.left + 10, cover.top + 10, 18, Palette::OnAccent, 86, 34, true, false, true);
         }
         Text(entry.name, cx + 15, cy + 218, 23, Palette::Text, CardWidth - 30, 32, true);
         std::wstring under = entry.display_version.empty() ? std::wstring{} : L"v" + entry.display_version;
@@ -405,9 +414,9 @@ private:
             return;
         }
         NsTitle(Tr(T::NsNavGames));
-        static constexpr std::array<T, 3> tabs{T::NsTabAll, T::NsTabFavorites, T::NsTabRecent};
+        static constexpr std::array<T, 4> tabs{T::NsTabAll, T::NsTabFavorites, T::NsTabRecent, T::NsTabTranslations};
         float x = 96;
-        for (unsigned i = 0; i < 3; ++i) {
+        for (unsigned i = 0; i < 4; ++i) {
             const bool selected = i == view.library_tab;
             const auto label = Tr(tabs[i]);
             const float w = MeasureText(label, 25, selected) + 50;
@@ -423,7 +432,7 @@ private:
         Text(view.query.empty() ? std::wstring{Tr(T::NsSearchGames)} : std::wstring{view.query}, 1477, 280, 23,
              view.query.empty() ? Palette::TextSecondary : Palette::Text, 280, 38);
         Text(L"Y", 1772, 280, 23, Palette::TextSecondary, 32, 38, true);
-        if (view.library_focus == 3) NsFocus(1414, 268, 410, 61, 8);
+        if (view.library_focus == 4) NsFocus(1414, 268, 410, 61, 8);
 
         const auto card_x = [](size_t slot) { return 96 + static_cast<float>(slot % GridColumns) * (CardWidth + CardGap); };
         const auto card_y = [](size_t slot) { return GridTop + static_cast<float>(slot / GridColumns) * (CardHeight + CardGap); };
@@ -436,7 +445,9 @@ private:
             Text(Tr(T::LoadingBody), 96, 876, 23, Palette::TextSecondary, 1500, 40);
         } else if (!view.shown || view.shown->empty()) {
             const T message = !view.query.empty() ? T::NsNoResults
-                            : view.library_tab == 1 ? T::NsNoFavorites : T::NsNoRecent;
+                            : view.library_tab == 1 ? T::NsNoFavorites
+                            : view.library_tab == 3 ? (view.translations_ready ? T::NsNoTranslations : T::NsSearchingTranslations)
+                                                    : T::NsNoRecent;
             NsImage(NsIcon(view.library_tab == 1 && view.query.empty() ? L"star" : L"search"),
                     D2D1::RectF(186, 420, 276, 510), false);
             Text(Tr(message), 186, 535, 34, Palette::Text, 1200, 120, true, true);
@@ -448,14 +459,16 @@ private:
             for (size_t k = first; k < std::min(first + GridVisible, list.size()); ++k) {
                 const size_t slot = k - first;
                 const float cx = card_x(slot), cy = card_y(slot);
-                DrawNsCard(view, view.scan.entries[list[k]], cx, cy);
+                DrawNsCard(view, list[k], cx, cy);
                 if (list[k] == view.selected && view.library_focus < 0) NsFocus(cx, cy, CardWidth, CardHeight, 8);
             }
             Text(std::to_wstring(position + 1) + L" / " + std::to_wstring(list.size()), 1524, 200, 23,
                  Palette::TextSecondary, 300, 36, false, false, false, true);
         }
-        NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Back},
-                  {L'X', Ns::KeyX, T::NsOptions}, {L'Y', Ns::KeyY, T::NsSearch}});
+        if (view.library_tab == 3 && view.shown && !view.shown->empty())
+            Text(Tr(T::NsTranslationsHint), 96, 955, 21, Palette::TextSecondary, 1300, 34);
+        NsFooter({{L'A', Palette::Accent, view.library_tab == 3 ? T::NsInstallTranslation : T::NsConfirm},
+                  {L'B', Ns::Error, T::Back}, {L'X', Ns::KeyX, T::NsOptions}, {L'Y', Ns::KeyY, T::NsSearch}});
         NsToast(view.notice);
     }
 
@@ -665,7 +678,7 @@ private:
         Text(found ? I18n::Plural(T::NsFoundOne, T::NsFoundOther, found) : std::wstring{Tr(T::NsNoResults)},
              96, 352, 23, Palette::TextSecondary, 1200, 36);
         if (found) {
-            DrawNsCard(view, view.scan.entries[view.shown->front()], 96, S::KeysY);
+            DrawNsCard(view, view.shown->front(), 96, S::KeysY);
             NsFocus(96, S::KeysY, CardWidth, CardHeight, 8);
         }
         // The panel draws its own title and box too: only its keys show here.
