@@ -651,7 +651,7 @@ private:
         NsTitle(Tr(T::NsGameOptions));
         NsFill(400, 286, 1120, 696, 12, Palette::Panel, 0.95f);
         NsStroke(400.5f, 286.5f, 1119, 695, 12, 1, Ns::Line);
-        constexpr float row_height = 68;
+        constexpr float row_height = 62; // 8 rows end at 908, above the hint at 922
         Text(game.name, 441, 328, 34, Palette::Text, 1040, 50, true);
         Round(441, 392, 1038, 1, 0, Ns::Line);
         const auto options = GameOptions();
@@ -686,7 +686,7 @@ private:
             }
             NsRow(441, y, 1038, title, value, i == view.page.selected, 26, row_height);
         }
-        Text(Tr(T::NsContentHint), 441, 925, 19, Palette::TextSecondary, 1038, 50, false, true);
+        Text(Tr(T::NsContentHint), 441, 922, 19, Palette::TextSecondary, 1038, 50, false, true);
         if (!view.notice.empty()) NsToast(view.notice);
         NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Back}});
     }
