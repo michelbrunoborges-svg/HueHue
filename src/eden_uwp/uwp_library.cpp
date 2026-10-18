@@ -28,6 +28,7 @@
 #include "eden_uwp/cheats/cheats_page.h"
 #include "eden_uwp/game_library.h"
 #include "eden_uwp/game_options_page.h"
+#include "eden_uwp/game_compat.h"
 #include "eden_uwp/game_profile.h"
 #include "eden_uwp/online_settings.h"
 #include "eden_uwp/content/auto_import.h"
@@ -1349,7 +1350,9 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 } else if (game_options.extra == 1u) {
                     // NS HUEHUE: Desempenho e graficos opens the game's tuning page.
                     game_options.extra.reset();
-                    tuning = LoadGameTuning(scan.entries[game_options.game].launch_path);
+                    const auto& tuned = scan.entries[game_options.game];
+                    ApplyKnownRenderer(tuned.launch_path, tuned.program_id);
+                    tuning = LoadGameTuning(tuned.launch_path);
                     tuning_page = true;
                     tuning_row = 0;
                 } else if (game_options.extra) {
@@ -1593,6 +1596,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         }
         if (actions & Play && !configuration.open && !settings && !panel.keyboard.open && !loading && !scan.entries.empty()) {
             selected_path = scan.entries[selected].launch_path;
+            // A title the compatibility list starts on OpenGL, the first time (game_compat.h).
+            ApplyKnownRenderer(selected_path, scan.entries[selected].program_id);
             library_say(std::wstring{Tr(T::CheckingGame)}, std::chrono::steady_clock::time_point::max());
             metadata_worker.request_stop();
             metadata = {};

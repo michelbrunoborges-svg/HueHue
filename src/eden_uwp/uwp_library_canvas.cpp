@@ -750,6 +750,8 @@ private:
             {T::NsProfile, std::wstring{Tr(GameProfileText(tuning.profile))}},
             {T::NsTuningRenderer, std::wstring{Tr(tuning.renderer == GameRenderer::OpenGL ? T::NsRendererOpenGl
                                                                                       : T::NsRendererD3d12)}},
+            {T::NsTuningGlShaders, std::wstring{Tr(tuning.gl_shaders == GlShaders::Spirv ? T::NsGlShadersSpirv
+                                                                                    : T::NsGlShadersGlsl)}},
             {T::NsTuningResolution, std::wstring{Tr(tuning.resolution == GameResolution::Portable ? T::NsResolutionPortable
                                                                                               : T::NsResolutionTv)}},
             {T::NsTuningFps, fps_text()},
@@ -758,14 +760,17 @@ private:
                                                      : I18n::Format(T::NsSkipValue, {std::to_wstring(tuning.frame_skip + 1)})},
             {T::NsTuningShaders, std::wstring{Tr(tuning.shaders == ShaderBuild::Fast ? T::NsShadersFast : T::NsShadersBalanced)}}}};
         for (size_t i = 0; i < rows.size(); ++i) {
-            const bool muted = i == static_cast<size_t>(TuningRow::FpsManual) && tuning.fps != FpsLimit::Manual;
-            NsRow(441, 412 + static_cast<float>(i) * 70, 1038, Tr(rows[i].first),
-                  L"\u2039  " + rows[i].second + L"  \u203A", i == selected, 26, 70);
-            if (muted) NsFill(442, 412 + static_cast<float>(i) * 70, 1036, 69, 0, Palette::Backdrop, 0.45f);
+            const bool muted = (i == static_cast<size_t>(TuningRow::FpsManual) && tuning.fps != FpsLimit::Manual) ||
+                               (i == static_cast<size_t>(TuningRow::GlShaderPath) && tuning.renderer != GameRenderer::OpenGL);
+            constexpr float row = 62;
+            NsRow(441, 412 + static_cast<float>(i) * row, 1038, Tr(rows[i].first),
+                  L"\u2039  " + rows[i].second + L"  \u203A", i == selected, 26, row);
+            if (muted) NsFill(442, 412 + static_cast<float>(i) * row, 1036, row - 1, 0, Palette::Backdrop, 0.45f);
         }
-        static constexpr std::array<T, TuningRowCount> hints{T::NsHintProfile, T::NsHintRenderer, T::NsHintResolution,
-                                                             T::NsHintFps, T::NsHintFps, T::NsHintSkip, T::NsHintShaders};
-        Text(Tr(hints[std::min(selected, hints.size() - 1)]), 441, 412.0f + static_cast<float>(TuningRowCount) * 70 + 12, 21, Palette::TextSecondary, 1038, 120, false, true);
+        static constexpr std::array<T, TuningRowCount> hints{T::NsHintProfile, T::NsHintRenderer, T::NsHintGlShaders,
+                                                             T::NsHintResolution, T::NsHintFps, T::NsHintFps,
+                                                             T::NsHintSkip, T::NsHintShaders};
+        Text(Tr(hints[std::min(selected, hints.size() - 1)]), 441, 412.0f + static_cast<float>(TuningRowCount) * 62 + 10, 21, Palette::TextSecondary, 1038, 120, false, true);
         if (!notice.empty()) NsToast(notice);
         NsFooter({{L'\u2194', Palette::Text, T::Change}, {L'B', Ns::Error, T::Back}});
     }

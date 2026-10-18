@@ -84,6 +84,7 @@
 
 #include "eden_uwp/online_settings.h"
 #include "network/network.h"
+#include "eden_uwp/game_compat.h"
 #include "eden_uwp/game_profile.h"
 #include "eden_uwp/alloc_watch.h"
 #include "eden_uwp/cheats/cheat_session.h"
@@ -161,6 +162,11 @@ void SetOpaqueAstcToBc1(bool enabled) noexcept;        // texture_cache/util.h
 } // namespace VideoCommon
 
 namespace {
+/// A game's name for a notice, from its launch path (the file name without its extension).
+std::wstring GameNameFromPath(const std::string& launch_path) {
+    const std::filesystem::path path{std::u8string{launch_path.begin(), launch_path.end()}};
+    return path.stem().wstring();
+}
 std::atomic<u64> g_test_memory_limit{};
 std::atomic<bool> g_gpu_command_failed{};
 /// The PC window's mode. ApplicationView belongs to the UI thread: it publishes the state here and
@@ -328,6 +334,8 @@ struct BootConfig {
     bool portable{};
     /// The game runs on Eden's OpenGL renderer through Mesa (gl_window.h) instead of D3D12.
     bool opengl{};
+    /// With OpenGL, shaders go to Mesa as SPIR-V instead of GLSL.
+    bool opengl_spirv{};
     u32 max_fps{};
     u32 frame_skip{};
     u32 pipeline_workers{};
@@ -589,7 +597,10 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
             Settings::values.accelerate_astc.SetValue(Settings::AstcDecodeMode::Cpu);
             Settings::values.nvdec_emulation.SetValue(Settings::NvdecEmulation::Cpu);
             Settings::values.resolution_setup.SetValue(Settings::ResolutionSetup::Res1X);
-            WriteDiag("renderer: OpenGL through Mesa d3d12 | " + MemoryReport());
+            if (config.opengl_spirv) Settings::values.renderer_backend = Settings::RendererBackend::OpenGL_SPIRV;
+            gl_owner->SetPacing(config.max_fps, config.frame_skip);
+            WriteDiag(std::string("renderer: OpenGL through Mesa d3d12, ") +
+                      (config.opengl_spirv ? "SPIR-V" : "GLSL") + " shaders | " + MemoryReport());
         } catch (const std::exception& e) {
             WriteDiag(std::string("renderer: OpenGL unavailable (") + e.what() + "), using D3D12");
             gl_window = nullptr;
@@ -601,6 +612,10 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
     }
     Core::Frontend::EmuWindow& emu_window =
         gl_owner ? static_cast<Core::Frontend::EmuWindow&>(*gl_owner) : *headless_owner;
+    // A game from the library leaves a session marker while it runs (game_compat.h): if the app
+    // dies with it on D3D12 in its first minute, it opens on OpenGL next time.
+    const GameRenderer session_renderer = gl_window ? GameRenderer::OpenGL : GameRenderer::D3D12;
+    if (config.pulse_sessions) WriteSession(nro_path, session_renderer, 0);
     // The in-game menu and the game's keyboard: the D3D12 renderer draws them over its frame, the
     // OpenGL window over its own.
     const auto menu_screen_size = [&]() -> std::pair<u32, u32> {
@@ -992,6 +1007,10 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
         u64 resume_frames = 0;
         for (u32 tick = 1;; ++tick) {
             std::this_thread::sleep_for(TICK);
+            if (config.pulse_sessions && tick % (5 * TICKS_PER_SECOND) == 0 &&
+                tick <= (CRASH_WINDOW_SECONDS + 5) * TICKS_PER_SECOND) {
+                WriteSession(nro_path, session_renderer, tick / TICKS_PER_SECOND);
+            }
             if (u64 used{}, limit{}; config.memory_audit && tick % 10 == 0 &&
                                      QueryAppMemory(used, limit)) {
                 const u64 headroom = limit > used ? limit - used : 0;
@@ -2337,6 +2356,18 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
         // "Back to the library" in the in-game menu shuts the game down inside this process and
         // comes back here: restarting the app is slow and awkward on the console.
         std::string library_error;
+        // A game that took the app down with it on D3D12 in its first minute last time
+        // (game_compat.h) opens on OpenGL from now on, and the library says so.
+        if (const auto lost = EdenXbox::TakeLostSession()) {
+            WriteDiag("compat: the last run ended with a game running (" + lost->launch_path + ", " +
+                      std::to_string(lost->seconds) + " s)");
+            if (lost->renderer == EdenXbox::GameRenderer::D3D12 &&
+                lost->seconds < EdenXbox::CRASH_WINDOW_SECONDS && EdenXbox::FallBackToOpenGl(lost->launch_path)) {
+                library_error = EdenXbox::I18n::ToUtf8(
+                    EdenXbox::I18n::Format(EdenXbox::I18n::Text::NsCompatSwitched, {GameNameFromPath(lost->launch_path)}));
+                WriteDiag("compat: it opens on OpenGL next time");
+            }
+        }
         for (u32 session = 1;; ++session) {
             std::optional<std::string> library_game;
             bool show_library = false;
@@ -2381,7 +2412,9 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
 
             std::atomic<bool> done{false};
             std::atomic<int> boot_status{0};
-            std::thread worker([&done, &boot_status, surface, library_game]() {
+            // Set when a game the GPU stopped on D3D12 was moved to OpenGL (game_compat.h).
+            std::atomic<bool> switched_to_gl{false};
+            std::thread worker([&done, &boot_status, &switched_to_gl, surface, library_game]() {
                 winrt::init_apartment(winrt::apartment_type::multi_threaded);
                 std::set_terminate(OnTerminate); // per-thread in the MSVC runtime
                 std::string nro_path;
@@ -2720,6 +2753,7 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                         config.frame_skip = tuning.frame_skip;
                         config.pipeline_workers = tuning.shaders == EdenXbox::ShaderBuild::Fast ? 6 : 0;
                         config.opengl = tuning.renderer == EdenXbox::GameRenderer::OpenGL;
+                        config.opengl_spirv = tuning.gl_shaders == EdenXbox::GlShaders::Spirv;
                         if (config.opengl) WriteDiag("tuning: OpenGL renderer (Mesa)");
                         WriteDiag("tuning: " + std::string(config.portable ? "portable" : "tv") + " fps<=" +
                                   std::to_string(config.max_fps) + " skip " + std::to_string(config.frame_skip) +
@@ -2770,6 +2804,10 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                     }
                     boot_status.store(rc);
                     WriteDiag("RunHeadlessBoot returned " + std::to_string(rc) + " | " + MemoryReport());
+                    if (rc == 15 && library_game && !config.opengl && EdenXbox::FallBackToOpenGl(nro_path)) {
+                        switched_to_gl.store(true);
+                        WriteDiag("compat: the GPU stopped on D3D12; the game opens on OpenGL next time");
+                    }
                 } catch (winrt::hresult_error const& e) {
                     WriteDiag("winrt::hresult_error: " + winrt::to_string(e.message()));
                 } catch (std::exception const& e) {
@@ -2777,6 +2815,7 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                 } catch (...) {
                     WriteDiag("unknown exception in RunHeadlessBoot");
                 }
+                EdenXbox::EndSession(); // the boot saw the game end
                 done.store(true);
             });
 
@@ -2812,7 +2851,10 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                 continue;
             }
             if (show_library && boot_status.load() == 15) {
-                library_error = EdenXbox::I18n::ToUtf8(EdenXbox::I18n::Tr(EdenXbox::I18n::Text::GameStoppedGpu));
+                library_error = EdenXbox::I18n::ToUtf8(
+                    switched_to_gl.load()
+                        ? EdenXbox::I18n::Format(EdenXbox::I18n::Text::NsCompatSwitched, {GameNameFromPath(*library_game)})
+                        : std::wstring{EdenXbox::I18n::Tr(EdenXbox::I18n::Text::GameStoppedGpu)});
                 WriteDiag("GPU failure handled; returning to library for recovery");
                 continue;
             }

@@ -86,3 +86,17 @@ Os prints do CI rodam num Windows sem GPU, com o mesmo código Direct2D.
   portátil do console); limite de FPS (automático, 60, 30, manual 10–60); pular quadros (0–3);
   shaders (4 ou 6 núcleos). 480p **não**: o renderer D3D12 ainda não tem escala de resolução.
 - **Conteúdo mais fácil:** as Opções do jogo mostram o update ativo e quantos DLCs e mods estão ligados.
+
+## Melhorias de 18/10 (noite)
+
+- **Motor 0.2.93.3** do eden-xbox/Jadyx (core, D3D12, áudio, dynarmic e patch do Mesa), com a pasta
+  de dados ainda em `LocalState\eden`.
+- **Renderizador OpenGL do NX Zero** (Mesa d3d12, `src/eden_uwp/gl_window.*`), escolhido por jogo em
+  Desempenho e gráficos → Renderizador. Shaders do OpenGL em GLSL (padrão) ou SPIR-V (menos
+  memória). Limite de FPS, pulo de quadros e o menu do jogo (sobre o último quadro) também no
+  OpenGL. Sem Pulse no OpenGL. Se o Mesa não subir, o jogo roda no D3D12.
+- **Compatibilidade automática** (`src/eden_uwp/game_compat.h`): títulos da lista (hoje: Super
+  Mario Odyssey) abrem no OpenGL na primeira vez; um jogo que derruba o app no D3D12 no primeiro
+  minuto, ou que para a GPU, passa a abrir no OpenGL e a biblioteca avisa. Marcador da sessão em
+  `LocalState\ns_session.txt`.
+- **Online**: continua precisando de um servidor de salas (ver ONLINE.md).

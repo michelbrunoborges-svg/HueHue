@@ -8,7 +8,9 @@
 
 #include "eden_uwp/gl_window.h"
 
+#include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstdlib>
 #include <future>
 #include <stdexcept>
@@ -195,7 +197,13 @@ public:
         runtime->make_current(nullptr, nullptr);
     }
     void SwapBuffers() override {
-        if (presenter) presenter->DrawOverlay(false);
+        if (presenter) {
+            // FPS limit and frame skip (Desempenho e graficos): a frame not shown is not
+            // presented; the guest keeps its own speed.
+            if (!presenter->ShowThisFrame()) return;
+            presenter->CaptureFrame();
+            presenter->DrawOverlay(false);
+        }
         ForceOpaque();
         if (!runtime->swap(runtime->dc)) {
             throw std::runtime_error("Mesa: presentation failed");
@@ -271,7 +279,53 @@ void GlWindow::SetOverlay(std::optional<D3D12::MenuImage> image) {
     overlay_dirty = true;
 }
 
-void GlWindow::DrawOverlay(bool on_black) {
+void GlWindow::SetPacing(u32 max_fps, u32 skip) {
+    pacing_max_fps = std::min<u32>(max_fps, 240);
+    pacing_skip = std::min<u32>(skip, 3);
+}
+
+bool GlWindow::ShowThisFrame() {
+    const u64 frame = paced_frames++;
+    if (pacing_skip != 0 && frame % (pacing_skip + 1) != 0) return false;
+    if (pacing_max_fps == 0) return true;
+    const auto now = std::chrono::steady_clock::now();
+    const auto period = std::chrono::nanoseconds{1'000'000'000LL / pacing_max_fps};
+    // A little early is fine: the display's own refresh decides the exact moment.
+    if (now + period / 8 < next_shown) return false;
+    next_shown = std::max(next_shown + period, now);
+    return true;
+}
+
+void GlWindow::CaptureFrame() {
+    {
+        std::scoped_lock lock{overlay_mutex};
+        // Under the menu the game is paused: keep the frame from before it opened.
+        if (overlay) return;
+    }
+    if (last_frame == 0) {
+        glCreateTextures(GL_TEXTURE_2D, 1, &last_frame);
+        glTextureStorage2D(last_frame, 1, GL_RGBA8, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
+        glCreateFramebuffers(1, &last_frame_fbo);
+        glNamedFramebufferTexture(last_frame_fbo, GL_COLOR_ATTACHMENT0, last_frame, 0);
+        glNamedFramebufferReadBuffer(last_frame_fbo, GL_COLOR_ATTACHMENT0);
+        glNamedFramebufferDrawBuffer(last_frame_fbo, GL_COLOR_ATTACHMENT0);
+    }
+    const GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST);
+    const GLboolean srgb = glIsEnabled(GL_FRAMEBUFFER_SRGB);
+    std::array<GLboolean, 4> mask{};
+    glGetBooleanv(GL_COLOR_WRITEMASK, mask.data());
+    glDisable(GL_SCISSOR_TEST);
+    glDisable(GL_FRAMEBUFFER_SRGB);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    const auto w = static_cast<GLint>(width), h = static_cast<GLint>(height);
+    glBlitNamedFramebuffer(0, last_frame_fbo, 0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    has_last_frame = true;
+    glColorMask(mask[0], mask[1], mask[2], mask[3]);
+    if (srgb) glEnable(GL_FRAMEBUFFER_SRGB);
+    if (scissor) glEnable(GL_SCISSOR_TEST);
+}
+
+void GlWindow::DrawOverlay(bool restore_frame) {
     std::scoped_lock lock{overlay_mutex};
     if (overlay_dirty) {
         overlay_dirty = false;
@@ -301,7 +355,7 @@ void GlWindow::DrawOverlay(bool on_black) {
             overlay_height = overlay->height;
         }
     }
-    if (!overlay && !on_black) return;
+    if (!overlay && !restore_frame) return;
     // A blit touches no program, vertex or blend state the renderer's state tracker caches; only
     // the scissor, the color mask and sRGB writes apply to it.
     const GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST);
@@ -311,9 +365,16 @@ void GlWindow::DrawOverlay(bool on_black) {
     glDisable(GL_SCISSOR_TEST);
     glDisable(GL_FRAMEBUFFER_SRGB);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    if (on_black) {
-        constexpr std::array<GLfloat, 4> black{0.0f, 0.0f, 0.0f, 1.0f};
-        glClearNamedFramebufferfv(0, GL_COLOR, 0, black.data());
+    if (restore_frame) {
+        // The guest is paused and presents nothing: the menu goes over its last frame, as with
+        // D3D12 (on black when no frame was shown yet).
+        if (has_last_frame) {
+            const auto w = static_cast<GLint>(width), h = static_cast<GLint>(height);
+            glBlitNamedFramebuffer(last_frame_fbo, 0, 0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        } else {
+            constexpr std::array<GLfloat, 4> black{0.0f, 0.0f, 0.0f, 1.0f};
+            glClearNamedFramebufferfv(0, GL_COLOR, 0, black.data());
+        }
     }
     if (overlay && overlay->fill_screen) {
         const u32 rgb = overlay->fill;
@@ -340,7 +401,7 @@ void GlWindow::DrawOverlay(bool on_black) {
 }
 
 void GlWindow::PresentOverlayNow() {
-    // The guest is paused: the menu is shown on black (the last frame is gone with the swap).
+    // The guest is paused: the menu goes over the last frame the game showed.
     DrawOverlay(true);
     ForceOpaque();
     if (!runtime->swap(runtime->dc)) {

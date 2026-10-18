@@ -12,6 +12,7 @@
 // since the D3D12 renderer that normally shows them is not running.
 
 #include <atomic>
+#include <chrono>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -49,9 +50,17 @@ public:
     /// thread only, where the renderer's context is current.
     void PresentOverlayNow();
 
-    /// The overlay, drawn over the frame about to be presented (on black first with on_black).
-    /// GPU thread (SwapBuffers).
-    void DrawOverlay(bool on_black);
+    /// The overlay, drawn over the frame about to be presented (over the game's last frame first
+    /// with restore_frame). GPU thread (SwapBuffers).
+    void DrawOverlay(bool restore_frame);
+
+    /// FPS limit (0: the game's own) and frames skipped per frame shown (0 to 3), as the D3D12
+    /// renderer's SetPresentPacing. Before the game starts.
+    void SetPacing(u32 max_fps, u32 skip);
+    /// Whether the frame about to be presented is shown. GPU thread.
+    [[nodiscard]] bool ShowThisFrame();
+    /// Keeps the frame about to be presented, for the menu to go over. GPU thread.
+    void CaptureFrame();
 
 private:
     winrt::Windows::UI::Core::CoreWindow window{nullptr};
@@ -66,9 +75,17 @@ private:
     // GL objects of the overlay, on the renderer's context.
     unsigned overlay_texture{};
     unsigned overlay_program{};
-    unsigned overlay_vao{};
     u32 overlay_width{};
     u32 overlay_height{};
+    // The game's last frame (CaptureFrame).
+    unsigned last_frame{};
+    unsigned last_frame_fbo{};
+    bool has_last_frame{};
+    // Pacing (GPU thread).
+    u32 pacing_max_fps{};
+    u32 pacing_skip{};
+    u64 paced_frames{};
+    std::chrono::steady_clock::time_point next_shown{};
 };
 
 } // namespace EdenXbox

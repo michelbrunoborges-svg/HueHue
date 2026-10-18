@@ -652,6 +652,11 @@ enum class Text : std::uint16_t {
     NsRendererD3d12,
     NsRendererOpenGl,
     NsHintRenderer,
+    NsTuningGlShaders,
+    NsGlShadersGlsl,
+    NsGlShadersSpirv,
+    NsHintGlShaders,
+    NsCompatSwitched,
 
 
     Count

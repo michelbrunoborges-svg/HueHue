@@ -627,5 +627,10 @@ const Catalog EnglishCatalog = MakeCatalog({
     {Text::NsRendererD3d12, L"D3D12 (fast)"},
     {Text::NsRendererOpenGl, L"OpenGL (compatibility)"},
     {Text::NsHintRenderer, L"D3D12 is the fastest. OpenGL (Mesa, the NX Zero path) is slower but runs games that close or freeze on D3D12. No Pulse on OpenGL."},
+    {Text::NsTuningGlShaders, L"OpenGL shaders"},
+    {Text::NsGlShadersGlsl, L"GLSL (default)"},
+    {Text::NsGlShadersSpirv, L"SPIR-V (less memory)"},
+    {Text::NsHintGlShaders, L"OpenGL only. SPIR-V is NX Zero's default: about 40% less memory per shader, good for heavy games. GLSL is the most tested path."},
+    {Text::NsCompatSwitched, L"{0} closed on D3D12: next time it opens on OpenGL (change it in Performance and graphics)"},
 });
 } // namespace EdenXbox::I18n
