@@ -73,3 +73,13 @@ Os prints do CI rodam num Windows sem GPU, com o mesmo código Direct2D.
 - **Perfil de desempenho por jogo:** Padrão, Desempenho, Compatibilidade, Qualidade
   (`LocalState/ns_profiles.tsv`). Drivers customizados não existem no Xbox (só o D3D12 do console).
 - **Online por salas:** ver [ONLINE.md](ONLINE.md).
+
+## Melhorias de 18/10 (tarde)
+
+- **Ícone e tiles do app:** Square150/310/71, Wide310x150, Square44 e StoreLogo compostos com o
+  logo, o mascote e o fundo aprovados (`tools/huehue/make_tiles.py`), com `DefaultTile` no manifesto.
+- **Multiplayer local 2–4:** os outros controles conectados viram jogadores 2, 3 e 4.
+- **Desempenho e gráficos (por jogo):** perfil; resolução TV (até 1080p) ou portátil (720p, modo
+  portátil do console); limite de FPS (automático, 60, 30, manual 10–60); pular quadros (0–3);
+  shaders (4 ou 6 núcleos). 480p **não**: o renderer D3D12 ainda não tem escala de resolução.
+- **Conteúdo mais fácil:** as Opções do jogo mostram o update ativo e quantos DLCs e mods estão ligados.
