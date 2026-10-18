@@ -1,0 +1,41 @@
+# Confere o pacote de um "Build Xbox" ja feito (assinatura, conteudo e instalacao como atualizacao
+# sobre a 0.3.21.0), sem compilar de novo.
+name: Conferir pacote de um build
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Run do Build Xbox"
+        required: true
+      ref:
+        description: "Branch com o script de conferencia"
+        required: true
+        default: "opengl-mesa"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verify:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Baixar o pacote
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "${{ inputs.run_id }}" -R "${{ github.repository }}" -p "huehue-switch-*" -D dl
+          $art = (Get-ChildItem dl -Directory | Select-Object -First 1).Name
+          New-Item -ItemType Directory -Force pkg | Out-Null
+          Get-ChildItem dl -Recurse -File | Copy-Item -Destination pkg
+          "APP_VERSION=$($art -replace '^huehue-switch-','')" | Out-File $env:GITHUB_ENV -Append
+      - name: Conferir
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github\scripts\check-package.ps1 -Pkg pkg -Version $env:APP_VERSION -Repo "${{ github.repository }}"
