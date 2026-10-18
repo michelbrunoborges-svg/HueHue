@@ -12,6 +12,7 @@
 #include "eden_uwp/game_options_page.h"
 #include "eden_uwp/mods/mod_session.h"
 #include "eden_uwp/mods/mods_page.h"
+#include "eden_uwp/online_settings.h"
 #include "eden_uwp/system_page.h"
 #include "eden_uwp/text_entry_panel.h"
 #include "eden_uwp/uwp_input.h"
@@ -66,6 +67,10 @@ struct LibraryView {
     bool about_credits{};
     const std::vector<bool>* translated{}; ///< By entry: a fan translation exists (Traducoes tab).
     bool translations_ready{};             ///< The translation index was read (or could not be).
+    const OnlineSettings* online{};        ///< NS HUEHUE online play (Configuracoes > Online).
+    bool online_page{};                    ///< Its rows take the cursor.
+    unsigned online_row{};
+    unsigned edit_target{};                ///< 0: the keyboard types the search; 1-3: server, port, password.
 };
 class LibraryCanvas {
 public:

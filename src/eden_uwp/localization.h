@@ -607,6 +607,19 @@ enum class Text : std::uint16_t {
     NsProfileCompatibility,
     NsProfileQuality,
     NsProfileSaved,
+    NsOnline,
+    NsOnlinePlay,
+    NsOnlineServer,
+    NsOnlinePort,
+    NsOnlinePassword,
+    NsOnlineNoServer,
+    NsOnlineNoPassword,
+    NsOnlineHint,
+    NsOnlineServerHint,
+    NsOnlinePortHint,
+    NsOnlinePasswordHint,
+    NsOn,
+    NsOff,
 
 
     Count

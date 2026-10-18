@@ -135,7 +135,7 @@ add_executable(eden-uwp WIN32
 # core's NS query service); input_common the virtual_gamepad engine that uwp_input.cpp feeds;
 # dynarmic the JIT's committed code size for the diag's memory split.
 target_link_libraries(eden-uwp PRIVATE common core video_core audio_core frontend_common hid_core
-                                        input_common SDL3::SDL3 dynarmic::dynarmic LibArchive::Read
+                                        input_common network SDL3::SDL3 dynarmic::dynarmic LibArchive::Read
                                         OpenSSL::Crypto)
 
 # WinRT (CoreApplication, IFrameworkView, ApplicationData) comes from the Store umbrella import lib.

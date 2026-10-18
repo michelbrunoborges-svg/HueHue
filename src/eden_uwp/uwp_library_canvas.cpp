@@ -134,7 +134,8 @@ public:
         target->BeginDraw();
         target->Clear(D2D1::ColorF(Palette::Backdrop));
         // The NS HUEHUE sections; the pages that keep Eden's own layout draw over the pack's ground.
-        if (view.controller_panel) DrawNsControls(view);
+        if (view.search && view.edit_target) DrawNsField(view, *view.search);
+        else if (view.controller_panel) DrawNsControls(view);
         else if (configuration.open && view.system.open) DrawSystemPage(view.system);
         else if (configuration.open) DrawNsSettings(view);
         else if (view.home) DrawNsHome(view);
@@ -480,8 +481,8 @@ private:
         NsBackdrop(false);
         NsHeader(2);
         static constexpr std::array<T, HomeRowCount> sections{T::NsSettingsSystem, T::NsSettingsControllers,
-                                                              T::NsSettingsFiles, T::NsCredits};
-        static constexpr std::array<const wchar_t*, HomeRowCount> icons{L"settings", L"pad", L"folder", L"info"};
+                                                              T::NsSettingsFiles, T::NsOnline, T::NsCredits};
+        static constexpr std::array<const wchar_t*, HomeRowCount> icons{L"settings", L"pad", L"folder", L"network", L"info"};
         const size_t section = panel.files ? static_cast<size_t>(HomeFiles) : std::min<size_t>(panel.selected, HomeRowCount - 1);
         NsTitle(std::wstring{Tr(T::NsNavSettings)} + L" · " + std::wstring{Tr(sections[section])});
         for (size_t i = 0; i < HomeRowCount; ++i) {
@@ -493,11 +494,24 @@ private:
             }
             NsImage(NsIcon(icons[i]), D2D1::RectF(123, y + 24, 155, y + 56), false);
             Text(Tr(sections[i]), 169, y + 18, 29, selected ? Palette::Accent : Palette::TextSecondary, 270, 44);
-            if (selected && !panel.files) NsFocus(96, y, 350, 80, 6);
+            if (selected && !panel.files && !view.online_page) NsFocus(96, y, 350, 80, 6);
         }
         const float left = 521, width = 1280;
         Text(Tr(sections[section]), left, 292, 34, Palette::Text, width, 50, true);
-        if (!panel.files && section == HomeCredits) {
+        if (!panel.files && section == HomeOnline && view.online) {
+            // Online: rooms of an Eden room server carry local wireless play between consoles.
+            const auto& online = *view.online;
+            const std::array<std::pair<T, std::wstring>, 4> rows{{
+                {T::NsOnlinePlay, std::wstring{Tr(online.enabled ? T::NsOn : T::NsOff)}},
+                {T::NsOnlineServer, online.server.empty() ? std::wstring{Tr(T::NsOnlineNoServer)} : Widen(online.server)},
+                {T::NsOnlinePort, std::to_wstring(online.port)},
+                {T::NsOnlinePassword, online.password.empty() ? std::wstring{Tr(T::NsOnlineNoPassword)}
+                                                              : std::wstring(online.password.size(), L'\u2022')}}};
+            for (size_t i = 0; i < rows.size(); ++i)
+                NsRow(left, 356 + static_cast<float>(i) * 78, width, Tr(rows[i].first), rows[i].second,
+                      view.online_page && i == view.online_row);
+            Text(Tr(T::NsOnlineHint), left, 690, 21, Palette::TextSecondary, width, 160, false, true);
+        } else if (!panel.files && section == HomeCredits) {
             // Créditos e licenças (they used to be the Sobre page): who the work comes from, the
             // version and the license note. Nothing here opens.
             static constexpr std::array<std::pair<const wchar_t*, T>, 5> credits{{
@@ -553,6 +567,7 @@ private:
         else if (!panel.notice.empty())
             Text(panel.notice, left, 920, 23, Palette::Warning, width, 70, false, true);
         if (!panel.files && section == HomeCredits) NsFooter({{L'B', Ns::Error, T::Back}});
+        else if (view.online_page) NsFooter({{L'A', Palette::Accent, T::Change}, {L'B', Ns::Error, T::Back}});
         else NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, panel.busy ? T::Cancel : T::Back}});
     }
 
@@ -663,6 +678,41 @@ private:
         }
         if (!view.notice.empty()) NsToast(view.notice);
         NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Back}});
+    }
+
+    static std::wstring Widen(const std::string& utf8) {
+        std::wstring out;
+        out.reserve(utf8.size());
+        for (const char c : utf8) out += static_cast<wchar_t>(static_cast<unsigned char>(c)); // Host names are ASCII.
+        return out;
+    }
+
+    // Online fields (server, port, password) typed on the search page's keyboard.
+    void DrawNsField(const LibraryView& view, const TextEntry& editor) {
+        using K = TextEntryPanelLayout;
+        using S = NsSearchLayout;
+        DesignSpace space(target.Get());
+        NsBackdrop(false);
+        NsHeader(2);
+        const T title = view.edit_target == 1 ? T::NsOnlineServer : view.edit_target == 2 ? T::NsOnlinePort : T::NsOnlinePassword;
+        NsTitle(Tr(title));
+        NsFill(96, 266, 1728, 72, 8, Palette::Backdrop);
+        NsStroke(97.5f, 267.5f, 1725, 69, 8, 3, Palette::Accent);
+        const std::wstring shown = view.edit_target == 3 ? std::wstring(editor.Value().size(), L'\u2022') : editor.Value();
+        const float typed = std::min(MeasureText(shown, 28, false), 1600.0f);
+        Text(shown, 124, 282, 28, Palette::Text, 1620, 42);
+        Round(126 + typed, 286, 2, 34, 1, Palette::Accent);
+        Text(Tr(view.edit_target == 1 ? T::NsOnlineServerHint : view.edit_target == 2 ? T::NsOnlinePortHint
+                                                                                     : T::NsOnlinePasswordHint),
+             96, 352, 23, Palette::TextSecondary, 1700, 36);
+        target->PushAxisAlignedClip(D2D1::RectF(S::KeysX - 10, S::KeysY - 10, S::KeysX + K::BoxWidth + 10,
+                                                S::KeysY + TextEntry::Rows * (K::KeyHeight + K::Gap) + 4),
+                                    D2D1_ANTIALIAS_MODE_ALIASED);
+        DrawTextEntryPanel(*this, {editor, std::wstring_view{}, std::wstring_view{}, std::wstring_view{}},
+                           S::PanelX(), S::PanelY());
+        target->PopAxisAlignedClip();
+        NsFooter({{L'A', Palette::Accent, T::TypeKey}, {L'X', Ns::KeyX, T::DeleteKey}, {L'Y', Ns::KeyY, T::SpaceKey},
+                  {L'\u2261', Palette::Text, T::DoneKey}, {L'B', Ns::Error, T::Cancel}});
     }
 
     // 05, 51 · Buscar jogos: the box, the first result and the shared keyboard's keys.

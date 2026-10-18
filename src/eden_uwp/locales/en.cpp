@@ -582,5 +582,18 @@ const Catalog EnglishCatalog = MakeCatalog({
     {Text::NsProfileCompatibility, L"Compatibility"},
     {Text::NsProfileQuality, L"Quality"},
     {Text::NsProfileSaved, L"Profile saved: it applies the next time the game starts"},
+    {Text::NsOnline, L"Online"},
+    {Text::NsOnlinePlay, L"Play online"},
+    {Text::NsOnlineServer, L"Room server"},
+    {Text::NsOnlinePort, L"Port"},
+    {Text::NsOnlinePassword, L"Room password"},
+    {Text::NsOnlineNoServer, L"None"},
+    {Text::NsOnlineNoPassword, L"No password"},
+    {Text::NsOnlineHint, L"Play with another console over the internet in games that have local wireless play (Mario Kart, Smash, Monster Hunter, Pokémon…). Both consoles join the same Eden room server, with the same game version. Turn it on here and start the game: it joins the room first."},
+    {Text::NsOnlineServerHint, L"The Eden room server's address (name or IP), without http."},
+    {Text::NsOnlinePortHint, L"The server's port (24872 by default)."},
+    {Text::NsOnlinePasswordHint, L"The password the room's owner set; empty for an open room."},
+    {Text::NsOn, L"On"},
+    {Text::NsOff, L"Off"},
 });
 } // namespace EdenXbox::I18n

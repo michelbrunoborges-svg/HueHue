@@ -81,6 +81,8 @@
 #include "video_core/renderer_base.h"
 #include "video_core/renderer_d3d12/d3d12_menu_image.h"
 
+#include "eden_uwp/online_settings.h"
+#include "network/network.h"
 #include "eden_uwp/game_profile.h"
 #include "eden_uwp/alloc_watch.h"
 #include "eden_uwp/cheats/cheat_session.h"
@@ -536,6 +538,19 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
     WriteDiag("step: system.Initialize() done");
     system.ApplySettings();
     WriteDiag("step: system.ApplySettings() done");
+    // NS HUEHUE online play: join the room before the game looks for local wireless partners.
+    if (config.play) {
+        const auto online = LoadOnlineSettings();
+        if (online.enabled && !online.server.empty()) {
+            if (const auto member = Network::GetRoomMember().lock()) {
+                const auto name = LoadSystemSettings().user_name;
+                const std::string nickname = name.empty() ? std::string{"NS HUEHUE"} : I18n::ToUtf8(name);
+                member->Join(nickname, online.server.c_str(), online.port, 0, Network::NoPreferredIP,
+                             online.password);
+                WriteDiag("online: joining room " + online.server + ":" + std::to_string(online.port));
+            }
+        }
+    }
 
     HeadlessEmuWindow emu_window{surface.core_window, surface.width, surface.height};
 

@@ -29,6 +29,7 @@
 #include "eden_uwp/game_library.h"
 #include "eden_uwp/game_options_page.h"
 #include "eden_uwp/game_profile.h"
+#include "eden_uwp/online_settings.h"
 #include "eden_uwp/content/auto_import.h"
 #include "eden_uwp/content/content_view.h"
 #include "eden_uwp/mods/cnx_index.h"
@@ -199,6 +200,16 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     std::wstring query;
     std::optional<TextEntry> search_editor;
     std::wstring search_before;
+    // NS HUEHUE online play (online_settings.h): Configuracoes > Online and the field being typed.
+    // The search keyboard types the fields too; edit_target says where its text goes.
+    OnlineSettings online = LoadOnlineSettings();
+    bool online_page = false;
+    unsigned online_row = 0;
+    enum class EditTarget : unsigned { Search, Server, Port, Password };
+    EditTarget edit_target = EditTarget::Search;
+    auto sync_editor = [&] {
+        if (search_editor && edit_target == EditTarget::Search) query = search_editor->Value();
+    };
     std::vector<std::string> favorites = LoadList(L"ns_favorites.txt");
     std::vector<std::string> recents = LoadList(L"ns_recent.txt");
     std::vector<size_t> shown;
@@ -277,7 +288,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     auto characters = window.CharacterReceived(winrt::auto_revoke, [&](auto&&, CharacterReceivedEventArgs const& e) {
         if (search_editor) {
             search_editor->Type(static_cast<wchar_t>(e.KeyCode()));
-            query = search_editor->Value();
+            sync_editor();
             dirty = true;
             e.Handled(true);
             return;
@@ -305,7 +316,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             }
             if (command) {
                 const auto result = search_editor->Apply(*command);
-                query = search_editor->Value();
+                sync_editor();
                 if (result != TextEntry::Result::None) finish_search = result == TextEntry::Result::Done;
             }
             dirty = true;
@@ -397,7 +408,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             if (const auto key = TextEntryPanelLayout::KeyAt(dx - S::PanelX(), dy - S::PanelY())) {
                 search_editor->Focus(key->first, key->second);
                 if (search_editor->Press() == TextEntry::Result::Done) finish_search = true;
-                query = search_editor->Value();
+                sync_editor();
                 dirty = true;
             }
             e.Handled(true);
@@ -682,6 +693,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         return settings ? 3 : configuration.open ? 2 : home ? 0 : 1;
     };
     auto go_section = [&](unsigned section) {
+        online_page = false;
         settings = section == 3;
         return_to_configuration = false;
         panel.expanded = false;
@@ -792,7 +804,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                         const auto result = search_editor->Apply(*TextEntryCommand(action));
                         if (result != TextEntry::Result::None) finish_search = result == TextEntry::Result::Done;
                     }
-                    query = search_editor->Value();
+                    sync_editor();
                     if (directions || edges != GamepadButtons::None) dirty = true;
                 } else if (system_page.name_editor) {
                     // Like the console's keyboard: A types, X deletes, Y adds a space, Menu (or RB)
@@ -849,6 +861,26 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         if (finish_name_editor) {
             apply_system_effect(FinishNameEditor(system_page, *finish_name_editor), now);
             finish_name_editor.reset();
+            dirty = true;
+        }
+        if (finish_search && edit_target != EditTarget::Search) {
+            // An online field: Done keeps what was typed, B leaves it as it was.
+            if (*finish_search && search_editor) {
+                const std::string text = I18n::ToUtf8(search_editor->Value());
+                if (edit_target == EditTarget::Server) online.server = text;
+                else if (edit_target == EditTarget::Password) online.password = text;
+                else {
+                    try {
+                        const auto port = std::stoul(text);
+                        if (port > 0 && port <= 65535) online.port = static_cast<std::uint16_t>(port);
+                    } catch (...) {}
+                }
+                library_say(std::wstring{Tr(SaveOnlineSettings(online) ? T::SettingsSaved : T::SystemSaveFailed)},
+                            now + std::chrono::seconds{3});
+            }
+            search_editor.reset();
+            finish_search.reset();
+            edit_target = EditTarget::Search;
             dirty = true;
         }
         if (finish_search) {
@@ -964,7 +996,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         // is open (from the home screen too).
         const bool modal = game_options.open || panel.keyboard.open || panel.expanded || system_page.open ||
                            configuration.files || configuration.busy || picker || validation.valid() ||
-                           missing_content;
+                           missing_content || online_page || search_editor;
         if (!modal && (actions & (PreviousTab | NextTab))) {
             const unsigned section = current_section();
             const unsigned at = section == 0 ? 0 : section - 1; // home behaves as Meus jogos' neighbour
@@ -1119,8 +1151,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 const ModJob finished = mod_session->Poll();
                 if (finished != ModJob::None) {
                     const auto& result = mod_session->View();
-                    const bool online = result.origin.kind == Mods::SourceKind::GameBanana ||
-                                        result.origin.kind == Mods::SourceKind::Cnx;
+                    const bool from_store = result.origin.kind == Mods::SourceKind::GameBanana ||
+                                            result.origin.kind == Mods::SourceKind::Cnx;
                     if (result.error != Mods::ModError::None) notify(Mods::ErrorText(result.error));
                     if (finished == ModJob::Reading && result.error == Mods::ModError::None)
                         Mods::ShowVariants(mods_page, result.candidates.size());
@@ -1131,7 +1163,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     if (finished == ModJob::Installing && result.installed > 0) {
                         // From a folder, back to the list where the new mods sit on top; from the
                         // store, the player stays where they browse.
-                        if (!online) Mods::ShowInstalled(mods_page);
+                        if (!from_store) Mods::ShowInstalled(mods_page);
                         if (result.error == Mods::ModError::None) {
                             options_notice = result.updated ? std::wstring{Tr(T::ModsUpdated)}
                                                             : I18n::Plural(T::ModsInstalledOne, T::ModsInstalledOther,
@@ -1384,6 +1416,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             if (panel.keyboard.open) { panel.keyboard.open = panel.keyboard.capturing = false; dirty = true; actions &= ~Quit; }
             else if (panel.expanded) { panel.expanded = false; dirty = true; actions &= ~Quit; }
             else if (settings) { settings = false; configuration.open = return_to_configuration; return_to_configuration = false; dirty = true; actions &= ~Quit; }
+            else if (configuration.open && online_page) { online_page = false; dirty = true; actions &= ~Quit; }
             else if (configuration.open) {
                 if (configuration.files) { configuration.files = false; configuration.selected = HomeFiles; }
                 else configuration.open = false;
@@ -1397,6 +1430,26 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             configuration.open = true; configuration.files = false; configuration.selected = HomeSystem;
             configuration.notice.clear(); refresh_setup(); dirty = true;
         }
+        if (configuration.open && online_page && !settings && !picker && !configuration.busy && actions) {
+            // Online: Jogar online, Servidor, Porta, Senha da sala.
+            if (actions & Up) online_row = (online_row + 3) % 4;
+            if (actions & Down) online_row = (online_row + 1) % 4;
+            if (actions & (Play | Left | Right)) {
+                if (online_row == 0) {
+                    online.enabled = !online.enabled;
+                    library_say(std::wstring{Tr(SaveOnlineSettings(online) ? T::SettingsSaved : T::SystemSaveFailed)},
+                                now + std::chrono::seconds{3});
+                } else if (actions & Play) {
+                    edit_target = online_row == 1 ? EditTarget::Server : online_row == 2 ? EditTarget::Port
+                                                                                      : EditTarget::Password;
+                    const std::string& value = online_row == 1 ? online.server : online_row == 3 ? online.password
+                                                                                             : std::to_string(online.port);
+                    search_editor.emplace(Wide(value), online_row == 2 ? 5 : online_row == 1 ? 63 : 32);
+                }
+            }
+            actions = 0;
+            dirty = true;
+        }
         if (configuration.open && !settings && !picker && !configuration.busy) {
             const auto count = ConfigurationRowCount(configuration);
             if (actions & Up) configuration.selected = (configuration.selected + count - 1) % count;
@@ -1407,6 +1460,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     switch (configuration.selected) {
                     case HomeFiles: configuration.files = true; configuration.selected = 0; break;
                     case HomeControllers: settings = true; return_to_configuration = true; break;
+                    case HomeOnline: online_page = true; online_row = 0; break;
                     case HomeCredits: break; // The credits show beside the list; nothing to open.
                     default:
                         system_page.open = true;
@@ -1736,7 +1790,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             canvas->Draw({scan, selected, loading, settings, setting_row, options, notice, panel,
                           configuration, system_page, options_view, missing_content, home, home_row,
                           false, library_tab, library_focus, &shown, &favorites, query,
-                          search_editor ? &*search_editor : nullptr, false, &translated, translations_ready});
+                          search_editor ? &*search_editor : nullptr, false, &translated, translations_ready,
+                          &online, online_page, online_row, static_cast<unsigned>(edit_target)});
             dirty = false;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds{16});

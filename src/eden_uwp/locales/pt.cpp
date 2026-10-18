@@ -583,5 +583,18 @@ const Catalog PortugueseCatalog = MakeCatalog({
     {Text::NsProfileCompatibility, L"Compatibilidade"},
     {Text::NsProfileQuality, L"Qualidade"},
     {Text::NsProfileSaved, L"Perfil salvo: vale na próxima vez que o jogo abrir"},
+    {Text::NsOnline, L"Online"},
+    {Text::NsOnlinePlay, L"Jogar online"},
+    {Text::NsOnlineServer, L"Servidor de salas"},
+    {Text::NsOnlinePort, L"Porta"},
+    {Text::NsOnlinePassword, L"Senha da sala"},
+    {Text::NsOnlineNoServer, L"Nenhum"},
+    {Text::NsOnlineNoPassword, L"Sem senha"},
+    {Text::NsOnlineHint, L"Joga com outro console pela internet nos jogos que têm modo local sem fio (Mario Kart, Smash, Monster Hunter, Pokémon…). Os dois consoles entram no mesmo servidor de salas do Eden, com a mesma versão do jogo. Liga aqui e abre o jogo: ele entra na sala antes de começar."},
+    {Text::NsOnlineServerHint, L"Endereço do servidor de salas do Eden (nome ou IP), sem http."},
+    {Text::NsOnlinePortHint, L"Porta do servidor (padrão 24872)."},
+    {Text::NsOnlinePasswordHint, L"A senha que o dono da sala definiu; vazio para sala aberta."},
+    {Text::NsOn, L"Ligado"},
+    {Text::NsOff, L"Desligado"},
 });
 } // namespace EdenXbox::I18n
