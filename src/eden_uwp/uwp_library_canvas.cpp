@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "eden_uwp/uwp_library_canvas.h"
 #include "eden_uwp/pro_controller_geometry.h"
+#include "eden_uwp/save_backup.h"
 
 #include <algorithm>
 #include <array>
@@ -495,8 +496,10 @@ private:
         NsBackdrop(false);
         NsHeader(2);
         static constexpr std::array<T, HomeRowCount> sections{T::NsSettingsSystem, T::NsSettingsControllers,
-                                                              T::NsSettingsFiles, T::NsOnline, T::NsCredits};
-        static constexpr std::array<const wchar_t*, HomeRowCount> icons{L"settings", L"pad", L"folder", L"network", L"info"};
+                                                              T::NsSettingsFiles, T::NsSettingsSaves, T::NsOnline,
+                                                              T::NsCredits};
+        static constexpr std::array<const wchar_t*, HomeRowCount> icons{L"settings", L"pad", L"folder", L"usb", L"network",
+                                                                         L"info"};
         const size_t section = panel.files ? static_cast<size_t>(HomeFiles) : std::min<size_t>(panel.selected, HomeRowCount - 1);
         NsTitle(std::wstring{Tr(T::NsNavSettings)} + L" · " + std::wstring{Tr(sections[section])});
         for (size_t i = 0; i < HomeRowCount; ++i) {
@@ -508,7 +511,8 @@ private:
             }
             NsImage(NsIcon(icons[i]), D2D1::RectF(123, y + 24, 155, y + 56), false);
             Text(Tr(sections[i]), 169, y + 18, 29, selected ? Palette::Accent : Palette::TextSecondary, 270, 44);
-            if (selected && !panel.files && !view.online_page) NsFocus(96, y, 350, 80, 6);
+            if (selected && !panel.files && !view.online_page && !(view.saves && view.saves->page))
+                NsFocus(96, y, 350, 80, 6);
         }
         const float left = 521, width = 1280;
         Text(Tr(sections[section]), left, 292, 34, Palette::Text, width, 50, true);
@@ -525,6 +529,30 @@ private:
                 NsRow(left, 356 + static_cast<float>(i) * 78, width, Tr(rows[i].first), rows[i].second,
                       view.online_page && i == view.online_row);
             Text(Tr(T::NsOnlineHint), left, 690, 21, Palette::TextSecondary, width, 160, false, true);
+        } else if (!panel.files && section == HomeSaves && view.saves) {
+            // Saves (USB): the folder on the external drive, the automatic copy, copy now, restore.
+            const auto& saves = *view.saves;
+            const std::array<std::pair<T, std::wstring>, 4> rows{{
+                {T::NsSavesFolder, !saves.has_folder ? std::wstring{Tr(T::NsSavesPick)}
+                                   : saves.folder.empty() ? std::wstring{Tr(T::UsbFolder)} : saves.folder},
+                {T::NsSavesAuto, std::wstring{Tr(saves.automatic ? T::NsOn : T::NsOff)}},
+                {T::NsSavesBackupNow, saves.last_time
+                                          ? I18n::Format(T::NsSavesLast, {SaveBackup::FormatTime(saves.last_time),
+                                                                          std::to_wstring(saves.last_games)})
+                                          : std::wstring{Tr(T::NsSavesNever)}},
+                {T::NsSavesRestore, L"›"}}};
+            for (size_t i = 0; i < rows.size(); ++i)
+                NsRow(left, 356 + static_cast<float>(i) * 78, width, Tr(rows[i].first), rows[i].second,
+                      saves.page && i == saves.row);
+            static constexpr std::array<T, 4> hints{T::NsSavesHintFolder, T::NsSavesHintAuto, T::NsSavesHintBackup,
+                                                    T::NsSavesHintRestore};
+            Text(Tr(saves.page ? hints[std::min<size_t>(saves.row, 3)] : T::NsSavesOverview), left, 690, 21,
+                 Palette::TextSecondary, width, 140, false, true);
+            if (saves.busy)
+                Text(I18n::Format(saves.restoring ? T::NsSavesRestoring : T::NsSavesCopying,
+                                  {std::to_wstring(saves.done), std::to_wstring(saves.total)}),
+                     left, 846, 24, Palette::Accent, width, 40);
+            if (!saves.notice.empty()) Text(saves.notice, left, 892, 23, Palette::Warning, width, 96, false, true);
         } else if (!panel.files && section == HomeCredits) {
             // Créditos e licenças (they used to be the Sobre page): who the work comes from, the
             // version and the license note. Nothing here opens.
@@ -582,6 +610,8 @@ private:
             Text(panel.notice, left, 920, 23, Palette::Warning, width, 70, false, true);
         if (!panel.files && section == HomeCredits) NsFooter({{L'B', Ns::Error, T::Back}});
         else if (view.online_page) NsFooter({{L'A', Palette::Accent, T::Change}, {L'B', Ns::Error, T::Back}});
+        else if (view.saves && view.saves->page)
+            NsFooter({{L'A', Palette::Accent, view.saves->row == 1 ? T::Change : T::NsConfirm}, {L'B', Ns::Error, T::Back}});
         else NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, panel.busy ? T::Cancel : T::Back}});
     }
 

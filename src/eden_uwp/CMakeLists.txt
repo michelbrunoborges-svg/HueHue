@@ -61,6 +61,8 @@ add_executable(eden-uwp WIN32
     uwp_software_keyboard.h
     uwp_system_settings.cpp
     uwp_system_settings.h
+    save_backup.cpp
+    save_backup.h
     library_cache.cpp
     library_cache.h
     atomic_file.h

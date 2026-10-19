@@ -117,3 +117,20 @@ Os prints do CI rodam num Windows sem GPU, com o mesmo código Direct2D.
 - **Catálogo:** arquivos do mesmo jogo (outro dump, update ou DLC que não foi importado) viram um
   card só, o do jogo base.
 - **Assets** do pacote de imagens corrigido pelo Michel (tiles redimensionados para 150/310 px).
+
+## Saves no HD externo (19/10)
+
+- **Configurações → Saves (USB)** (`src/eden_uwp/save_backup.*`): o jogador escolhe uma pasta no HD
+  externo; o app guarda nela `NS-HUEHUE-saves` com os saves (`nand/user/save`, sem `temp`) e as
+  contas do console (`nand/system/save/8000000000000010`, onde ficam o `profiles.dat` e os avatares:
+  os saves ficam guardados no id da conta).
+- **Backup automático** (ligado por padrão): ao abrir o app e sempre que um jogo volta para a
+  biblioteca, copia só o que mudou (manifesto `manifest.tsv` com tamanho e data de cada arquivo).
+  Cada arquivo é gravado como `.part` e renomeado, então um HD tirado no meio não estraga a cópia
+  anterior.
+- **Restaurar saves da pasta**: traz a cópia de volta (depois de reinstalar, ou em outro Xbox),
+  com confirmação; os saves que estavam no Xbox ficam antes em `LocalState\ns_saves_before_restore`.
+- Uma pasta com a cópia de **outra instalação** não é sobrescrita pelo automático: o app avisa e
+  oferece Restaurar; Fazer backup agora só a substitui depois de confirmar de novo.
+- Os jogos continuam salvando em `LocalState`: no Xbox o app só escreve fora dela pelo seletor de
+  pastas (WinRT), que o código de arquivos do Eden não usa.

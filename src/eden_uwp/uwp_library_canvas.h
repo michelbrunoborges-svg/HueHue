@@ -46,6 +46,19 @@ struct GameOptionsView {
     std::size_t tuning_row{};
     bool favorite{}; ///< NS HUEHUE: the game is a favorite (the list's last row adds or removes it).
 };
+/// NS HUEHUE: Configuracoes > Saves (USB), the copy of the saves on an external drive.
+struct SavesView {
+    bool page{};          ///< Its rows take the cursor.
+    unsigned row{};
+    bool has_folder{};
+    std::wstring folder;  ///< The picked folder's path.
+    bool automatic{};
+    std::int64_t last_time{};
+    std::uint32_t last_games{};
+    bool busy{}, restoring{};
+    std::uint32_t done{}, total{};
+    std::wstring_view notice;
+};
 /// Everything one frame of the library shows.
 struct LibraryView {
     const LibraryScan& scan;
@@ -78,6 +91,7 @@ struct LibraryView {
     bool online_page{};                    ///< Its rows take the cursor.
     unsigned online_row{};
     unsigned edit_target{};                ///< 0: the keyboard types the search; 1-3: server, port, password.
+    const SavesView* saves{};              ///< NS HUEHUE Configuracoes > Saves (USB).
 };
 class LibraryCanvas {
 public:

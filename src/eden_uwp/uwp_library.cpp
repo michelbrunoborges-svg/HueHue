@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "eden_uwp/uwp_library.h"
 #include "eden_uwp/stick_navigation.h"
+#include "eden_uwp/save_backup.h"
 #include "eden_uwp/controller_catalog.h"
 #include "eden_uwp/text_entry_input.h"
 #include "eden_uwp/uwp_library_canvas.h"
@@ -209,6 +210,26 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     OnlineSettings online = LoadOnlineSettings();
     bool online_page = false;
     unsigned online_row = 0;
+    // NS HUEHUE: Configuracoes > Saves (USB), the copy of the saves on an external drive
+    // (save_backup.h). Its jobs run on a worker; the progress is declared before it, so it outlives it.
+    bool saves_page = false;
+    unsigned saves_row = 0;
+    SaveBackup::Settings saves = SaveBackup::LoadSettings();
+    bool saves_folder = SaveBackup::HasFolder();
+    enum class SavesJob : std::uint8_t { None, Pick, Backup, Replace, Restore, Automatic };
+    SavesJob saves_job = SavesJob::None;
+    unsigned saves_confirm = 0; // pressed once: 2 replace another installation's copy, 3 restore
+    auto saves_confirm_until = std::chrono::steady_clock::time_point{};
+    std::wstring saves_notice;
+    auto saves_notice_until = std::chrono::steady_clock::time_point::max();
+    std::uint32_t saves_shown_done = 0;
+    struct SavesDone {
+        SaveBackup::Result result;
+        SaveBackup::FolderInfo info;
+    };
+    SaveBackup::Progress saves_progress;
+    std::future<SavesDone> saves_future;
+    std::jthread saves_worker;
     enum class EditTarget : unsigned { Search, Server, Port, Password };
     EditTarget edit_target = EditTarget::Search;
     auto sync_editor = [&] {
@@ -743,6 +764,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     };
     auto go_section = [&](unsigned section) {
         online_page = false;
+        saves_page = false;
         settings = section == 3;
         return_to_configuration = false;
         panel.expanded = false;
@@ -757,6 +779,48 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         if (section == 1) library_focus = -1;
         dirty = true;
     };
+    auto start_saves = [&](SavesJob job, winrt::Windows::Storage::StorageFolder folder) {
+        if (saves_future.valid()) return;
+        saves_job = job;
+        saves_confirm = 0;
+        saves_shown_done = 0;
+        std::packaged_task<SavesDone(std::stop_token)> task{[job, folder, &saves_progress](std::stop_token stop) {
+            winrt::init_apartment(winrt::apartment_type::multi_threaded);
+            struct Uninitialize { ~Uninitialize() { winrt::uninit_apartment(); } } guard;
+            SavesDone done;
+            try {
+                switch (job) {
+                case SavesJob::Pick:
+                    // A folder that already holds another installation's copy (before a reinstall)
+                    // is offered for Restaurar, never written over.
+                    SaveBackup::RememberFolder(folder);
+                    done.info = SaveBackup::Inspect();
+                    if (done.info.has_backup && done.info.other_install) {
+                        done.result.outcome = SaveBackup::Outcome::OtherInstall;
+                        done.result.files = done.info.files;
+                        done.result.games = done.info.games;
+                    } else {
+                        done.result = SaveBackup::Backup(false, saves_progress, stop);
+                    }
+                    break;
+                case SavesJob::Restore: done.result = SaveBackup::Restore(saves_progress, stop); break;
+                default: done.result = SaveBackup::Backup(job == SavesJob::Replace, saves_progress, stop); break;
+                }
+            } catch (const winrt::hresult_error& e) {
+                done.result.outcome = SaveBackup::Outcome::Failed;
+                done.result.error = winrt::to_string(e.message());
+            } catch (const std::exception& e) {
+                done.result.outcome = SaveBackup::Outcome::Failed;
+                done.result.error = e.what();
+            }
+            return done;
+        }};
+        saves_future = task.get_future();
+        saves_worker = std::jthread(std::move(task));
+        dirty = true;
+    };
+    // The automatic copy: when the app opens and every time a game comes back to the library.
+    if (saves.automatic && saves_folder) start_saves(SavesJob::Automatic, nullptr);
     while (true) {
         window.Dispatcher().ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
         const auto now = std::chrono::steady_clock::now();
@@ -950,6 +1014,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     if (folder && picker_kind == 0) start_scan(folder);
                     else if (folder && picker_kind == 3 && content_session) content_session->AuthorizeFolder(folder);
                     else if (folder && picker_kind == 4 && mod_session) mod_session->AddFolder(folder);
+                    else if (folder && picker_kind == 5) start_saves(SavesJob::Pick, folder);
                     else if (picker_kind >= 3) {} // A page's folder whose page closed meanwhile.
                     else if (folder) {
                         configuration.busy = true;
@@ -1025,6 +1090,70 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 dirty = true;
             }
         }
+        if (!saves_notice.empty() && now >= saves_notice_until) {
+            saves_notice.clear();
+            saves_notice_until = std::chrono::steady_clock::time_point::max();
+            dirty = true;
+        }
+        if (saves_confirm && now >= saves_confirm_until) {
+            saves_confirm = 0;
+            saves_notice.clear();
+            dirty = true;
+        }
+        if (saves_future.valid()) {
+            if (const auto done = saves_progress.done.load(); done != saves_shown_done) {
+                saves_shown_done = done;
+                dirty = true;
+            }
+            if (saves_future.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
+                SavesDone done;
+                try { done = saves_future.get(); } catch (...) { done.result.outcome = SaveBackup::Outcome::Failed; }
+                saves = SaveBackup::LoadSettings();
+                saves_folder = SaveBackup::HasFolder();
+                using O = SaveBackup::Outcome;
+                const auto& result = done.result;
+                const auto number = [](std::uint32_t n) { return std::to_wstring(n); };
+                std::wstring text;
+                if (saves_job == SavesJob::Automatic) {
+                    // Said in the library (only what needs the player: nothing when nothing changed).
+                    if (result.outcome == O::Done && result.copied) text = I18n::Format(T::NsSavesAutoDone, {number(result.copied)});
+                    else if (result.outcome == O::OtherInstall) text = Tr(T::NsSavesAutoOther);
+                    else if (result.outcome == O::FolderUnavailable) text = Tr(T::NsSavesAutoUnavailable);
+                    else if (result.outcome == O::Failed) text = I18n::Format(T::NsSavesFailed, {Wide(result.error)});
+                    if (!text.empty() && notice.empty()) library_say(text, now + std::chrono::seconds{6});
+                } else {
+                    switch (result.outcome) {
+                    case O::Done:
+                        text = saves_job == SavesJob::Restore
+                                   ? I18n::Format(T::NsSavesRestored, {number(result.games), number(result.copied)})
+                               : result.copied ? I18n::Format(T::NsSavesDone, {number(result.copied), number(result.games)})
+                                               : std::wstring{Tr(T::NsSavesUpToDate)};
+                        break;
+                    case O::OtherInstall:
+                        if (saves_job == SavesJob::Pick) {
+                            text = I18n::Format(T::NsSavesFolderFound,
+                                                {number(result.games), SaveBackup::FormatTime(done.info.time)});
+                            saves_row = 3;
+                        } else {
+                            text = I18n::Format(T::NsSavesOtherInstall, {number(result.games)});
+                            saves_confirm = 2;
+                            saves_confirm_until = now + std::chrono::seconds{10};
+                        }
+                        break;
+                    case O::NothingToRestore: text = Tr(T::NsSavesNothing); break;
+                    case O::FolderUnavailable: text = Tr(T::NsSavesUnavailable); break;
+                    case O::NoFolder: text = Tr(T::NsSavesNoFolder); break;
+                    case O::Stopped: break;
+                    case O::Failed: text = I18n::Format(T::NsSavesFailed, {Wide(result.error)}); break;
+                    }
+                    saves_notice = std::move(text);
+                    saves_notice_until = saves_confirm ? std::chrono::steady_clock::time_point::max()
+                                                       : now + std::chrono::seconds{12};
+                }
+                saves_job = SavesJob::None;
+                dirty = true;
+            }
+        }
         if (system_page.open && configuration.open && !settings) {
             // The name editor takes its input in the handlers above; the page waits behind it.
             if (!system_page.name_editor && actions) {
@@ -1045,7 +1174,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         // is open (from the home screen too).
         const bool modal = game_options.open || panel.keyboard.open || panel.expanded || system_page.open ||
                            configuration.files || configuration.busy || picker || validation.valid() ||
-                           missing_content || online_page || search_editor;
+                           missing_content || online_page || saves_page || search_editor;
         if (!modal && (actions & (PreviousTab | NextTab))) {
             const unsigned section = current_section();
             const unsigned at = section == 0 ? 0 : section - 1; // home behaves as Meus jogos' neighbour
@@ -1483,6 +1612,9 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             else if (panel.expanded) { panel.expanded = false; dirty = true; actions &= ~Quit; }
             else if (settings) { settings = false; configuration.open = return_to_configuration; return_to_configuration = false; dirty = true; actions &= ~Quit; }
             else if (configuration.open && online_page) { online_page = false; dirty = true; actions &= ~Quit; }
+            else if (configuration.open && saves_page) {
+                saves_page = false; saves_confirm = 0; saves_notice.clear(); dirty = true; actions &= ~Quit;
+            }
             else if (configuration.open) {
                 if (configuration.files) { configuration.files = false; configuration.selected = HomeFiles; }
                 else configuration.open = false;
@@ -1516,6 +1648,49 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             actions = 0;
             dirty = true;
         }
+        if (configuration.open && saves_page && !settings && !picker && !configuration.busy && actions) {
+            // Saves (USB): Pasta no HD externo, Backup automatico, Fazer backup agora, Restaurar.
+            const auto say = [&](std::wstring text, std::chrono::seconds for_how_long) {
+                saves_notice = std::move(text);
+                saves_notice_until = now + for_how_long;
+            };
+            if (actions & Up) { saves_row = (saves_row + 3) % 4; saves_confirm = 0; }
+            if (actions & Down) { saves_row = (saves_row + 1) % 4; saves_confirm = 0; }
+            const bool pressed = (actions & Play) || (saves_row == 1 && (actions & (Left | Right)));
+            if (pressed && saves_future.valid()) {
+                say(std::wstring{Tr(T::NsSavesBusy)}, std::chrono::seconds{3});
+            } else if (pressed && saves_row == 1) {
+                saves.automatic = !saves.automatic;
+                say(std::wstring{Tr(SaveBackup::SaveSettings(saves) ? T::SettingsSaved : T::SystemSaveFailed)},
+                    std::chrono::seconds{3});
+            } else if (pressed && saves_row == 0) {
+                picker_kind = 5;
+                try {
+                    winrt::Windows::Storage::Pickers::FolderPicker folder_picker;
+                    folder_picker.SuggestedStartLocation(winrt::Windows::Storage::Pickers::PickerLocationId::ComputerFolder);
+                    folder_picker.FileTypeFilter().Append(L"*");
+                    picker = folder_picker.PickSingleFolderAsync();
+                    say(std::wstring{Tr(T::NsSavesPickHint)}, std::chrono::seconds{8});
+                } catch (...) { say(std::wstring{Tr(T::PickerOpenFailed)}, std::chrono::seconds{4}); }
+            } else if (pressed && !saves_folder) {
+                say(std::wstring{Tr(T::NsSavesNoFolder)}, std::chrono::seconds{4});
+            } else if (pressed && saves_row == 2) {
+                start_saves(saves_confirm == 2 ? SavesJob::Replace : SavesJob::Backup, nullptr);
+                saves_notice.clear();
+            } else if (pressed && saves_row == 3) {
+                if (saves_confirm == 3) {
+                    start_saves(SavesJob::Restore, nullptr);
+                    saves_notice.clear();
+                } else {
+                    saves_confirm = 3;
+                    saves_confirm_until = now + std::chrono::seconds{10};
+                    saves_notice = Tr(T::NsSavesConfirmRestore);
+                    saves_notice_until = std::chrono::steady_clock::time_point::max();
+                }
+            }
+            actions = 0;
+            dirty = true;
+        }
         if (configuration.open && !settings && !picker && !configuration.busy) {
             const auto count = ConfigurationRowCount(configuration);
             if (actions & Up) configuration.selected = (configuration.selected + count - 1) % count;
@@ -1527,6 +1702,11 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     case HomeFiles: configuration.files = true; configuration.selected = 0; break;
                     case HomeControllers: settings = true; return_to_configuration = true; break;
                     case HomeOnline: online_page = true; online_row = 0; break;
+                    case HomeSaves:
+                        saves_page = true;
+                        saves_row = saves_folder ? 2 : 0;
+                        saves_confirm = 0;
+                        break;
                     case HomeCredits: break; // The credits show beside the list; nothing to open.
                     default:
                         system_page.open = true;
@@ -1858,11 +2038,15 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 game_options.game < scan.entries.size() &&
                     std::find(favorites.begin(), favorites.end(), scan.entries[game_options.game].launch_path) != favorites.end()};
             rebuild_shown();
+            const SavesView saves_view{saves_page, saves_row, saves_folder, saves.folder, saves.automatic,
+                                       saves.last_time, saves.last_games, saves_future.valid(),
+                                       saves_job == SavesJob::Restore, saves_progress.done.load(),
+                                       saves_progress.total.load(), saves_notice};
             canvas->Draw({scan, selected, loading, settings, setting_row, options, notice, panel,
                           configuration, system_page, options_view, missing_content, home, home_row,
                           false, library_tab, library_focus, &shown, &favorites, query,
                           search_editor ? &*search_editor : nullptr, false, &translated, translations_ready,
-                          &online, online_page, online_row, static_cast<unsigned>(edit_target)});
+                          &online, online_page, online_row, static_cast<unsigned>(edit_target), &saves_view});
             dirty = false;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds{16});
