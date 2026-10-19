@@ -111,6 +111,10 @@ bool RendererD3D12::CreateBlitPipeline() {
         };
         linear_sampler = sampler_descriptors.Allocate();
         dev->CreateSampler(&sampler, linear_sampler);
+        D3D12_SAMPLER_DESC point = sampler;
+        point.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+        point_sampler = sampler_descriptors.Allocate();
+        dev->CreateSampler(&point, point_sampler);
 
         LOG_INFO(Render,
                  "D3D12: blit pipeline built from translated SPIR-V (VS {} bytes, PS {} bytes)",
@@ -160,8 +164,13 @@ void RendererD3D12::RecordComposite(PresentFrame& frame, const CompositeSource& 
         fsr.reset();
     }
     constexpr u64 LINEAR_SAMPLER_KEY = 0;
+    constexpr u64 POINT_SAMPLER_KEY = ~0ULL - 2; // apart from the blit helper's ~0 and ~0 - 1
+    // Ampliacao "Nenhum": the guest's pixels as they are.
+    const bool nearest = !fsr && point_sampler.ptr != 0 &&
+                         Settings::values.scaling_filter.GetValue() == Settings::ScalingFilter::NearestNeighbor;
     const D3D12_GPU_DESCRIPTOR_HANDLE sampler_table =
-        sampler_heap.GetTable({&LINEAR_SAMPLER_KEY, 1}, {&linear_sampler, 1});
+        nearest ? sampler_heap.GetTable({&POINT_SAMPLER_KEY, 1}, {&point_sampler, 1})
+                : sampler_heap.GetTable({&LINEAR_SAMPLER_KEY, 1}, {&linear_sampler, 1});
     const std::array<D3D12_CPU_DESCRIPTOR_HANDLE, 2> srvs{source.srv, present_fsr.TargetSrv()};
     const u32 srv_count = fsr ? 2 : 1;
     const D3D12_GPU_DESCRIPTOR_HANDLE source_table =

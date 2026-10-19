@@ -121,7 +121,6 @@ public:
     void Draw(const LibraryView& view) {
         const auto& options = view.options;
         const auto& panel = view.panel;
-        const auto& configuration = view.configuration;
         SyncLanguage();
         prompt_family = PromptFamily::Keyboard;
         if (panel.xbox) prompt_family = PromptFamily::Xbox;
@@ -133,6 +132,23 @@ public:
         player_name = view.system.settings.user_name;
         target->BeginDraw();
         target->Clear(D2D1::ColorF(Palette::Backdrop));
+        // A page that fails to draw skips its frame instead of closing the app (the library's
+        // caller treats an exception as fatal).
+        try {
+            DrawPage(view);
+        } catch (...) {
+            OutputDebugStringW(L"[ns-huehue] library: a page failed to draw; frame skipped\n");
+        }
+        if (const HRESULT ended = target->EndDraw(); FAILED(ended)) {
+            OutputDebugStringW(L"[ns-huehue] library: EndDraw failed; frame skipped\n");
+            if (ended == static_cast<HRESULT>(D2DERR_RECREATE_TARGET)) winrt::throw_hresult(ended);
+            return;
+        }
+        winrt::check_hresult(swapchain->Present(1, 0));
+    }
+    void DrawPage(const LibraryView& view) {
+        const auto& panel = view.panel;
+        const auto& configuration = view.configuration;
         // The NS HUEHUE sections; the pages that keep Eden's own layout draw over the pack's ground.
         if (view.search && view.edit_target) DrawNsField(view, *view.search);
         else if (view.controller_panel) DrawNsControls(view);
@@ -145,8 +161,6 @@ public:
         if (configuration.open && view.system.open && view.system.name_editor) DrawNameEditor(view.system);
         if (view.game_options.game || view.game_options.content) DrawGameOptions(view.game_options);
         if (view.missing_content) Content::DrawMissingContent(*this);
-        winrt::check_hresult(target->EndDraw());
-        winrt::check_hresult(swapchain->Present(1, 0));
     }
     void InvalidateCovers() { covers.clear(); pictures.clear(); }
 private:
@@ -735,8 +749,8 @@ private:
         NsTitle(Tr(T::NsTuning));
         NsFill(400, 286, 1120, 696, 12, Palette::Panel, 0.95f);
         NsStroke(400.5f, 286.5f, 1119, 695, 12, 1, Ns::Line);
-        Text(game.name, 441, 328, 34, Palette::Text, 1040, 50, true);
-        Round(441, 392, 1038, 1, 0, Ns::Line);
+        Text(game.name, 441, 318, 32, Palette::Text, 1040, 48, true);
+        Round(441, 376, 1038, 1, 0, Ns::Line);
         const auto fps_text = [&]() -> std::wstring {
             switch (tuning.fps) {
             case FpsLimit::Fps60: return I18n::Format(T::NsFpsValue, {L"60"});
@@ -746,33 +760,51 @@ private:
             }
             return std::wstring{Tr(T::NsAutomatic)};
         };
+        const auto resolution_text = [&]() -> T {
+            switch (tuning.resolution) {
+            case GameResolution::Portable: return T::NsResolutionPortable;
+            case GameResolution::Tv540: return T::NsResolution540;
+            case GameResolution::Portable360: return T::NsResolution360;
+            case GameResolution::Tv: break;
+            }
+            return T::NsResolutionTv;
+        };
+        const auto upscaling = ToUpscaling(tuning.upscaling);
         const std::array<std::pair<T, std::wstring>, TuningRowCount> rows{{
             {T::NsProfile, std::wstring{Tr(GameProfileText(tuning.profile))}},
             {T::NsTuningRenderer, std::wstring{Tr(tuning.renderer == GameRenderer::OpenGL ? T::NsRendererOpenGl
                                                                                       : T::NsRendererD3d12)}},
             {T::NsTuningGlShaders, std::wstring{Tr(tuning.gl_shaders == GlShaders::Spirv ? T::NsGlShadersSpirv
                                                                                     : T::NsGlShadersGlsl)}},
-            {T::NsTuningResolution, std::wstring{Tr(tuning.resolution == GameResolution::Portable ? T::NsResolutionPortable
-                                                                                              : T::NsResolutionTv)}},
+            {T::NsTuningResolution, std::wstring{Tr(resolution_text())}},
+            {T::Upscaling, std::wstring{Tr(upscaling ? UpscalingText(*upscaling) : T::NsUpscalingAuto)}},
             {T::NsTuningFps, fps_text()},
-            {T::NsTuningFpsManual, I18n::Format(T::NsFpsValue, {std::to_wstring(tuning.fps_manual)})},
+            {T::NsTuningFpsManual, tuning.fps_manual == 0 ? std::wstring{Tr(T::NsFpsNoLimit)}
+                                                          : I18n::Format(T::NsFpsValue, {std::to_wstring(tuning.fps_manual)})},
             {T::NsTuningSkip, tuning.frame_skip == 0 ? std::wstring{Tr(T::NsSkipAuto)}
                                                      : I18n::Format(T::NsSkipValue, {std::to_wstring(tuning.frame_skip + 1)})},
-            {T::NsTuningShaders, std::wstring{Tr(tuning.shaders == ShaderBuild::Fast ? T::NsShadersFast : T::NsShadersBalanced)}}}};
+            {T::NsTuningShaders, std::wstring{Tr(tuning.shaders == ShaderBuild::Fast ? T::NsShadersFast : T::NsShadersBalanced)}},
+            {T::NsTuningMemory, std::wstring{Tr(tuning.memory == MemoryMode::Economy ? T::NsMemoryEconomy : T::NsMemoryNormal)}}}};
+        // Ten rows of 52 under the title, then the hint, all inside the panel (286 to 982).
+        constexpr float top = 392, row = 52;
         for (size_t i = 0; i < rows.size(); ++i) {
             const bool muted = (i == static_cast<size_t>(TuningRow::FpsManual) && tuning.fps != FpsLimit::Manual) ||
                                (i == static_cast<size_t>(TuningRow::GlShaderPath) && tuning.renderer != GameRenderer::OpenGL);
-            constexpr float row = 62;
-            NsRow(441, 412 + static_cast<float>(i) * row, 1038, Tr(rows[i].first),
-                  L"\u2039  " + rows[i].second + L"  \u203A", i == selected, 26, row);
-            if (muted) NsFill(442, 412 + static_cast<float>(i) * row, 1036, row - 1, 0, Palette::Backdrop, 0.45f);
+            const float y = top + static_cast<float>(i) * row;
+            NsRow(441, y, 1038, Tr(rows[i].first), L"‹  " + rows[i].second + L"  ›", i == selected, 24, row);
+            if (muted) NsFill(442, y, 1036, row - 1, 0, Palette::Backdrop, 0.45f);
         }
-        static constexpr std::array<T, TuningRowCount> hints{T::NsHintProfile, T::NsHintRenderer, T::NsHintGlShaders,
-                                                             T::NsHintResolution, T::NsHintFps, T::NsHintFps,
-                                                             T::NsHintSkip, T::NsHintShaders};
-        Text(Tr(hints[std::min(selected, hints.size() - 1)]), 441, 412.0f + static_cast<float>(TuningRowCount) * 62 + 10, 21, Palette::TextSecondary, 1038, 120, false, true);
+        static constexpr std::array<T, TuningRowCount> hints{
+            T::NsHintProfile, T::NsHintRenderer, T::NsHintGlShaders, T::NsHintResolution, T::NsHintUpscaling,
+            T::NsHintFps, T::NsHintFpsManual, T::NsHintSkip, T::NsHintShaders, T::NsHintMemory};
+        Text(Tr(hints[std::min(selected, hints.size() - 1)]), 441, top + static_cast<float>(TuningRowCount) * row + 8, 19,
+             Palette::TextSecondary, 1038, 60, false, true);
         if (!notice.empty()) NsToast(notice);
-        NsFooter({{L'\u2194', Palette::Text, T::Change}, {L'B', Ns::Error, T::Back}});
+        if (selected == static_cast<size_t>(TuningRow::FpsManual))
+            NsFooter({{L'↔', Palette::Text, T::NsStepOne}, {L'±', Palette::Text, T::NsStepTen},
+                      {L'B', Ns::Error, T::Back}});
+        else
+            NsFooter({{L'↔', Palette::Text, T::Change}, {L'B', Ns::Error, T::Back}});
     }
 
     // 05, 51 · Buscar jogos: the box, the first result and the shared keyboard's keys.

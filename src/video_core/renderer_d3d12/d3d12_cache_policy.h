@@ -2,8 +2,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 #include <algorithm>
+#include <atomic>
 #include "video_core/texture_cache/gc_policy.h"
 namespace D3D12 {
+/// NS HUEHUE (Memoria Economica): headroom the caches keep on top of their levels, so a loading
+/// burst meets free memory instead of the 5 GiB wall. Set before the game starts.
+inline std::atomic<u64> memory_reserve{0};
 struct CacheMemorySnapshot {
     u64 app_used{}, app_limit{}, gpu_used{}, gpu_budget{};
     [[nodiscard]] bool Known() const { return app_limit != 0 || gpu_budget != 0; }
@@ -20,7 +24,9 @@ public:
             // A loading screen of a large game added 500 MiB of textures, buffers and DRAM in
             // ten seconds and exhausted 410 MiB of headroom before the old 256 MiB critical level
             // could evict the previous area's textures. Each level now starts 50% earlier.
-            const u64 free = s.AppFree();
+            const u64 raw_free = s.AppFree();
+            const u64 reserve = memory_reserve.load(std::memory_order_relaxed);
+            const u64 free = raw_free > reserve ? raw_free - reserve : 0;
             auto next = free <= 192*MiB ? CachePressure::Emergency :
                         free <= 384*MiB ? CachePressure::Critical :
                         free <= 768*MiB ? CachePressure::Pressure : CachePressure::Normal;

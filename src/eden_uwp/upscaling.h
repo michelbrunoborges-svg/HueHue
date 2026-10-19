@@ -17,11 +17,13 @@
 
 namespace EdenXbox {
 
-enum class Upscaling : std::uint8_t { Bilinear, FsrSharp, FsrBalanced, FsrSoft };
+/// None (NS HUEHUE) shows the game's pixels as they are (point sampling), no smoothing. Added last,
+/// so stored values keep their meaning.
+enum class Upscaling : std::uint8_t { Bilinear, FsrSharp, FsrBalanced, FsrSoft, None };
 
 /// The values offered, in the order left/right step through them.
 inline std::span<const Upscaling> SelectableUpscalings() {
-    static constexpr std::array values{Upscaling::Bilinear, Upscaling::FsrSharp,
+    static constexpr std::array values{Upscaling::None, Upscaling::Bilinear, Upscaling::FsrSharp,
                                        Upscaling::FsrBalanced, Upscaling::FsrSoft};
     return values;
 }
@@ -43,6 +45,7 @@ inline UpscalingSettings ToSettings(Upscaling upscaling) {
     case Upscaling::FsrSharp: return {ScalingFilter::Fsr, SliderSharp};
     case Upscaling::FsrBalanced: return {ScalingFilter::Fsr, SliderBalanced};
     case Upscaling::FsrSoft: return {ScalingFilter::Fsr, SliderSoft};
+    case Upscaling::None: return {ScalingFilter::NearestNeighbor, SliderBalanced};
     case Upscaling::Bilinear: break;
     }
     // The D3D12 present only has the bilinear blit and FSR; Bilinear names what it shows.
@@ -52,6 +55,7 @@ inline UpscalingSettings ToSettings(Upscaling upscaling) {
 /// The choice closest to arbitrary settings (another frontend's): any filter but FSR shows the
 /// bilinear blit, and a slider picks the nearest level.
 inline Upscaling FromSettings(Settings::ScalingFilter filter, int slider) {
+    if (filter == Settings::ScalingFilter::NearestNeighbor) return Upscaling::None;
     if (filter != Settings::ScalingFilter::Fsr) return Upscaling::Bilinear;
     if (slider < (SliderSharp + SliderBalanced + 1) / 2) return Upscaling::FsrSharp;
     if (slider < (SliderBalanced + SliderSoft + 1) / 2) return Upscaling::FsrBalanced;
@@ -77,6 +81,7 @@ inline Upscaling StepUpscaling(Upscaling current, bool back) {
 /// boot.cfg "upscaling=": bilinear, fsr (balanced), fsr-sharp, fsr-balanced or fsr-soft.
 inline std::optional<Upscaling> ParseUpscaling(std::string_view text) {
     if (text == "bilinear") return Upscaling::Bilinear;
+    if (text == "none" || text == "nearest") return Upscaling::None;
     if (text == "fsr" || text == "fsr-balanced") return Upscaling::FsrBalanced;
     if (text == "fsr-sharp") return Upscaling::FsrSharp;
     if (text == "fsr-soft") return Upscaling::FsrSoft;
@@ -89,6 +94,7 @@ inline I18n::Text UpscalingText(Upscaling upscaling) {
     case Upscaling::FsrSharp: return Text::UpscalingFsrSharp;
     case Upscaling::FsrBalanced: return Text::UpscalingFsrBalanced;
     case Upscaling::FsrSoft: return Text::UpscalingFsrSoft;
+    case Upscaling::None: return Text::UpscalingNone;
     case Upscaling::Bilinear: break;
     }
     return Text::UpscalingBilinear;

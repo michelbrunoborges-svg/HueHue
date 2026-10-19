@@ -56,6 +56,9 @@ IDWriteTextFormat* UiPainter::Format(float size, bool bold, bool wrap, bool cent
 
 void UiPainter::Text(std::wstring_view text, float x, float y, float size, unsigned color,
                      float width, float height, bool bold, bool wrap, bool center, bool trailing) {
+    // An empty view may hold a null pointer (the search page's panel has no title): Direct2D on the
+    // console refuses a null string and the whole frame fails at EndDraw.
+    if (text.empty()) return;
     brush->SetColor(D2D1::ColorF(color));
     surface->DrawText(text.data(), static_cast<UINT32>(text.size()),
                       Format(size, bold, wrap, center, trailing),

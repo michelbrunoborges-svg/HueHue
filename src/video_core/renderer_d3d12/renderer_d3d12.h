@@ -40,6 +40,8 @@ void SetTracedFrame(u32 frame, u32 count = 1);
 /// NS HUEHUE frame pacing: shows at most `max_fps` frames a second (0: the game's own rate) and,
 /// with `skip` 1-3, only one frame in `skip + 1`. Frames not shown are neither composited nor
 /// presented; the game keeps its speed. Any thread, before or during play.
+/// NS HUEHUE: extra headroom the memory guard keeps (Memoria Economica). Any thread, before a game.
+void SetMemoryReserve(u64 bytes);
 void SetPresentPacing(u32 max_fps, u32 skip);
 /// NS HUEHUE: the pipeline builder threads (0: the default, up to 4). Read when the renderer starts.
 void SetPipelineWorkerLimit(u32 workers);
@@ -200,6 +202,8 @@ private:
     ComPtr<ID3D12RootSignature> blit_root_signature;
     ComPtr<ID3D12PipelineState> blit_pipeline;
     D3D12_CPU_DESCRIPTOR_HANDLE linear_sampler{};
+    /// NS HUEHUE: the blit with scaling_filter NearestNeighbor (Ampliacao "Nenhum").
+    D3D12_CPU_DESCRIPTOR_HANDLE point_sampler{};
     ComPtr<ID3D12Resource> guest_texture;
     D3D12_CPU_DESCRIPTOR_HANDLE guest_srv{};
     u32 guest_width{};

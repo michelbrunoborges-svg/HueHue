@@ -657,6 +657,20 @@ enum class Text : std::uint16_t {
     NsGlShadersSpirv,
     NsHintGlShaders,
     NsCompatSwitched,
+    NsResolution540,
+    NsResolution360,
+    NsUpscalingAuto,
+    NsFpsNoLimit,
+    NsTuningMemory,
+    NsMemoryNormal,
+    NsMemoryEconomy,
+    NsHintUpscaling,
+    NsHintFpsManual,
+    NsHintMemory,
+    NsStepOne,
+    NsStepTen,
+    NsMemorySwitched,
+    UpscalingNone,
 
 
     Count

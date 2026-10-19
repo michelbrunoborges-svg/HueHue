@@ -100,3 +100,20 @@ Os prints do CI rodam num Windows sem GPU, com o mesmo código Direct2D.
   minuto, ou que para a GPU, passa a abrir no OpenGL e a biblioteca avisa. Marcador da sessão em
   `LocalState\ns_session.txt`.
 - **Online**: continua precisando de um servidor de salas (ver ONLINE.md).
+
+## Melhorias de 19/10 (testes do Michel na 0.3.24)
+
+- **Busca (Y e campo de busca) fechando o app:** a página de busca desenhava um título vazio com
+  ponteiro nulo, que o Direct2D do console recusa; agora textos vazios não são desenhados e uma
+  página que falhar ao desenhar só perde aquele quadro.
+- **Desempenho e gráficos** (por jogo, salvo): Resolução TV / Portátil / 540p / 360p (as duas
+  últimas pela escala de resolução do Eden, só no OpenGL; o Eden reduz em quartos, então 480p não
+  existe); Ampliação da imagem (Automático, Nenhum, Bilinear, FSR 1 nítido/equilibrado/suave),
+  saiu do menu do jogo; FPS manual livre de 0 a 60 (← → de 1 em 1, LB/RB de 10 em 10, 0 = sem
+  limite); Memória Normal / Econômica.
+- **Memória Econômica:** os caches do D3D12 guardam 512 MiB a mais de folga, cache do JIT de 64 MiB
+  por núcleo e sem pré-compilação na abertura. Um jogo que fecha com pouca memória livre passa a
+  abrir em Econômica (marcador de sessão com a memória livre).
+- **Catálogo:** arquivos do mesmo jogo (outro dump, update ou DLC que não foi importado) viram um
+  card só, o do jogo base.
+- **Assets** do pacote de imagens corrigido pelo Michel (tiles redimensionados para 150/310 px).

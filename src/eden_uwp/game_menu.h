@@ -98,6 +98,8 @@ struct GameMenuSettings {
     bool pulse_sessions{};
     /// Shown live: the paused frame is presented again with each change.
     Upscaling upscaling{Upscaling::Bilinear};
+    /// The row is offered (off in NS HUEHUE: the choice is per game, in Desempenho e graficos).
+    bool offer_upscaling{};
     /// Opt-in diagnostic package: capture from a controller without a keyboard.
     bool material_capture{};
 };
@@ -132,7 +134,8 @@ public:
         if (cheats) items.push_back(Cheats);
         items.insert(items.end(), {Style, FaceButtons, Deadzone});
         if (settings.can_fullscreen) items.push_back(FullScreen);
-        items.push_back(ImageUpscaling);
+        // NS HUEHUE: Ampliacao da imagem lives in the game's Desempenho e graficos, saved per game.
+        if (settings.offer_upscaling) items.push_back(ImageUpscaling);
         items.push_back(PerformanceStats);
         if (settings.material_capture) items.push_back(CaptureGraphics);
         items.push_back(Library);

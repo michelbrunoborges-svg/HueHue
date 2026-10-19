@@ -19,6 +19,7 @@
 #include "video_core/gpu.h"
 #include "video_core/gpu_thread.h"
 #include "video_core/renderer_d3d12/renderer_d3d12.h"
+#include "video_core/renderer_d3d12/d3d12_cache_policy.h"
 #include "video_core/renderer_d3d12/renderer_d3d12_internal.h"
 
 namespace D3D12 {
@@ -64,6 +65,10 @@ namespace {
 std::atomic<u32> pacing_max_fps{0};
 std::atomic<u32> pacing_skip{0};
 } // Anonymous namespace
+
+void SetMemoryReserve(u64 bytes) {
+    memory_reserve.store(bytes, std::memory_order_relaxed);
+}
 
 void SetPresentPacing(u32 max_fps, u32 skip) {
     pacing_max_fps.store(std::min<u32>(max_fps, 240), std::memory_order_relaxed);

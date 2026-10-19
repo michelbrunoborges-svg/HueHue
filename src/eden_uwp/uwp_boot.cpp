@@ -130,6 +130,7 @@ void SetGeometryDroppedShader(u64 unique_hash);
 void SetFrameDiagnostics(bool enabled);
 void SetPresentPacing(u32 max_fps, u32 skip);  // NS HUEHUE (renderer_d3d12.h)
 void SetPipelineWorkerLimit(u32 workers);       // NS HUEHUE (d3d12_pipeline_cache.cpp)
+void SetMemoryReserve(u64 bytes);               // NS HUEHUE (renderer_d3d12.cpp)
 void SetPsoCostProbe(bool enabled);      // d3d12_graphics_pipeline.h
 std::string DescribePsoCost();            // likewise
 void ShowLoadProgress(VideoCore::RendererBase& renderer, size_t done, size_t total);
@@ -332,6 +333,10 @@ struct BootConfig {
     /// NS HUEHUE (game_profile.h): the console in handheld mode, so the game renders at its
     /// portable resolution; frame pacing; pipeline builder threads (0: default).
     bool portable{};
+    /// The resolution chosen (game_profile.h); 540p/360p only scale on the OpenGL renderer.
+    GameResolution resolution{GameResolution::Tv};
+    /// Memoria Economica: extra headroom kept by the D3D12 caches, in MiB.
+    u32 memory_reserve_mib{};
     /// The game runs on Eden's OpenGL renderer through Mesa (gl_window.h) instead of D3D12.
     bool opengl{};
     /// With OpenGL, shaders go to Mesa as SPIR-V instead of GLSL.
@@ -447,6 +452,7 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
         Settings::values.use_docked_mode.SetValue(Settings::ConsoleMode::Docked);
     D3D12::SetPresentPacing(config.max_fps, config.frame_skip);
     D3D12::SetPipelineWorkerLimit(config.pipeline_workers);
+    D3D12::SetMemoryReserve(u64{config.memory_reserve_mib} << 20);
     if (config.null_audio) {
         Settings::values.sink_id = Settings::AudioEngine::Null;
     }
@@ -596,7 +602,14 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
             Settings::values.use_asynchronous_shaders = false;
             Settings::values.accelerate_astc.SetValue(Settings::AstcDecodeMode::Cpu);
             Settings::values.nvdec_emulation.SetValue(Settings::NvdecEmulation::Cpu);
-            Settings::values.resolution_setup.SetValue(Settings::ResolutionSetup::Res1X);
+            // 540p and 360p (game_profile.h): the TV or handheld resolution halved by Eden's
+            // resolution scaling, which the OpenGL renderer has.
+            const bool half = config.resolution == GameResolution::Tv540 ||
+                              config.resolution == GameResolution::Portable360;
+            Settings::values.resolution_setup.SetValue(half ? Settings::ResolutionSetup::Res1_2X
+                                                            : Settings::ResolutionSetup::Res1X);
+            if (config.resolution == GameResolution::Tv540)
+                Settings::values.use_docked_mode.SetValue(Settings::ConsoleMode::Docked);
             if (config.opengl_spirv) Settings::values.renderer_backend = Settings::RendererBackend::OpenGL_SPIRV;
             gl_owner->SetPacing(config.max_fps, config.frame_skip);
             WriteDiag(std::string("renderer: OpenGL through Mesa d3d12, ") +
@@ -1007,9 +1020,14 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
         u64 resume_frames = 0;
         for (u32 tick = 1;; ++tick) {
             std::this_thread::sleep_for(TICK);
-            if (config.pulse_sessions && tick % (5 * TICKS_PER_SECOND) == 0 &&
-                tick <= (CRASH_WINDOW_SECONDS + 5) * TICKS_PER_SECOND) {
-                WriteSession(nro_path, session_renderer, tick / TICKS_PER_SECOND);
+            if (config.pulse_sessions && tick % (5 * TICKS_PER_SECOND) == 0) {
+                // The whole session: a game that dies of memory later on is told apart by the
+                // free memory of the last refresh.
+                u64 used{}, limit{};
+                const std::uint32_t free_mib =
+                    QueryAppMemory(used, limit) && limit > used ? static_cast<std::uint32_t>((limit - used) >> 20)
+                                                                : UINT32_MAX;
+                WriteSession(nro_path, session_renderer, tick / TICKS_PER_SECOND, free_mib);
             }
             if (u64 used{}, limit{}; config.memory_audit && tick % 10 == 0 &&
                                      QueryAppMemory(used, limit)) {
@@ -2360,8 +2378,15 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
         // (game_compat.h) opens on OpenGL from now on, and the library says so.
         if (const auto lost = EdenXbox::TakeLostSession()) {
             WriteDiag("compat: the last run ended with a game running (" + lost->launch_path + ", " +
-                      std::to_string(lost->seconds) + " s)");
-            if (lost->renderer == EdenXbox::GameRenderer::D3D12 &&
+                      std::to_string(lost->seconds) + " s, " + std::to_string(lost->free_mib) + " MiB free)");
+            if (lost->free_mib < EdenXbox::LOW_MEMORY_MIB) {
+                // It ran out of the 5 GiB: Memoria Economica, whatever the renderer.
+                if (EdenXbox::FallBackToEconomy(lost->launch_path)) {
+                    library_error = EdenXbox::I18n::ToUtf8(EdenXbox::I18n::Format(
+                        EdenXbox::I18n::Text::NsMemorySwitched, {GameNameFromPath(lost->launch_path)}));
+                    WriteDiag("compat: memory economy for it from now on");
+                }
+            } else if (lost->renderer == EdenXbox::GameRenderer::D3D12 &&
                 lost->seconds < EdenXbox::CRASH_WINDOW_SECONDS && EdenXbox::FallBackToOpenGl(lost->launch_path)) {
                 library_error = EdenXbox::I18n::ToUtf8(
                     EdenXbox::I18n::Format(EdenXbox::I18n::Text::NsCompatSwitched, {GameNameFromPath(lost->launch_path)}));
@@ -2748,7 +2773,10 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                         config.pulse_sessions = true;
                         // NS HUEHUE: the game's performance and image settings (game_profile.h).
                         const auto tuning = EdenXbox::LoadGameTuning(*library_game);
-                        config.portable = tuning.resolution == EdenXbox::GameResolution::Portable;
+                        // 540p/360p fall back to the handheld resolution on D3D12; the OpenGL
+                        // window puts 540p back on TV and halves it (RunHeadlessBoot).
+                        config.resolution = tuning.resolution;
+                        config.portable = tuning.resolution != EdenXbox::GameResolution::Tv;
                         config.max_fps = tuning.MaxFps();
                         config.frame_skip = tuning.frame_skip;
                         config.pipeline_workers = tuning.shaders == EdenXbox::ShaderBuild::Fast ? 6 : 0;
@@ -2776,6 +2804,21 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                             break;
                         case EdenXbox::GameProfile::Default:
                             break;
+                        }
+                        // Ampliacao da imagem chosen for the game wins over the profile's.
+                        if (const auto upscaling = EdenXbox::ToUpscaling(tuning.upscaling)) {
+                            config.upscaling = *upscaling;
+                            WriteDiag("tuning: upscaling " + EdenXbox::I18n::ToUtf8(
+                                                                 EdenXbox::I18n::Tr(EdenXbox::UpscalingText(*upscaling))));
+                        }
+                        // Memoria Economica: the caches keep 512 MiB more headroom, the JIT code
+                        // cache is halved and nothing is compiled ahead at boot.
+                        if (tuning.memory == EdenXbox::MemoryMode::Economy) {
+                            config.memory_reserve_mib = 512;
+                            config.jit_cache_mib = std::min<u32>(config.jit_cache_mib, 64);
+                            if (config.jit_prewarm == EdenXbox::BootConfig::JitPrewarm::Warm)
+                                config.jit_prewarm = EdenXbox::BootConfig::JitPrewarm::Record;
+                            WriteDiag("tuning: memory economy (512 MiB reserve, JIT 64 MiB per core, no warm-up)");
                         }
                     }
                     if (library_game || !config.game.empty()) {

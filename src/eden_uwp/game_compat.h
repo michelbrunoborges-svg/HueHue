@@ -57,14 +57,17 @@ struct LostSession {
     std::string launch_path;
     GameRenderer renderer{};
     std::uint32_t seconds{}; ///< How long it had run, as last refreshed.
+    /// The app's free memory under its limit at that refresh, in MiB (UINT32_MAX: not measured).
+    std::uint32_t free_mib{UINT32_MAX};
 };
 
 /// The boot, before the game starts and then every few seconds while it runs.
-inline void WriteSession(const std::string& launch_path, GameRenderer renderer, std::uint32_t seconds) {
+inline void WriteSession(const std::string& launch_path, GameRenderer renderer, std::uint32_t seconds,
+                         std::uint32_t free_mib = UINT32_MAX) {
     const auto file = CompatDetail::SessionFile();
     if (file.empty()) return;
     std::ofstream out(file, std::ios::binary | std::ios::trunc);
-    out << launch_path << '\t' << static_cast<int>(renderer) << '\t' << seconds << '\n';
+    out << launch_path << '\t' << static_cast<int>(renderer) << '\t' << seconds << '\t' << free_mib << '\n';
 }
 
 /// The boot, when the game ended in any way it saw.
@@ -86,12 +89,14 @@ inline std::optional<LostSession> TakeLostSession() {
         if (in && std::getline(in, line)) {
             std::istringstream fields(line);
             LostSession session;
-            std::string renderer, seconds;
+            std::string renderer, seconds, free;
             if (std::getline(fields, session.launch_path, '\t') && std::getline(fields, renderer, '\t') &&
-                std::getline(fields, seconds)) {
+                std::getline(fields, seconds, '\t')) {
                 try {
                     session.renderer = std::stoi(renderer) == 1 ? GameRenderer::OpenGL : GameRenderer::D3D12;
                     session.seconds = static_cast<std::uint32_t>(std::stoul(seconds));
+                    if (std::getline(fields, free) && !free.empty())
+                        session.free_mib = static_cast<std::uint32_t>(std::stoul(free));
                     lost = session;
                 } catch (...) {}
             }
@@ -108,6 +113,17 @@ inline bool FallBackToOpenGl(const std::string& launch_path) {
     tuning.renderer = GameRenderer::OpenGL;
     return SaveGameTuning(launch_path, tuning);
 }
+
+/// Turns Memoria Economica on for a game that ran out of memory. True when it did.
+inline bool FallBackToEconomy(const std::string& launch_path) {
+    auto tuning = LoadGameTuning(launch_path);
+    if (tuning.memory == MemoryMode::Economy) return false;
+    tuning.memory = MemoryMode::Economy;
+    return SaveGameTuning(launch_path, tuning);
+}
+
+/// A session whose last refresh saw less free memory than this ended by running out of it.
+inline constexpr std::uint32_t LOW_MEMORY_MIB = 256;
 
 /// A run shorter than this that ended with the app counts as the game failing, not the player
 /// closing it.

@@ -22,6 +22,7 @@
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <optional>
 #include <sstream>
 #include <span>
 #include <string>
@@ -29,27 +30,41 @@
 #include <winrt/Windows.Storage.h>
 
 #include "eden_uwp/localization.h"
+#include "eden_uwp/upscaling.h"
 
 namespace EdenXbox {
 
 enum class GameProfile : std::uint8_t { Default, Performance, Compatibility, Quality };
-enum class GameResolution : std::uint8_t { Tv, Portable };
+/// TV: docked (the game's TV resolution, up to 1080p). Portable: handheld (720p in most games).
+/// Tv540 / Portable360: the same consoles at half the resolution through Eden's resolution scaling,
+/// which only the OpenGL renderer has (on D3D12 they fall back to Portable). Eden scales in
+/// quarters (1/4, 1/2, 3/4), so 540p and 360p are the steps under 720p; 480p is not one of them.
+enum class GameResolution : std::uint8_t { Tv, Portable, Tv540, Portable360 };
+inline constexpr std::size_t GameResolutionCount = 4;
 enum class FpsLimit : std::uint8_t { Auto, Fps60, Fps30, Manual };
 enum class ShaderBuild : std::uint8_t { Balanced, Fast };
 enum class GameRenderer : std::uint8_t { D3D12, OpenGL };
 /// How the OpenGL renderer hands shaders to Mesa: GLSL text (Eden's unchanged backend) or SPIR-V
 /// (NX Zero's default: about 40% less memory per program).
 enum class GlShaders : std::uint8_t { Glsl, Spirv };
+/// Ampliacao da imagem for the game: Auto keeps the profile's (or the system's) choice.
+enum class TuningUpscaling : std::uint8_t { Auto, None, Bilinear, FsrSharp, FsrBalanced, FsrSoft };
+inline constexpr std::size_t TuningUpscalingCount = 6;
+/// Economy trades some speed for headroom under the console's 5 GiB: caches give memory back
+/// earlier, a smaller JIT code cache and no JIT warm-up at boot.
+enum class MemoryMode : std::uint8_t { Normal, Economy };
 
 struct GameTuning {
     GameProfile profile{GameProfile::Default};
     GameResolution resolution{GameResolution::Tv};
     FpsLimit fps{FpsLimit::Auto};
-    std::uint8_t fps_manual{45};  ///< 10 to 60, in steps of 5 (FpsLimit::Manual).
+    std::uint8_t fps_manual{45};  ///< 0 (no limit) to 60, any value (FpsLimit::Manual).
     std::uint8_t frame_skip{};    ///< 0 (automatic: none) to 3 frames skipped for each one shown.
     ShaderBuild shaders{ShaderBuild::Balanced};
     GameRenderer renderer{GameRenderer::D3D12};
     GlShaders gl_shaders{GlShaders::Glsl};
+    TuningUpscaling upscaling{TuningUpscaling::Auto};
+    MemoryMode memory{MemoryMode::Normal};
 
     bool operator==(const GameTuning&) const = default;
 
@@ -64,6 +79,19 @@ struct GameTuning {
         return 0;
     }
 };
+
+/// The upscaling a tuning asks for; nullopt keeps the profile's or the system's.
+inline std::optional<Upscaling> ToUpscaling(TuningUpscaling value) {
+    switch (value) {
+    case TuningUpscaling::None: return Upscaling::None;
+    case TuningUpscaling::Bilinear: return Upscaling::Bilinear;
+    case TuningUpscaling::FsrSharp: return Upscaling::FsrSharp;
+    case TuningUpscaling::FsrBalanced: return Upscaling::FsrBalanced;
+    case TuningUpscaling::FsrSoft: return Upscaling::FsrSoft;
+    case TuningUpscaling::Auto: break;
+    }
+    return std::nullopt;
+}
 
 inline std::span<const GameProfile> GameProfiles() {
     static constexpr std::array profiles{GameProfile::Default, GameProfile::Performance,
@@ -86,11 +114,13 @@ inline GameProfile NextGameProfile(GameProfile profile) {
 }
 
 /// The rows of the Desempenho e graficos page, in order.
-enum class TuningRow : std::uint8_t { Profile, Renderer, GlShaderPath, Resolution, Fps, FpsManual, FrameSkip, Shaders };
-inline constexpr std::size_t TuningRowCount = 8;
+enum class TuningRow : std::uint8_t {
+    Profile, Renderer, GlShaderPath, Resolution, Upscaling, Fps, FpsManual, FrameSkip, Shaders, Memory
+};
+inline constexpr std::size_t TuningRowCount = 10;
 
-/// Left/Right (back = Left) on a row steps its value.
-inline void StepTuning(GameTuning& tuning, TuningRow row, bool back) {
+/// Left/Right (back = Left) on a row steps its value; big (LB/RB) moves the manual FPS by 10.
+inline void StepTuning(GameTuning& tuning, TuningRow row, bool back, bool big = false) {
     const auto cycle = [back](auto value, std::size_t count) {
         const auto index = static_cast<std::size_t>(value);
         return static_cast<decltype(value)>((index + (back ? count - 1 : 1)) % count);
@@ -102,11 +132,14 @@ inline void StepTuning(GameTuning& tuning, TuningRow row, bool back) {
         tuning.gl_shaders = cycle(tuning.gl_shaders, 2);
         tuning.renderer = GameRenderer::OpenGL; // only means something there
         break;
-    case TuningRow::Resolution: tuning.resolution = cycle(tuning.resolution, 2); break;
+    case TuningRow::Resolution: tuning.resolution = cycle(tuning.resolution, GameResolutionCount); break;
+    case TuningRow::Upscaling: tuning.upscaling = cycle(tuning.upscaling, TuningUpscalingCount); break;
+    case TuningRow::Memory: tuning.memory = cycle(tuning.memory, 2); break;
     case TuningRow::Fps: tuning.fps = cycle(tuning.fps, 4); break;
     case TuningRow::FpsManual: {
-        const int next = tuning.fps_manual + (back ? -5 : 5);
-        tuning.fps_manual = static_cast<std::uint8_t>(next > 60 ? 10 : next < 10 ? 60 : next);
+        const int step = big ? 10 : 1;
+        const int next = tuning.fps_manual + (back ? -step : step);
+        tuning.fps_manual = static_cast<std::uint8_t>(next > 60 ? 0 : next < 0 ? 60 : next);
         tuning.fps = FpsLimit::Manual;
         break;
     }
@@ -123,8 +156,8 @@ inline std::filesystem::path File() {
                L"ns_profiles.tsv";
     } catch (...) { return {}; }
 }
-/// "path \t profile [\t resolution \t fps \t manual \t skip \t shaders [\t renderer [\t gl]]]"
-/// (older lines hold only the profile, or no renderer: D3D12 with GLSL).
+/// "path \t profile [\t resolution \t fps \t manual \t skip \t shaders [\t renderer [\t gl
+/// [\t upscaling \t memory]]]]" (older lines stop earlier: the rest keeps its defaults).
 inline std::map<std::string, GameTuning> Load() {
     std::map<std::string, GameTuning> all;
     const auto file = File();
@@ -134,7 +167,8 @@ inline std::map<std::string, GameTuning> Load() {
         const auto tab = line.find('\t');
         if (tab == std::string::npos) continue;
         std::istringstream fields(line.substr(tab + 1));
-        int profile = 0, resolution = 0, fps = 0, manual = 45, skip = 0, shaders = 0, renderer = 0, gl = 0;
+        int profile = 0, resolution = 0, fps = 0, manual = 45, skip = 0, shaders = 0, renderer = 0, gl = 0,
+            upscaling = 0, memory = 0;
         fields >> profile;
         if (!(fields >> resolution >> fps >> manual >> skip >> shaders)) {
             resolution = fps = skip = shaders = 0; // an older line: the profile only
@@ -143,16 +177,20 @@ inline std::map<std::string, GameTuning> Load() {
             renderer = 0; // before the renderer choice
         } else if (!(fields >> gl)) {
             gl = 0;
+        } else if (!(fields >> upscaling >> memory)) {
+            upscaling = memory = 0;
         }
         GameTuning tuning;
         tuning.profile = static_cast<GameProfile>(std::clamp(profile, 0, 3));
-        tuning.resolution = static_cast<GameResolution>(std::clamp(resolution, 0, 1));
+        tuning.resolution = static_cast<GameResolution>(std::clamp(resolution, 0, static_cast<int>(GameResolutionCount) - 1));
         tuning.fps = static_cast<FpsLimit>(std::clamp(fps, 0, 3));
-        tuning.fps_manual = static_cast<std::uint8_t>(std::clamp(manual / 5 * 5, 10, 60));
+        tuning.fps_manual = static_cast<std::uint8_t>(std::clamp(manual, 0, 60));
         tuning.frame_skip = static_cast<std::uint8_t>(std::clamp(skip, 0, 3));
         tuning.shaders = static_cast<ShaderBuild>(std::clamp(shaders, 0, 1));
         tuning.renderer = static_cast<GameRenderer>(std::clamp(renderer, 0, 1));
         tuning.gl_shaders = static_cast<GlShaders>(std::clamp(gl, 0, 1));
+        tuning.upscaling = static_cast<TuningUpscaling>(std::clamp(upscaling, 0, static_cast<int>(TuningUpscalingCount) - 1));
+        tuning.memory = static_cast<MemoryMode>(std::clamp(memory, 0, 1));
         all[line.substr(0, tab)] = tuning;
     }
     return all;
@@ -188,7 +226,8 @@ inline bool SaveGameTuning(const std::string& launch_path, const GameTuning& tun
         out << path << '\t' << static_cast<int>(value.profile) << '\t' << static_cast<int>(value.resolution)
             << '\t' << static_cast<int>(value.fps) << '\t' << static_cast<int>(value.fps_manual) << '\t'
             << static_cast<int>(value.frame_skip) << '\t' << static_cast<int>(value.shaders) << '\t'
-            << static_cast<int>(value.renderer) << '\t' << static_cast<int>(value.gl_shaders) << '\n';
+            << static_cast<int>(value.renderer) << '\t' << static_cast<int>(value.gl_shaders) << '\t'
+            << static_cast<int>(value.upscaling) << '\t' << static_cast<int>(value.memory) << '\n';
     }
     return static_cast<bool>(out);
 }

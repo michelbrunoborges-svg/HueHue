@@ -10,6 +10,7 @@
 #include "eden_uwp/uwp_file_manager.h"
 
 #include <algorithm>
+#include <map>
 #include <chrono>
 #include <cwctype>
 #include <fstream>
@@ -272,13 +273,36 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         };
         translated.assign(scan.entries.size(), false);
         for (size_t i = 0; i < scan.entries.size(); ++i) translated[i] = translation_of(scan.entries[i]) != nullptr;
+        // NS HUEHUE: one card per game. Files of the same title (a second dump, an update or a DLC
+        // the content store did not take) share the base title id (bits 0x1FFF cleared); the base
+        // game's own file is kept, else the first one.
+        std::vector<bool> duplicate(scan.entries.size(), false);
+        {
+            std::map<std::uint64_t, size_t> kept;
+            for (size_t i = 0; i < scan.entries.size(); ++i) {
+                const std::uint64_t id = scan.entries[i].program_id;
+                if (id == 0) continue;
+                const auto [at, inserted] = kept.try_emplace(id & ~std::uint64_t{0x1FFF}, i);
+                if (inserted) continue;
+                const bool base = (id & 0x1FFF) == 0;
+                const bool kept_base = (scan.entries[at->second].program_id & 0x1FFF) == 0;
+                if (base && !kept_base) {
+                    duplicate[at->second] = true;
+                    at->second = i;
+                } else {
+                    duplicate[i] = true;
+                }
+            }
+        }
         if (library_tab == 2) {
             for (const auto& path : recents)
                 for (size_t i = 0; i < scan.entries.size(); ++i)
-                    if (scan.entries[i].launch_path == path && matches(scan.entries[i])) shown.push_back(i);
+                    if (scan.entries[i].launch_path == path && !duplicate[i] && matches(scan.entries[i]))
+                        shown.push_back(i);
         } else {
             for (size_t i = 0; i < scan.entries.size(); ++i) {
                 const auto& entry = scan.entries[i];
+                if (duplicate[i]) continue;
                 if (library_tab == 1 && std::find(favorites.begin(), favorites.end(), entry.launch_path) == favorites.end())
                     continue;
                 if (library_tab == 3 && !translated[i]) continue;
@@ -1325,8 +1349,11 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 // Desempenho e graficos: Up/Down pick a row, Left/Right (or A) change it, B goes back.
                 if (actions & Up) tuning_row = (tuning_row + TuningRowCount - 1) % TuningRowCount;
                 if (actions & Down) tuning_row = (tuning_row + 1) % TuningRowCount;
-                if (actions & (Left | Right | Play)) {
-                    StepTuning(tuning, static_cast<TuningRow>(tuning_row), (actions & Left) != 0);
+                // LB/RB move the manual FPS by 10 (Left/Right by 1).
+                const bool big = (actions & (PreviousTab | NextTab)) != 0 &&
+                                 static_cast<TuningRow>(tuning_row) == TuningRow::FpsManual;
+                if ((actions & (Left | Right | Play)) || big) {
+                    StepTuning(tuning, static_cast<TuningRow>(tuning_row), (actions & (Left | PreviousTab)) != 0, big);
                     notify(SaveGameTuning(scan.entries[game_options.game].launch_path, tuning) ? T::NsTuningSaved
                                                                                              : T::SystemSaveFailed);
                 }
