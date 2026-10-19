@@ -212,8 +212,14 @@ Key "{ESC}"
 Key "{RIGHT}"
 Key "{ENTER}"
 Shot "57c-inicio-ns-huehue"
+# O fundo do tema tambem nas outras telas (0.4.1): a grade de jogos e as configuracoes.
+Key "e"
+Shot "02u-meus-jogos-ns-huehue"
+Key "e"
+Shot "11u-configuracoes-ns-huehue"
+# Configuracoes: Sistema, Controles, Arquivos e USB.
 Key "{DOWN}"
-Key "{RIGHT}"
+Key "{DOWN}"
 Key "{ENTER}"
 Shot "12-arquivos-e-usb"
 for ($i = 0; $i -lt 6; $i++) { Key "{DOWN}" }
