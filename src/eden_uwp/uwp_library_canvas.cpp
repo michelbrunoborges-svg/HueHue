@@ -496,10 +496,8 @@ private:
         NsBackdrop(false);
         NsHeader(2);
         static constexpr std::array<T, HomeRowCount> sections{T::NsSettingsSystem, T::NsSettingsControllers,
-                                                              T::NsSettingsFiles, T::NsSettingsSaves, T::NsOnline,
-                                                              T::NsCredits};
-        static constexpr std::array<const wchar_t*, HomeRowCount> icons{L"settings", L"pad", L"folder", L"usb", L"network",
-                                                                         L"info"};
+                                                              T::NsSettingsFiles, T::NsSettingsSaves, T::NsOnline};
+        static constexpr std::array<const wchar_t*, HomeRowCount> icons{L"settings", L"pad", L"folder", L"usb", L"network"};
         const size_t section = panel.files ? static_cast<size_t>(HomeFiles) : std::min<size_t>(panel.selected, HomeRowCount - 1);
         NsTitle(std::wstring{Tr(T::NsNavSettings)} + L" · " + std::wstring{Tr(sections[section])});
         for (size_t i = 0; i < HomeRowCount; ++i) {
@@ -553,18 +551,6 @@ private:
                                   {std::to_wstring(saves.done), std::to_wstring(saves.total)}),
                      left, 846, 24, Palette::Accent, width, 40);
             if (!saves.notice.empty()) Text(saves.notice, left, 892, 23, Palette::Warning, width, 96, false, true);
-        } else if (!panel.files && section == HomeCredits) {
-            // Créditos e licenças (they used to be the Sobre page): who the work comes from, the
-            // version and the license note. Nothing here opens.
-            static constexpr std::array<std::pair<const wchar_t*, T>, 5> credits{{
-                {L"eden-xbox · JulianDr14", T::NsRolePort}, {L"Eden · yuzu · Sudachi", T::NsRoleBase},
-                {L"NXbox · NspxMiguel", T::NsRoleUi}, {L"Mesa · dynarmic · DXC", T::NsRoleGraphics},
-                {L"NS HUEHUE · BR HueHue Edition", T::NsRoleEdition}}};
-            for (size_t i = 0; i < credits.size(); ++i)
-                NsRow(left, 356 + static_cast<float>(i) * 78, width, credits[i].first, Tr(credits[i].second), false);
-            Text(I18n::Format(T::NsExperimental, {version_string}), left, 762, 23, Palette::TextSecondary, width, 36);
-            Text(std::wstring{Tr(T::NsCreditsBody)} + L" " + std::wstring{Tr(T::NsNotAffiliated)}, left, 804, 21,
-                 Palette::TextSecondary, width, 120, false, true);
         } else if (!panel.files) {
             // A preview of the section; A opens it.
             std::array<std::pair<std::wstring, std::wstring>, 3> rows;
@@ -608,8 +594,10 @@ private:
                  left, 920, 24, Palette::Accent, width, 40);
         else if (!panel.notice.empty())
             Text(panel.notice, left, 920, 23, Palette::Warning, width, 70, false, true);
-        if (!panel.files && section == HomeCredits) NsFooter({{L'B', Ns::Error, T::Back}});
-        else if (view.online_page) NsFooter({{L'A', Palette::Accent, T::Change}, {L'B', Ns::Error, T::Back}});
+        // The license notice the GPL asks of an interactive program, in one quiet line under the
+        // sections (the Creditos page was removed).
+        Text(I18n::Format(T::NsLegalLine, {version_string}), 96, 760, 17, Palette::TextSecondary, 350, 200, false, true);
+        if (view.online_page) NsFooter({{L'A', Palette::Accent, T::Change}, {L'B', Ns::Error, T::Back}});
         else if (view.saves && view.saves->page)
             NsFooter({{L'A', Palette::Accent, view.saves->row == 1 ? T::Change : T::NsConfirm}, {L'B', Ns::Error, T::Back}});
         else NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, panel.busy ? T::Cancel : T::Back}});

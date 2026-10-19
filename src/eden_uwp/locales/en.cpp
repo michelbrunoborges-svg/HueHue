@@ -676,5 +676,6 @@ const Catalog EnglishCatalog = MakeCatalog({
     {Text::NsSavesFailed, L"The saves could not be copied: {0}"},
     {Text::NsSavesNoFolder, L"Pick the folder on the external drive first."},
     {Text::NsSavesBusy, L"Wait: the saves are being copied."},
+    {Text::NsLegalLine, L"NS HUEHUE {0} · free software under the GNU GPL v3, with no warranty. Source and license: github.com/michelbrunoborges-svg/HueHue. Not affiliated with Nintendo or Microsoft."},
 });
 } // namespace EdenXbox::I18n

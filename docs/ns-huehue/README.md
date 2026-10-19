@@ -134,3 +134,10 @@ Os prints do CI rodam num Windows sem GPU, com o mesmo código Direct2D.
   oferece Restaurar; Fazer backup agora só a substitui depois de confirmar de novo.
 - Os jogos continuam salvando em `LocalState`: no Xbox o app só escreve fora dela pelo seletor de
   pastas (WinRT), que o código de arquivos do Eden não usa.
+
+## Sem a página Créditos (19/10)
+
+- A seção **Créditos e licenças** saiu de Configurações. Fica só uma linha discreta sob a lista de
+  seções com a versão, o aviso da GPL v3 (software livre, sem garantia), onde estão o código e a
+  licença, e "não afiliado à Nintendo ou à Microsoft": a GPL v3 (seção 5d) pede esse aviso numa
+  interface interativa. Os créditos continuam no código-fonte e nos arquivos de licença do pacote.

@@ -1707,7 +1707,6 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                         saves_row = saves_folder ? 2 : 0;
                         saves_confirm = 0;
                         break;
-                    case HomeCredits: break; // The credits show beside the list; nothing to open.
                     default:
                         system_page.open = true;
                         system_page.selected = SystemPage::UserName;

@@ -701,6 +701,7 @@ enum class Text : std::uint16_t {
     NsSavesFailed,
     NsSavesNoFolder,
     NsSavesBusy,
+    NsLegalLine,
 
 
     Count
