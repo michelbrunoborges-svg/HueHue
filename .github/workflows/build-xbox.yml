@@ -245,6 +245,27 @@ jobs:
           name: mesa-gl
           path: mesa-gl
 
+      # NS HUEHUE: the same signing certificate for every build, so the console that trusted it
+      # once installs every later version (a new certificate each build made updates fail).
+      - name: Certificado de assinatura fixo (cache)
+        uses: actions/cache@v4
+        with:
+          path: signing
+          key: signing-cert-v1
+
+      - name: Preparar o certificado fixo
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force signing | Out-Null
+          if (Test-Path signing\signing.pfx) {
+            $pw = ConvertTo-SecureString ((Get-Content signing\pw.txt -Raw).Trim()) -AsPlainText -Force
+            Get-ChildItem Cert:\CurrentUser\My | Where-Object Subject -eq "CN=HueHueSwitch" | Remove-Item
+            $c = Import-PfxCertificate -FilePath signing\signing.pfx -CertStoreLocation Cert:\CurrentUser\My -Password $pw -Exportable
+            Write-Host "::notice::certificado fixo $($c.Thumbprint)"
+          } else {
+            Write-Host "::notice::sem certificado guardado: este build cria o certificado fixo"
+          }
+
       - name: Empacotar e assinar o .appx
         shell: pwsh
         run: |
@@ -254,6 +275,17 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           Get-ChildItem build-uwp\package -Filter *.appx
           Get-ChildItem build-uwp\package -Filter *.cer
+
+      - name: Guardar o certificado fixo
+        shell: powershell
+        run: |
+          if (-not (Test-Path signing\signing.pfx)) {
+            $c = Get-ChildItem Cert:\CurrentUser\My | Where-Object Subject -eq "CN=HueHueSwitch" | Sort-Object NotAfter -Descending | Select-Object -First 1
+            $p = -join ((48..57) + (97..102) | ForEach-Object { [char]$_ } | Get-Random -Count 16) + (Get-Random -Maximum 99999999)
+            Set-Content signing\pw.txt $p -NoNewline
+            Export-PfxCertificate -Cert $c -FilePath signing\signing.pfx -Password (ConvertTo-SecureString $p -AsPlainText -Force) | Out-Null
+            Write-Host "::notice::certificado fixo criado $($c.Thumbprint)"
+          }
 
       - name: Guardar o pacote (artefato do build)
         uses: actions/upload-artifact@v4

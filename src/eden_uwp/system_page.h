@@ -17,7 +17,7 @@
 namespace EdenXbox {
 
 struct SystemPage {
-    enum Row : std::size_t { UserName, InterfaceLanguage, GameLanguage, Region, AdultMods, PerformanceStats, PulseSessions, ClearCache, RowCount };
+    enum Row : std::size_t { UserName, MenuLayout, InterfaceLanguage, GameLanguage, Region, AdultMods, PerformanceStats, PulseSessions, ClearCache, RowCount };
 
     bool open{};
     std::size_t selected{};
@@ -76,6 +76,9 @@ inline SystemPageEffect HandleSystemInput(SystemPage& page, SystemInput input) {
         page.name_editor.emplace(settings.user_name, MaxUserNameLength);
         page.editor_notice.clear();
         return SystemPageEffect::EditName;
+    case Row::MenuLayout:
+        settings.menu_layout = settings.menu_layout ? 0 : 1;
+        return SystemPageEffect::Changed;
     case Row::InterfaceLanguage:
         settings.ui_language = *SystemPageDetail::StepUiLanguage(settings.ui_language, back);
         return SystemPageEffect::Changed;
@@ -124,6 +127,7 @@ inline I18n::Text SystemRowTitle(SystemPage::Row row) {
     using I18n::Text;
     switch (row) {
     case SystemPage::UserName:          return Text::UserName;
+    case SystemPage::MenuLayout:        return Text::NsMenuLayout;
     case SystemPage::InterfaceLanguage: return Text::InterfaceLanguage;
     case SystemPage::GameLanguage:      return Text::GameLanguage;
     case SystemPage::Region:            return Text::ConsoleRegion;
@@ -138,6 +142,7 @@ inline I18n::Text SystemRowHint(SystemPage::Row row) {
     using I18n::Text;
     switch (row) {
     case SystemPage::UserName:          return Text::UserNameHint;
+    case SystemPage::MenuLayout:        return Text::NsMenuLayoutHint;
     case SystemPage::InterfaceLanguage: return Text::InterfaceLanguageHint;
     case SystemPage::GameLanguage:      return Text::GameLanguageHint;
     case SystemPage::Region:            return Text::ConsoleRegionHint;
@@ -158,6 +163,8 @@ inline std::wstring SystemRowValue(const SystemPage& page, SystemPage::Row row) 
     switch (row) {
     case SystemPage::UserName:
         return settings.user_name.empty() ? std::wstring{DefaultUserName} : settings.user_name;
+    case SystemPage::MenuLayout:
+        return std::wstring{I18n::Tr(settings.menu_layout ? Text::NsLayoutSwitch : Text::NsLayoutStandard)};
     case SystemPage::InterfaceLanguage:
         if (const auto* language = I18n::FindUiLanguage(settings.ui_language))
             return std::wstring{language->native_name};
@@ -182,7 +189,7 @@ inline std::wstring SystemRowValue(const SystemPage& page, SystemPage::Row row) 
 /// Geometry shared by the canvas and pointer hit tests (1280x720 layout units).
 struct SystemPageLayout {
     static constexpr float PanelX = 140, PanelY = 72, PanelWidth = 1000, PanelHeight = 612;
-    static constexpr float RowX = 180, RowWidth = 920, RowTop = 172, RowStride = 52, RowHeight = 50;
+    static constexpr float RowX = 180, RowWidth = 920, RowTop = 160, RowStride = 47, RowHeight = 45;
     static constexpr float Notice = 594, Footer = 630;
     /// The name editor's keyboard panel (text_entry_panel.h), centered on the screen.
     static constexpr float EditorX = (1280 - TextEntryPanelLayout::Width) / 2;

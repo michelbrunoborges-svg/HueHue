@@ -141,3 +141,20 @@ Os prints do CI rodam num Windows sem GPU, com o mesmo código Direct2D.
   seções com a versão, o aviso da GPL v3 (software livre, sem garantia, texto da licença no `LICENSE.txt` que agora vai
   no pacote), sem link do repositório, e "não afiliado à Nintendo ou à Microsoft": a GPL v3 (seção 5d) pede esse aviso numa
   interface interativa. Os créditos continuam no código-fonte e nos arquivos de licença do pacote.
+
+## Rodada de 19/10 (tarde): instalação, avançado por jogo e layout Switch
+
+- **Certificado fixo:** o CI guarda o certificado de assinatura (cache `signing-cert-v1`) e assina
+  todas as versões com ele. Antes cada build criava um certificado novo, e o console que confiava
+  no anterior recusava a atualização. O console precisa confiar no `.cer` novo uma vez.
+- **Manifesto:** `rescap:expandedResources` (os recursos estendidos que o console dá a jogos).
+- **Desempenho e gráficos → avançado (⚙, por jogo, salvo):** limite de velocidade; comandos D3D12
+  em outra thread (`async_record`); apresentação em outra thread; texturas ASTC na GPU/CPU/BC3;
+  ASTC opaco BC1/BC3; fastmem desligado/híbrido/completo; liberar pipelines ociosos; espera dos
+  núcleos (adaptativa/bloquear/girar); cache do JIT 64/128/256 MiB. São opções que o motor já
+  tinha só pelo `boot.cfg`; a página rola (10 linhas visíveis de 19).
+- **Sistema → Layout do menu:** NS HUEHUE - Padrão ou NS HUEHUE - Switch. O Switch troca o início
+  por uma fila de capas grandes (recentes primeiro, até 12, e Todos os jogos), o nome do jogo
+  selecionado em cima, uma fila de botões redondos (Todos os jogos, Favoritos, Recentes, Buscar,
+  Saves, Controles, Configurações, Sair), relógio e jogador no topo, e o fundo liso nas outras
+  telas. A inicia o jogo, X abre as opções, Y busca.

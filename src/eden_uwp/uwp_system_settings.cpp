@@ -19,6 +19,7 @@ constexpr auto UserNameKey = L"system_user_name";
 constexpr auto PerformanceStatsKey = L"system_show_performance_stats";
 constexpr auto AdultModsKey = L"system_show_adult_mods";
 constexpr auto PulseSessionsKey = L"system_pulse_sessions";
+constexpr auto MenuLayoutKey = L"system_menu_layout";
 constexpr auto UpscalingKey = L"system_upscaling";
 
 /// Saved as the enum's value, or -1 for "follow the system". A value that is not a selectable
@@ -54,6 +55,8 @@ SystemSettings LoadSystemSettings() {
         if (values.HasKey(PerformanceStatsKey)) settings.show_performance_stats = winrt::unbox_value<bool>(values.Lookup(PerformanceStatsKey));
         if (values.HasKey(AdultModsKey)) settings.show_adult_mods = winrt::unbox_value<bool>(values.Lookup(AdultModsKey));
         if (values.HasKey(PulseSessionsKey)) settings.pulse_sessions = winrt::unbox_value<bool>(values.Lookup(PulseSessionsKey));
+        if (values.HasKey(MenuLayoutKey))
+            settings.menu_layout = static_cast<std::uint8_t>(std::min(1, winrt::unbox_value<int32_t>(values.Lookup(MenuLayoutKey))));
         if (values.HasKey(UpscalingKey))
             settings.upscaling = UpscalingFromValue(winrt::unbox_value<int32_t>(values.Lookup(UpscalingKey)))
                                      .value_or(Upscaling::Bilinear);
@@ -71,6 +74,7 @@ bool SaveSystemSettings(const SystemSettings& settings) {
         values.Insert(PerformanceStatsKey, winrt::box_value(settings.show_performance_stats));
         values.Insert(AdultModsKey, winrt::box_value(settings.show_adult_mods));
         values.Insert(PulseSessionsKey, winrt::box_value(settings.pulse_sessions));
+        values.Insert(MenuLayoutKey, winrt::box_value(static_cast<int32_t>(settings.menu_layout)));
         values.Insert(UpscalingKey, winrt::box_value(static_cast<int32_t>(settings.upscaling)));
         return true;
     } catch (...) { return false; }

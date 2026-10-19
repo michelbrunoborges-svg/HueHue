@@ -12,7 +12,8 @@
 <Package
     xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
     xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
-    IgnorableNamespaces="uap">
+    xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+    IgnorableNamespaces="uap rescap">
 
   <Identity Name="HueHue.HueHueSwitch"
             Publisher="CN=HueHueSwitch"
@@ -75,6 +76,9 @@
     <Capability Name="internetClientServer" />
     <Capability Name="privateNetworkClientServer" />
     <!-- PC Nintendo Pro USB transport; joystick usage is allowed by UWP HID. -->
+    <!-- NS HUEHUE: asks the console for the extended resources games get (more memory and GPU
+         time when the app runs as a game in Dev Mode). -->
+    <rescap:Capability Name="expandedResources" />
     <DeviceCapability Name="humanInterfaceDevice" />
   </Capabilities>
 </Package>

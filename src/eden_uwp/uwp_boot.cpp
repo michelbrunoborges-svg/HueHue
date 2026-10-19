@@ -402,6 +402,8 @@ struct BootConfig {
     enum class Fastmem { Off, Auto, Hybrid, Full } fastmem{Fastmem::Off};
     u32 fastmem_hot_mib{384};
     Settings::CpuAccuracy cpu_accuracy{Settings::CpuAccuracy::Auto};
+    /// NS HUEHUE Avancado: off lets the game run as fast as the console can (Eden's speed limit).
+    bool speed_limit{true};
     /// Legacy setting for backends with draw-skipping async shaders. D3D12 always preserves
     /// dependent draws, while preparing DXIL/PSOs on workers regardless of this setting.
     bool async_shaders{true};
@@ -457,6 +459,8 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
         Settings::values.sink_id = Settings::AudioEngine::Null;
     }
     Settings::values.cpu_accuracy = config.cpu_accuracy;
+    Settings::values.use_speed_limit.SetValue(config.speed_limit);
+    if (!config.speed_limit) WriteDiag("step: speed limit off");
     WriteDiag(config.cpu_accuracy == Settings::CpuAccuracy::Accurate
                   ? "step: CPU accuracy Accurate" : "step: CPU accuracy Auto");
     AudioCore::Sink::SetXAudio2ProfileEnabled(config.audio_profile);
@@ -2811,6 +2815,33 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                             WriteDiag("tuning: upscaling " + EdenXbox::I18n::ToUtf8(
                                                                  EdenXbox::I18n::Tr(EdenXbox::UpscalingText(*upscaling))));
                         }
+                        // Avancado (experimental): only what differs from the defaults, so a
+                        // diagnostic boot.cfg line still wins over an untouched option.
+                        if (!tuning.speed_limit) config.speed_limit = false;
+                        if (tuning.record_thread) config.async_record = true;
+                        if (!tuning.present_thread) config.async_present = false;
+                        if (tuning.astc == EdenXbox::AstcMode::Cpu) config.astc = EdenXbox::BootConfig::Astc::Cpu;
+                        else if (tuning.astc == EdenXbox::AstcMode::Bc3) config.astc = EdenXbox::BootConfig::Astc::Bc3;
+                        if (tuning.astc_opaque_bc3) config.astc_opaque_bc3 = true;
+                        if (tuning.fastmem == EdenXbox::FastmemMode::Hybrid) config.fastmem = EdenXbox::BootConfig::Fastmem::Hybrid;
+                        else if (tuning.fastmem == EdenXbox::FastmemMode::Full) config.fastmem = EdenXbox::BootConfig::Fastmem::Full;
+                        if (!tuning.pso_eviction) config.pso_eviction = false;
+                        if (tuning.idle_spin == EdenXbox::IdleSpin::Off) {
+                            config.idle_spin.mode = Common::SpinPolicy::Mode::Off;
+                        } else if (tuning.idle_spin == EdenXbox::IdleSpin::Fixed) {
+                            config.idle_spin.mode = Common::SpinPolicy::Mode::Fixed;
+                        }
+                        if (tuning.jit_cache == EdenXbox::JitCache::Small) config.jit_cache_mib = 64;
+                        else if (tuning.jit_cache == EdenXbox::JitCache::Large) config.jit_cache_mib = 256;
+                        WriteDiag(std::string("tuning: advanced") + (tuning.speed_limit ? "" : " no-speed-limit") +
+                                  (tuning.record_thread ? " record-thread" : "") +
+                                  (tuning.present_thread ? "" : " present-on-gpu-thread") +
+                                  " astc=" + std::to_string(static_cast<int>(tuning.astc)) +
+                                  (tuning.astc_opaque_bc3 ? " opaque-bc3" : "") +
+                                  " fastmem=" + std::to_string(static_cast<int>(tuning.fastmem)) +
+                                  (tuning.pso_eviction ? "" : " keep-psos") +
+                                  " spin=" + std::to_string(static_cast<int>(tuning.idle_spin)) +
+                                  " jit=" + std::to_string(config.jit_cache_mib));
                         // Memoria Economica: the caches keep 512 MiB more headroom, the JIT code
                         // cache is halved and nothing is compiled ahead at boot.
                         if (tuning.memory == EdenXbox::MemoryMode::Economy) {

@@ -92,6 +92,12 @@ struct LibraryView {
     unsigned online_row{};
     unsigned edit_target{};                ///< 0: the keyboard types the search; 1-3: server, port, password.
     const SavesView* saves{};              ///< NS HUEHUE Configuracoes > Saves (USB).
+    // NS HUEHUE - Switch layout (Sistema > Layout do menu).
+    unsigned menu_layout{};                ///< 0 the pack's, 1 Switch.
+    const std::vector<std::size_t>* home_tiles{}; ///< Its game tiles (entries), then Todos os jogos.
+    unsigned home_tile_row{};              ///< 0 the tiles, 1 the buttons.
+    std::size_t home_tile{};
+    unsigned home_button{};
 };
 class LibraryCanvas {
 public:

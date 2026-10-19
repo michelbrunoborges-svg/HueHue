@@ -131,6 +131,7 @@ public:
         if (const auto active = SelectController(panel.devices, options.controller_id))
             swap_prompt_faces = SwapControllerFaceButtons(panel.devices[*active], options.swap_face_buttons);
         player_name = view.system.settings.user_name;
+        switch_layout = view.menu_layout == 1;
         target->BeginDraw();
         target->Clear(D2D1::ColorF(Palette::Backdrop));
         // A page that fails to draw skips its frame instead of closing the app (the library's
@@ -155,6 +156,7 @@ public:
         else if (view.controller_panel) DrawNsControls(view);
         else if (configuration.open && view.system.open) DrawSystemPage(view.system);
         else if (configuration.open) DrawNsSettings(view);
+        else if (view.home && switch_layout) DrawSwitchHome(view);
         else if (view.home) DrawNsHome(view);
         else if (view.search) DrawNsSearch(view, *view.search);
         else DrawNsLibrary(view);
@@ -253,6 +255,12 @@ private:
     /// 6 px green line along the top.
     void NsBackdrop(bool art) {
         const D2D1_RECT_F full = D2D1::RectF(0, 0, 1920, 1080);
+        if (switch_layout) {
+            // NS HUEHUE - Switch: the console's plain dark ground, no art.
+            Round(0, 0, 1920, 1080, 0, Sw::Ground);
+            NsFade(D2D1::RectF(0, 0, 1920, 1080), 0x000000, 0.0f, 0.18f, 0.0f, 1.0f);
+            return;
+        }
         Round(0, 0, 1920, 1080, 0, Palette::Backdrop);
         if (art) {
             NsImage(ns_background.Get(), full, true);
@@ -371,6 +379,109 @@ private:
             Text(Tr(items[i].first), 180, y + 15, 28, focus ? Palette::Accent : Palette::Text, 400, 42, true);
         }
         NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Exit}});
+        NsToast(view.notice);
+    }
+
+    // NS HUEHUE - Switch: a console-style home. The tiles of the recent games in a row (the
+    // selected one framed, its name over it), Todos os jogos at the end, and a row of round
+    // buttons under them for the sections; the clock and the player at the top.
+    struct Sw {
+        static constexpr unsigned Ground = 0x2d3034;
+        static constexpr unsigned Tile = 0x3b3f44;
+        static constexpr unsigned Button = 0x41464c;
+        static constexpr unsigned Focus = 0x1fd2f2;
+        static constexpr unsigned Text = 0xf2f4f5;
+        static constexpr unsigned Muted = 0xa9b0b6;
+    };
+    void SwFocus(float x, float y, float w, float h, float radius) {
+        NsStroke(x - 9, y - 9, w + 18, h + 18, radius + 9, 6, Sw::Focus);
+        NsStroke(x - 3, y - 3, w + 6, h + 6, radius + 3, 2, 0xffffff, 0.9f);
+    }
+    void DrawSwitchHome(const LibraryView& view) {
+        DesignSpace space(target.Get());
+        NsBackdrop(false);
+        // The player and the clock.
+        const std::wstring name = player_name.empty() ? std::wstring{Tr(T::NsPlayer)} : player_name;
+        brush->SetColor(D2D1::ColorF(Sw::Button));
+        target->FillEllipse(D2D1::Ellipse(D2D1::Point2F(130, 84), 38, 38), brush.Get());
+        NsImage(NsIcon(L"user"), D2D1::RectF(108, 62, 152, 106), false);
+        Text(name, 184, 62, 26, Sw::Text, 700, 44);
+        {
+            SYSTEMTIME now{};
+            GetLocalTime(&now);
+            wchar_t clock[8]{};
+            swprintf(clock, 8, L"%02u:%02u", static_cast<unsigned>(now.wHour), static_cast<unsigned>(now.wMinute));
+            Text(clock, 1524, 60, 32, Sw::Text, 300, 48, false, false, false, true);
+        }
+        // The tiles: four whole ones on screen, the row following the selection.
+        static const std::vector<size_t> none;
+        const auto& tiles = view.home_tiles ? *view.home_tiles : none;
+        const size_t count = tiles.size() + 1;
+        const size_t selected = std::min(view.home_tile, count - 1);
+        constexpr float size = 368, gap = 28, top = 262;
+        const size_t first = selected < 3 ? 0 : selected - 3;
+        const bool on_tiles = view.home_tile_row == 0;
+        for (size_t i = first; i < std::min(count, first + 5); ++i) {
+            const float x = 96 + static_cast<float>(i - first) * (size + gap);
+            if (x > 1920) break;
+            const D2D1_RECT_F box = D2D1::RectF(x, top, x + size, top + size);
+            NsFill(x, top, size, size, 6, Sw::Tile);
+            if (i < tiles.size() && tiles[i] < view.scan.entries.size()) {
+                const LibraryEntry& entry = view.scan.entries[tiles[i]];
+                ID2D1Bitmap1* const art = CoverBitmap(entry);
+                if (art) NsImage(art, box, true);
+                else {
+                    NsImage(ns_fallback.Get(), box, true, 0.5f);
+                    Text(entry.name, x + 20, top + size - 96, 24, Sw::Text, size - 40, 80, true, true);
+                }
+            } else {
+                // Todos os jogos (or, with none yet, where they come in).
+                const bool empty = view.scan.entries.empty() && !view.loading;
+                NsImage(NsIcon(empty ? L"folder" : L"games"), D2D1::RectF(x + 136, top + 110, x + 232, top + 206), false);
+                Text(Tr(empty ? T::NsSwAddGames : T::NsSwAllGames), x + 20, top + 230, 26, Sw::Text, size - 40, 44,
+                     true, false, true);
+            }
+            if (on_tiles && i == selected) SwFocus(x, top, size, size, 6);
+        }
+        // The selected tile's name above the row.
+        if (on_tiles) {
+            const float x = 96 + static_cast<float>(selected - first) * (size + gap);
+            std::wstring title = selected < tiles.size() && tiles[selected] < view.scan.entries.size()
+                                     ? view.scan.entries[tiles[selected]].name
+                                     : std::wstring{Tr(view.scan.entries.empty() && !view.loading ? T::NsSwAddGames : T::NsSwAllGames)};
+            Text(title, std::min(x, 1824.0f - 900), 200, 30, Sw::Focus, 900, 44, true);
+        }
+        // The round buttons.
+        static constexpr std::array<std::pair<T, const wchar_t*>, 8> buttons{{
+            {T::NsSwAllGames, L"games"}, {T::NsSwFavorites, L"star"}, {T::NsSwRecent, L"refresh"},
+            {T::NsSwSearch, L"search"}, {T::NsSwSaves, L"usb"}, {T::NsNavControls, L"pad"},
+            {T::NsNavSettings, L"settings"}, {T::NsSwExit, L"close"}}};
+        constexpr float diameter = 112, spacing = 44, row_y = 716;
+        const float left = (1920 - (8 * diameter + 7 * spacing)) / 2;
+        for (size_t i = 0; i < buttons.size(); ++i) {
+            const float x = left + static_cast<float>(i) * (diameter + spacing);
+            const bool focus = !on_tiles && i == view.home_button;
+            brush->SetColor(D2D1::ColorF(Sw::Button));
+            target->FillEllipse(D2D1::Ellipse(D2D1::Point2F(x + diameter / 2, row_y + diameter / 2), diameter / 2, diameter / 2),
+                                brush.Get());
+            if (focus) {
+                brush->SetColor(D2D1::ColorF(Sw::Focus));
+                target->DrawEllipse(D2D1::Ellipse(D2D1::Point2F(x + diameter / 2, row_y + diameter / 2), diameter / 2 + 9,
+                                                  diameter / 2 + 9), brush.Get(), 6);
+            }
+            NsImage(NsIcon(buttons[i].second), D2D1::RectF(x + 30, row_y + 30, x + 82, row_y + 82), false);
+            if (focus)
+                Text(Tr(buttons[i].first), x + diameter / 2 - 200, row_y + diameter + 22, 26, Sw::Focus, 400, 40, true,
+                     false, true);
+        }
+        // Only the shortcuts this screen has.
+        const bool game = on_tiles && selected < tiles.size();
+        if (game)
+            NsFooter({{L'A', Palette::Accent, T::NsSwStart}, {L'X', Palette::Text, T::NsSwOptions},
+                      {L'Y', Palette::Text, T::NsSwSearch}, {L'B', Ns::Error, T::Exit}});
+        else
+            NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'Y', Palette::Text, T::NsSwSearch},
+                      {L'B', Ns::Error, T::Exit}});
         NsToast(view.notice);
     }
 
@@ -767,7 +878,7 @@ private:
         NsTitle(Tr(T::NsTuning));
         NsFill(400, 286, 1120, 696, 12, Palette::Panel, 0.95f);
         NsStroke(400.5f, 286.5f, 1119, 695, 12, 1, Ns::Line);
-        Text(game.name, 441, 318, 32, Palette::Text, 1040, 48, true);
+        Text(game.name, 441, 318, 32, Palette::Text, 840, 48, true);
         Round(441, 376, 1038, 1, 0, Ns::Line);
         const auto fps_text = [&]() -> std::wstring {
             switch (tuning.fps) {
@@ -802,20 +913,45 @@ private:
             {T::NsTuningSkip, tuning.frame_skip == 0 ? std::wstring{Tr(T::NsSkipAuto)}
                                                      : I18n::Format(T::NsSkipValue, {std::to_wstring(tuning.frame_skip + 1)})},
             {T::NsTuningShaders, std::wstring{Tr(tuning.shaders == ShaderBuild::Fast ? T::NsShadersFast : T::NsShadersBalanced)}},
-            {T::NsTuningMemory, std::wstring{Tr(tuning.memory == MemoryMode::Economy ? T::NsMemoryEconomy : T::NsMemoryNormal)}}}};
-        // Ten rows of 52 under the title, then the hint, all inside the panel (286 to 982).
+            {T::NsTuningMemory, std::wstring{Tr(tuning.memory == MemoryMode::Economy ? T::NsMemoryEconomy : T::NsMemoryNormal)}},
+            {T::NsAdvSpeedLimit, std::wstring{Tr(tuning.speed_limit ? T::NsOn : T::NsAdvUnlimited)}},
+            {T::NsAdvRecordThread, std::wstring{Tr(tuning.record_thread ? T::NsOn : T::NsOff)}},
+            {T::NsAdvPresentThread, std::wstring{Tr(tuning.present_thread ? T::NsOn : T::NsOff)}},
+            {T::NsAdvAstc, std::wstring{Tr(tuning.astc == AstcMode::Cpu ? T::NsAstcCpu
+                                           : tuning.astc == AstcMode::Bc3 ? T::NsAstcBc3 : T::NsAstcGpu)}},
+            {T::NsAdvAstcOpaque, std::wstring{Tr(tuning.astc_opaque_bc3 ? T::NsAstcOpaqueBc3 : T::NsAstcOpaqueBc1)}},
+            {T::NsAdvFastmem, std::wstring{Tr(tuning.fastmem == FastmemMode::Hybrid ? T::NsFastmemHybrid
+                                              : tuning.fastmem == FastmemMode::Full ? T::NsFastmemFull : T::NsOff)}},
+            {T::NsAdvPsoEviction, std::wstring{Tr(tuning.pso_eviction ? T::NsOn : T::NsOff)}},
+            {T::NsAdvIdleSpin, std::wstring{Tr(tuning.idle_spin == IdleSpin::Off ? T::NsSpinOff
+                                               : tuning.idle_spin == IdleSpin::Fixed ? T::NsSpinFixed : T::NsSpinAdaptive)}},
+            {T::NsAdvJit, tuning.jit_cache == JitCache::Small ? L"64 MiB" : tuning.jit_cache == JitCache::Large ? L"256 MiB"
+                                                                                                         : L"128 MiB"}}};
+        // Ten rows of 52 under the title, then the hint, all inside the panel (286 to 982); the
+        // list scrolls to keep the selected row on screen.
         constexpr float top = 392, row = 52;
-        for (size_t i = 0; i < rows.size(); ++i) {
+        const size_t first = selected < TuningRowsVisible ? 0 : selected + 1 - TuningRowsVisible;
+        const size_t advanced = static_cast<size_t>(TuningRow::SpeedLimit);
+        for (size_t i = first; i < std::min(rows.size(), first + TuningRowsVisible); ++i) {
             const bool muted = (i == static_cast<size_t>(TuningRow::FpsManual) && tuning.fps != FpsLimit::Manual) ||
-                               (i == static_cast<size_t>(TuningRow::GlShaderPath) && tuning.renderer != GameRenderer::OpenGL);
-            const float y = top + static_cast<float>(i) * row;
-            NsRow(441, y, 1038, Tr(rows[i].first), L"‹  " + rows[i].second + L"  ›", i == selected, 24, row);
+                               (i == static_cast<size_t>(TuningRow::GlShaderPath) && tuning.renderer != GameRenderer::OpenGL) ||
+                               (i == static_cast<size_t>(TuningRow::AstcOpaque) && tuning.astc != AstcMode::Gpu);
+            const float y = top + static_cast<float>(i - first) * row;
+            std::wstring label{Tr(rows[i].first)};
+            if (i >= advanced) label = L"⚙ " + label;
+            NsRow(441, y, 1038, label, L"‹  " + rows[i].second + L"  ›", i == selected, 24, row);
             if (muted) NsFill(442, y, 1036, row - 1, 0, Palette::Backdrop, 0.45f);
         }
+        // Where the list is: rows above and below.
+        Text(std::to_wstring(selected + 1) + L" / " + std::to_wstring(rows.size()) +
+                 (first + TuningRowsVisible < rows.size() ? L"  ▼" : L"") + (first > 0 ? L"  ▲" : L""),
+             1300, 330, 20, Palette::TextSecondary, 180, 32, false, false, false, true);
         static constexpr std::array<T, TuningRowCount> hints{
             T::NsHintProfile, T::NsHintRenderer, T::NsHintGlShaders, T::NsHintResolution, T::NsHintUpscaling,
-            T::NsHintFps, T::NsHintFpsManual, T::NsHintSkip, T::NsHintShaders, T::NsHintMemory};
-        Text(Tr(hints[std::min(selected, hints.size() - 1)]), 441, top + static_cast<float>(TuningRowCount) * row + 8, 19,
+            T::NsHintFps, T::NsHintFpsManual, T::NsHintSkip, T::NsHintShaders, T::NsHintMemory,
+            T::NsHintSpeedLimit, T::NsHintRecordThread, T::NsHintPresentThread, T::NsHintAstc, T::NsHintAstcOpaque,
+            T::NsHintFastmem, T::NsHintPsoEviction, T::NsHintIdleSpin, T::NsHintJit};
+        Text(Tr(hints[std::min(selected, hints.size() - 1)]), 441, top + static_cast<float>(TuningRowsVisible) * row + 8, 19,
              Palette::TextSecondary, 1038, 60, false, true);
         if (!notice.empty()) NsToast(notice);
         if (selected == static_cast<size_t>(TuningRow::FpsManual))
@@ -1133,7 +1269,7 @@ private:
         Round(L::PanelX, L::PanelY, L::PanelWidth, L::PanelHeight, 24, 0x101b1e);
         PageHeader(L::RowX, 99, ConfigurationIcon::Language, Tr(T::SystemTitle), Tr(T::SystemSubtitle));
         static constexpr std::array<ConfigurationIcon, SystemPage::RowCount> icons{
-            ConfigurationIcon::User, ConfigurationIcon::Language, ConfigurationIcon::Controller,
+            ConfigurationIcon::User, ConfigurationIcon::Settings, ConfigurationIcon::Language, ConfigurationIcon::Controller,
             ConfigurationIcon::Region, ConfigurationIcon::Mods, ConfigurationIcon::Settings, ConfigurationIcon::Archive,
             ConfigurationIcon::Cache};
         for (size_t i = 0; i < SystemPage::RowCount; ++i) {
@@ -1141,12 +1277,12 @@ private:
             const float y = L::RowTop + static_cast<float>(i) * L::RowStride;
             const bool active = i == page.selected;
             RowFrame(L::RowX, y, L::RowWidth, L::RowHeight, active, icons[i]);
-            Text(Tr(SystemRowTitle(row)), L::RowX + 72, y + 4, 20, 0xf4f7f5, 420, 30, true);
-            Text(Tr(SystemRowHint(row)), L::RowX + 72, y + 28, 15, 0xbcbcc5, 440, 22);
+            Text(Tr(SystemRowTitle(row)), L::RowX + 72, y + 2, 19, 0xf4f7f5, 420, 28, true);
+            Text(Tr(SystemRowHint(row)), L::RowX + 72, y + 24, 14, 0xbcbcc5, 440, 20);
             const unsigned accent = active ? 0x8aff00 : 0xa6b5b7;
             const float right = L::RowX + L::RowWidth - 28;
             const float middle = y + L::RowHeight / 2;
-            const bool choice = row == SystemPage::InterfaceLanguage || row == SystemPage::GameLanguage ||
+            const bool choice = row == SystemPage::MenuLayout || row == SystemPage::InterfaceLanguage || row == SystemPage::GameLanguage ||
                                 row == SystemPage::Region || row == SystemPage::AdultMods || row == SystemPage::PerformanceStats ||
                                 row == SystemPage::PulseSessions;
             if (choice) {
@@ -1474,6 +1610,7 @@ private:
     std::unordered_map<std::wstring, ComPtr<ID2D1Bitmap1>> ns_icons;
     ComPtr<IDWriteTextFormat> graffiti_format;
     std::wstring player_name; ///< The System page's name for the header chip (empty: "Jogador 1").
+    bool switch_layout{};     ///< NS HUEHUE - Switch (Sistema > Layout do menu).
     std::wstring version_string;
     std::array<ComPtr<ID2D1PathGeometry>, 5> controller_paths;
     PromptFamily prompt_family{PromptFamily::Keyboard};

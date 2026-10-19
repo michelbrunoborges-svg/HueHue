@@ -245,7 +245,7 @@ if (-not $cert) {
     Write-Host "minting a self-signed code-signing cert for $PublisherCN"
     $cert = New-SelfSignedCertificate -Type Custom -Subject $PublisherCN `
         -KeyUsage DigitalSignature -FriendlyName "HueHue Switch sideload" `
-        -CertStoreLocation "Cert:\CurrentUser\My" `
+        -CertStoreLocation "Cert:\CurrentUser\My" -KeyExportPolicy Exportable -NotAfter (Get-Date).AddYears(10) `
         -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
 }
 

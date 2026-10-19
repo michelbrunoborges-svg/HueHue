@@ -200,6 +200,14 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     constexpr unsigned NxHomeRows = 3;
     bool home = true;
     unsigned home_row = 0;
+    // NS HUEHUE - Switch layout (Sistema > Layout do menu): the home is a row of game tiles
+    // (recent first, then the rest, up to 12, and Todos os jogos) over a row of round buttons.
+    constexpr unsigned SwitchButtons = 8;
+    constexpr size_t SwitchTiles = 12;
+    unsigned sw_row = 0;     // 0 the tiles, 1 the buttons
+    size_t sw_tile = 0;
+    unsigned sw_button = 0;
+    std::vector<size_t> sw_tiles;
     unsigned library_tab = 0;
     int library_focus = -1;
     std::wstring query;
@@ -332,6 +340,30 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         }
         position_of.assign(scan.entries.size(), SIZE_MAX);
         for (size_t k = 0; k < shown.size(); ++k) position_of[shown[k]] = k;
+    };
+    // The Switch layout's tiles: the recent games, then the others in the library's order.
+    auto rebuild_tiles = [&] {
+        const auto saved_tab = library_tab;
+        const auto saved_query = query;
+        library_tab = 0;
+        query.clear();
+        rebuild_shown();
+        sw_tiles.clear();
+        for (const auto& path : recents) {
+            for (const size_t k : shown) {
+                if (sw_tiles.size() < SwitchTiles && scan.entries[k].launch_path == path &&
+                    std::find(sw_tiles.begin(), sw_tiles.end(), k) == sw_tiles.end())
+                    sw_tiles.push_back(k);
+            }
+        }
+        for (const size_t k : shown) {
+            if (sw_tiles.size() >= SwitchTiles) break;
+            if (std::find(sw_tiles.begin(), sw_tiles.end(), k) == sw_tiles.end()) sw_tiles.push_back(k);
+        }
+        library_tab = saved_tab;
+        query = saved_query;
+        rebuild_shown();
+        sw_tile = std::min(sw_tile, sw_tiles.size()); // the last tile is Todos os jogos
     };
     using winrt::Windows::Storage::StorageFolder;
     winrt::Windows::Foundation::IAsyncOperation<StorageFolder> picker{nullptr};
@@ -572,7 +604,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     panel.keyboard.open = true; panel.keyboard.capturing = false; dirty = true;
                 } else actions |= Play;
             } else if (dy < 152 || dy > 996) actions |= Quit;
-        } else if (home) {
+        } else if (home && system_page.settings.menu_layout == 0) {
             // The home menu: five 500x70 buttons from (96, 444), 88 apart.
             if (dx >= 96 && dx < 596 && dy >= 431 && dy < 431 + NxHomeRows * 91.0f) {
                 home_row = std::min(NxHomeRows - 1, static_cast<unsigned>((dy - 431) / 91));
@@ -1180,6 +1212,77 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             const unsigned at = section == 0 ? 0 : section - 1; // home behaves as Meus jogos' neighbour
             go_section(1 + ((actions & NextTab) ? (section == 0 ? 0 : (at + 1) % 3) : (at + 2) % 3));
             actions = 0;
+        }
+        if (home && system_page.settings.menu_layout == 1 && actions && !game_options.open && !settings &&
+            !configuration.open && !panel.keyboard.open && !picker && !validation.valid() && !missing_content &&
+            !configuration.busy && !search_editor) {
+            // NS HUEHUE - Switch: Left/Right along a row, Up/Down between the tiles and the buttons.
+            const unsigned pressed = actions;
+            actions = 0;
+            if (!loading) rebuild_tiles();
+            if (pressed & Quit) return std::nullopt;
+            const auto open_search = [&] {
+                go_section(1);
+                library_tab = 0;
+                search_before = query;
+                search_editor.emplace(query, 32);
+            };
+            if (pressed & Search) open_search();
+            else if (sw_row == 0) {
+                if ((pressed & Left) && sw_tile > 0) --sw_tile;
+                if ((pressed & Right) && sw_tile < sw_tiles.size()) ++sw_tile;
+                if (pressed & Down) sw_row = 1;
+                const bool game = sw_tile < sw_tiles.size();
+                if (pressed & Play) {
+                    if (game) {
+                        // Started as the library starts it (the grid's A, below).
+                        selected = sw_tiles[sw_tile];
+                        library_tab = 0;
+                        query.clear();
+                        home = false;
+                        library_focus = -1;
+                        actions = Play;
+                    } else if (!loading && scan.entries.empty()) {
+                        go_section(2);
+                        configuration.files = true;
+                        configuration.selected = 0;
+                    } else {
+                        go_section(1);
+                        library_tab = 0;
+                    }
+                } else if ((pressed & Options) && game) {
+                    selected = sw_tiles[sw_tile];
+                    library_tab = 0;
+                    query.clear();
+                    home = false;
+                    library_focus = -1;
+                    actions = Options;
+                }
+            } else {
+                if (pressed & Left) sw_button = (sw_button + SwitchButtons - 1) % SwitchButtons;
+                if (pressed & Right) sw_button = (sw_button + 1) % SwitchButtons;
+                if (pressed & Up) sw_row = 0;
+                if (pressed & Play) {
+                    switch (sw_button) {
+                    case 0: go_section(1); library_tab = 0; break;            // Todos os jogos
+                    case 1: go_section(1); library_tab = 1; break;            // Favoritos
+                    case 2: go_section(1); library_tab = 2; break;            // Recentes
+                    case 3: open_search(); break;                             // Buscar
+                    case 4:                                                   // Saves (USB)
+                        go_section(2);
+                        configuration.selected = HomeSaves;
+                        saves_page = true;
+                        saves_row = saves_folder ? 2 : 0;
+                        saves_confirm = 0;
+                        break;
+                    case 5: go_section(3); break;                             // Controles
+                    case 6: go_section(2); break;                             // Configuracoes
+                    default: return std::nullopt;                             // Sair
+                    }
+                    metadata_dirty = true;
+                }
+            }
+            dirty = true;
         }
         if (home && actions && !game_options.open && !settings && !configuration.open &&
             !panel.keyboard.open && !picker && !validation.valid() && !missing_content &&
@@ -2036,6 +2139,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 tuning_page ? &tuning : nullptr, tuning_row,
                 game_options.game < scan.entries.size() &&
                     std::find(favorites.begin(), favorites.end(), scan.entries[game_options.game].launch_path) != favorites.end()};
+            if (home && system_page.settings.menu_layout == 1 && !loading) rebuild_tiles();
             rebuild_shown();
             const SavesView saves_view{saves_page, saves_row, saves_folder, saves.folder, saves.automatic,
                                        saves.last_time, saves.last_games, saves_future.valid(),
@@ -2045,7 +2149,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                           configuration, system_page, options_view, missing_content, home, home_row,
                           false, library_tab, library_focus, &shown, &favorites, query,
                           search_editor ? &*search_editor : nullptr, false, &translated, translations_ready,
-                          &online, online_page, online_row, static_cast<unsigned>(edit_target), &saves_view});
+                          &online, online_page, online_row, static_cast<unsigned>(edit_target), &saves_view,
+                          system_page.settings.menu_layout, &sw_tiles, sw_row, sw_tile, sw_button});
             dirty = false;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds{16});

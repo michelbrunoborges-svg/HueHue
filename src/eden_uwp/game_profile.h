@@ -17,6 +17,7 @@
 // Kept by launch path in LocalState/ns_profiles.tsv.
 
 #include <algorithm>
+#include <iterator>
 #include <array>
 #include <cstdint>
 #include <filesystem>
@@ -53,6 +54,18 @@ inline constexpr std::size_t TuningUpscalingCount = 6;
 /// Economy trades some speed for headroom under the console's 5 GiB: caches give memory back
 /// earlier, a smaller JIT code cache and no JIT warm-up at boot.
 enum class MemoryMode : std::uint8_t { Normal, Economy };
+/// Avancado (experimental): engine options that used to be reachable only through boot.cfg.
+/// ASTC textures: decoded on the GPU (the default), on the CPU (no GPU decode work, more CPU
+/// time) or kept as BC3 (less memory, a little less faithful).
+enum class AstcMode : std::uint8_t { Gpu, Cpu, Bc3 };
+/// Fastmem: guest memory through the host-mapped arena (faster CPU emulation when it fits; it
+/// costs memory and can be slower when the game touches more than the hot window).
+enum class FastmemMode : std::uint8_t { Off, Hybrid, Full };
+/// How idle emulated cores wait: adaptive spin (default), block at once (less CPU and heat) or
+/// always spin a little (lower latency, more CPU).
+enum class IdleSpin : std::uint8_t { Adaptive, Off, Fixed };
+/// The JIT code cache per core.
+enum class JitCache : std::uint8_t { Normal, Small, Large };
 
 struct GameTuning {
     GameProfile profile{GameProfile::Default};
@@ -65,6 +78,16 @@ struct GameTuning {
     GlShaders gl_shaders{GlShaders::Glsl};
     TuningUpscaling upscaling{TuningUpscaling::Auto};
     MemoryMode memory{MemoryMode::Normal};
+    // Avancado (experimental).
+    bool record_thread{};          ///< D3D12 command lists recorded on a thread of their own.
+    bool present_thread{true};     ///< Frames presented on a thread of their own.
+    AstcMode astc{AstcMode::Gpu};
+    bool astc_opaque_bc3{};        ///< Opaque ASTC as BC3 (faithful) instead of BC1 (half the memory).
+    FastmemMode fastmem{FastmemMode::Off};
+    bool pso_eviction{true};       ///< Idle pipelines give their PSOs back.
+    IdleSpin idle_spin{IdleSpin::Adaptive};
+    bool speed_limit{true};        ///< Off: the game runs as fast as the console can.
+    JitCache jit_cache{JitCache::Normal};
 
     bool operator==(const GameTuning&) const = default;
 
@@ -115,9 +138,13 @@ inline GameProfile NextGameProfile(GameProfile profile) {
 
 /// The rows of the Desempenho e graficos page, in order.
 enum class TuningRow : std::uint8_t {
-    Profile, Renderer, GlShaderPath, Resolution, Upscaling, Fps, FpsManual, FrameSkip, Shaders, Memory
+    Profile, Renderer, GlShaderPath, Resolution, Upscaling, Fps, FpsManual, FrameSkip, Shaders, Memory,
+    // Avancado (experimental)
+    SpeedLimit, RecordThread, PresentThread, Astc, AstcOpaque, Fastmem, PsoEviction, IdleSpin, JitCache
 };
-inline constexpr std::size_t TuningRowCount = 10;
+inline constexpr std::size_t TuningRowCount = 19;
+/// Rows the page shows at once (it scrolls past them).
+inline constexpr std::size_t TuningRowsVisible = 10;
 
 /// Left/Right (back = Left) on a row steps its value; big (LB/RB) moves the manual FPS by 10.
 inline void StepTuning(GameTuning& tuning, TuningRow row, bool back, bool big = false) {
@@ -145,6 +172,15 @@ inline void StepTuning(GameTuning& tuning, TuningRow row, bool back, bool big = 
     }
     case TuningRow::FrameSkip: tuning.frame_skip = static_cast<std::uint8_t>((tuning.frame_skip + (back ? 3 : 1)) % 4); break;
     case TuningRow::Shaders: tuning.shaders = cycle(tuning.shaders, 2); break;
+    case TuningRow::SpeedLimit: tuning.speed_limit = !tuning.speed_limit; break;
+    case TuningRow::RecordThread: tuning.record_thread = !tuning.record_thread; break;
+    case TuningRow::PresentThread: tuning.present_thread = !tuning.present_thread; break;
+    case TuningRow::Astc: tuning.astc = cycle(tuning.astc, 3); break;
+    case TuningRow::AstcOpaque: tuning.astc_opaque_bc3 = !tuning.astc_opaque_bc3; break;
+    case TuningRow::Fastmem: tuning.fastmem = cycle(tuning.fastmem, 3); break;
+    case TuningRow::PsoEviction: tuning.pso_eviction = !tuning.pso_eviction; break;
+    case TuningRow::IdleSpin: tuning.idle_spin = cycle(tuning.idle_spin, 3); break;
+    case TuningRow::JitCache: tuning.jit_cache = cycle(tuning.jit_cache, 3); break;
     }
 }
 
@@ -157,7 +193,8 @@ inline std::filesystem::path File() {
     } catch (...) { return {}; }
 }
 /// "path \t profile [\t resolution \t fps \t manual \t skip \t shaders [\t renderer [\t gl
-/// [\t upscaling \t memory]]]]" (older lines stop earlier: the rest keeps its defaults).
+/// [\t upscaling \t memory [\t speed record present astc opaque fastmem pso spin jit]]]]]"
+/// (older lines stop earlier: the rest keeps its defaults).
 inline std::map<std::string, GameTuning> Load() {
     std::map<std::string, GameTuning> all;
     const auto file = File();
@@ -180,6 +217,13 @@ inline std::map<std::string, GameTuning> Load() {
         } else if (!(fields >> upscaling >> memory)) {
             upscaling = memory = 0;
         }
+        int advanced[9] = {1, 0, 1, 0, 0, 0, 1, 0, 0}; // the defaults, for lines before Avancado
+        {
+            int read[9];
+            bool complete = true;
+            for (int& value : read) complete = complete && static_cast<bool>(fields >> value);
+            if (complete) std::copy(std::begin(read), std::end(read), advanced);
+        }
         GameTuning tuning;
         tuning.profile = static_cast<GameProfile>(std::clamp(profile, 0, 3));
         tuning.resolution = static_cast<GameResolution>(std::clamp(resolution, 0, static_cast<int>(GameResolutionCount) - 1));
@@ -191,6 +235,15 @@ inline std::map<std::string, GameTuning> Load() {
         tuning.gl_shaders = static_cast<GlShaders>(std::clamp(gl, 0, 1));
         tuning.upscaling = static_cast<TuningUpscaling>(std::clamp(upscaling, 0, static_cast<int>(TuningUpscalingCount) - 1));
         tuning.memory = static_cast<MemoryMode>(std::clamp(memory, 0, 1));
+        tuning.speed_limit = advanced[0] != 0;
+        tuning.record_thread = advanced[1] != 0;
+        tuning.present_thread = advanced[2] != 0;
+        tuning.astc = static_cast<AstcMode>(std::clamp(advanced[3], 0, 2));
+        tuning.astc_opaque_bc3 = advanced[4] != 0;
+        tuning.fastmem = static_cast<FastmemMode>(std::clamp(advanced[5], 0, 2));
+        tuning.pso_eviction = advanced[6] != 0;
+        tuning.idle_spin = static_cast<IdleSpin>(std::clamp(advanced[7], 0, 2));
+        tuning.jit_cache = static_cast<JitCache>(std::clamp(advanced[8], 0, 2));
         all[line.substr(0, tab)] = tuning;
     }
     return all;
@@ -227,7 +280,11 @@ inline bool SaveGameTuning(const std::string& launch_path, const GameTuning& tun
             << '\t' << static_cast<int>(value.fps) << '\t' << static_cast<int>(value.fps_manual) << '\t'
             << static_cast<int>(value.frame_skip) << '\t' << static_cast<int>(value.shaders) << '\t'
             << static_cast<int>(value.renderer) << '\t' << static_cast<int>(value.gl_shaders) << '\t'
-            << static_cast<int>(value.upscaling) << '\t' << static_cast<int>(value.memory) << '\n';
+            << static_cast<int>(value.upscaling) << '\t' << static_cast<int>(value.memory) << '\t'
+            << int{value.speed_limit} << '\t' << int{value.record_thread} << '\t' << int{value.present_thread}
+            << '\t' << static_cast<int>(value.astc) << '\t' << int{value.astc_opaque_bc3} << '\t'
+            << static_cast<int>(value.fastmem) << '\t' << int{value.pso_eviction} << '\t'
+            << static_cast<int>(value.idle_spin) << '\t' << static_cast<int>(value.jit_cache) << '\n';
     }
     return static_cast<bool>(out);
 }
