@@ -677,6 +677,6 @@ const Catalog PortugueseCatalog = MakeCatalog({
     {Text::NsSavesFailed, L"Não deu para copiar os saves: {0}"},
     {Text::NsSavesNoFolder, L"Escolha primeiro a pasta no HD externo."},
     {Text::NsSavesBusy, L"Aguarde: os saves estão sendo copiados."},
-    {Text::NsLegalLine, L"NS HUEHUE {0} · software livre sob a GNU GPL v3, sem garantia. Código e licença: github.com/michelbrunoborges-svg/HueHue. Não afiliado à Nintendo ou à Microsoft."},
+    {Text::NsLegalLine, L"NS HUEHUE {0} · software livre sob a GNU GPL v3, sem garantia. Texto da licença no arquivo LICENSE.txt do pacote. Não afiliado à Nintendo ou à Microsoft."},
 });
 } // namespace EdenXbox::I18n

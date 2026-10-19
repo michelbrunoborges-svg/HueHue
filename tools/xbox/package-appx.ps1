@@ -101,6 +101,8 @@ New-Item -ItemType Directory -Path $layout -Force | Out-Null
 Copy-Item $exe $layout
 Copy-Item (Join-Path $repo "dist\uwp\AppxManifest.xml") $layout
 Copy-Item (Join-Path $repo "dist\uwp\Assets") $layout -Recurse
+# The GPL v3 text, which the app's one-line notice (Configuracoes) points to.
+Copy-Item (Join-Path $repo "LICENSE.txt") $layout
 # Use Eden's existing artwork in the launcher, preserving the upstream asset.
 Copy-Item -LiteralPath (Join-Path $repo 'dist\qt_themes\default\icons\256x256\eden.png') `
     -Destination (Join-Path $layout 'Assets\EdenLogo.png')

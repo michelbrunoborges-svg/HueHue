@@ -138,6 +138,6 @@ Os prints do CI rodam num Windows sem GPU, com o mesmo código Direct2D.
 ## Sem a página Créditos (19/10)
 
 - A seção **Créditos e licenças** saiu de Configurações. Fica só uma linha discreta sob a lista de
-  seções com a versão, o aviso da GPL v3 (software livre, sem garantia), onde estão o código e a
-  licença, e "não afiliado à Nintendo ou à Microsoft": a GPL v3 (seção 5d) pede esse aviso numa
+  seções com a versão, o aviso da GPL v3 (software livre, sem garantia, texto da licença no `LICENSE.txt` que agora vai
+  no pacote), sem link do repositório, e "não afiliado à Nintendo ou à Microsoft": a GPL v3 (seção 5d) pede esse aviso numa
   interface interativa. Os créditos continuam no código-fonte e nos arquivos de licença do pacote.
