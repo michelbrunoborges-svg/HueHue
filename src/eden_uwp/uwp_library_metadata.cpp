@@ -5,12 +5,16 @@
 #include "eden_uwp/uwp_rom_storage.h"
 #include "eden_uwp/content/content_service.h"
 #include "eden_uwp/uwp_file_manager.h"
+#include <algorithm>
+#include <cwctype>
 #include <memory>
 #include <winrt/base.h>
 #include "common/logging.h"
 #include "common/settings.h"
 #include "core/core.h"
+#include "core/file_sys/card_image.h"
 #include "core/file_sys/content_archive.h"
+#include "core/file_sys/submission_package.h"
 #include "core/file_sys/control_metadata.h"
 #include "core/file_sys/registered_cache.h"
 #include "core/file_sys/vfs/vfs_real.h"
@@ -28,6 +32,37 @@ void Apply(LibraryEntry& entry, LibraryCacheRecord&& record, bool icons) {
     entry.program_id = record.program_id;
     entry.build_id = record.build_id;
     entry.title_loaded = true;
+}
+
+/// Why a dump gives no title: the program NCA's status says which key it lacks.
+std::uint8_t UnreadableReason(const FileSys::VirtualFile& file, const std::filesystem::path& relative) {
+    using S = Loader::ResultStatus;
+    S status = S::ErrorNotInitialized;
+    try {
+        auto extension = relative.extension().wstring();
+        std::transform(extension.begin(), extension.end(), extension.begin(), [](wchar_t c) { return std::towlower(c); });
+        if (extension == L".nsp") {
+            const FileSys::NSP nsp{file};
+            status = nsp.GetStatus() != S::Success ? nsp.GetStatus() : nsp.GetProgramStatus();
+        } else if (extension == L".xci") {
+            const FileSys::XCI xci{file};
+            status = xci.GetStatus() != S::Success ? xci.GetStatus() : xci.GetProgramNCAStatus();
+        }
+    } catch (...) {}
+    LOG_WARNING(Frontend, "Library metadata: {} unreadable ({})", relative.filename().string(),
+                Loader::GetResultStatusString(status));
+    switch (status) {
+    case S::ErrorMissingTitlekey:
+    case S::ErrorIncorrectTitlekeyOrTitlekek:
+    case S::ErrorMissingTitlekek:
+        return ReadNoTitlekey;
+    case S::ErrorMissingKeyAreaKey:
+    case S::ErrorIncorrectKeyAreaKey:
+    case S::ErrorMissingAESKeyGenerationSource:
+        return ReadOldKeys;
+    default:
+        return ReadFailed;
+    }
 }
 
 } // namespace
@@ -69,11 +104,20 @@ void ReadLibraryMetadata(const std::filesystem::path& root, std::vector<LibraryE
                 std::string{reinterpret_cast<const char*>(path.data()), path.size()} : entry.launch_path,
                 FileSys::OpenMode::Read);
             auto loader = Loader::GetLoader(*system, file);
-            if (!loader) continue;
+            if (!loader) {
+                entry.unreadable = UnreadableReason(file, entry.relative_path);
+                continue;
+            }
             LibraryCacheRecord record;
             std::string title;
-            if (loader->ReadTitle(title) == Loader::ResultStatus::Success && !title.empty())
+            const auto title_status = loader->ReadTitle(title);
+            if (title_status == Loader::ResultStatus::Success && !title.empty())
                 record.name = winrt::to_hstring(title).c_str();
+            else if (title_status != Loader::ResultStatus::Success && entry.relative_path.extension() != L".nro") {
+                // Not kept in the cache: the next keys import reads it again.
+                entry.unreadable = UnreadableReason(file, entry.relative_path);
+                continue;
+            }
             FileSys::NACP control;
             if (loader->ReadControlData(control) == Loader::ResultStatus::Success) {
                 record.developer = winrt::to_hstring(control.GetDeveloperName()).c_str();

@@ -61,6 +61,8 @@
 #include "video_core/host1x/host1x.h"
 #include "video_core/host1x/syncpoint_manager.h"
 #include "core/file_sys/control_metadata.h"
+#include "core/file_sys/common_funcs.h"
+#include "core/file_sys/patch_manager.h"
 #include "core/file_sys/registered_cache.h"
 #include "core/file_sys/vfs/vfs_real.h"
 #include "core/hle/kernel/svc/svc_debug_string.h" // Kernel::Svc::SetDebugStringObserver
@@ -260,13 +262,23 @@ static u32 NacpLanguageBit(Settings::Language language) {
 
 /// Many games read the system language directly and fall back to English on their own when they
 /// lack it, even when they ship a close variant (Spain's Spanish but not es-419). Give them the
-/// closest language they declare instead (PickGameLanguage: variant, then English, then any).
+/// closest language they declare instead (PickGameLanguage: variant, the related languages, then
+/// English, then any; Brazilian Portuguese: Portugal's, then Spanish).
 static void ApplyGameLanguage(Core::System& system) {
-    FileSys::NACP nacp;
-    if (system.GetAppLoader().ReadControlData(nacp) != Loader::ResultStatus::Success) {
-        return;
+    // The update's NACP when there is one: updates often add languages (as the game's own
+    // GetDesiredLanguage sees them), then the base game's.
+    u32 supported = 0;
+    const auto program_id = system.GetApplicationProcessProgramID();
+    auto metadata = FileSys::PatchManager::GetMetadataFromBaseOrUpdate(system, program_id);
+    if (metadata.first == nullptr && FileSys::GetBaseTitleID(program_id) != program_id)
+        metadata = FileSys::PatchManager::GetMetadataFromBaseOrUpdate(system, FileSys::GetBaseTitleID(program_id));
+    if (metadata.first != nullptr) {
+        supported = metadata.first->GetSupportedLanguages();
+    } else {
+        FileSys::NACP nacp;
+        if (system.GetAppLoader().ReadControlData(nacp) != Loader::ResultStatus::Success) return;
+        supported = nacp.GetSupportedLanguages();
     }
-    const u32 supported = nacp.GetSupportedLanguages();
     const auto preferred = Settings::values.language_index.GetValue();
     const auto language = PickGameLanguage(preferred, [supported](Settings::Language language) {
         return (supported & NacpLanguageBit(language)) != 0;
@@ -402,6 +414,10 @@ struct BootConfig {
     enum class Fastmem { Off, Auto, Hybrid, Full } fastmem{Fastmem::Off};
     u32 fastmem_hot_mib{384};
     Settings::CpuAccuracy cpu_accuracy{Settings::CpuAccuracy::Auto};
+    /// NS HUEHUE Desempenho profile: GPU accuracy Low and no reactive flushing (as Eden's Android
+    /// builds default to), so the GPU caches flush to guest memory only when a game needs it.
+    Settings::GpuAccuracy gpu_accuracy{Settings::GpuAccuracy::High};
+    bool reactive_flushing{true};
     /// NS HUEHUE Avancado: off lets the game run as fast as the console can (Eden's speed limit).
     bool speed_limit{true};
     /// Legacy setting for backends with draw-skipping async shaders. D3D12 always preserves
@@ -459,6 +475,11 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
         Settings::values.sink_id = Settings::AudioEngine::Null;
     }
     Settings::values.cpu_accuracy = config.cpu_accuracy;
+    Settings::values.gpu_accuracy.SetValue(config.gpu_accuracy);
+    Settings::values.use_reactive_flushing.SetValue(config.reactive_flushing);
+    WriteDiag(std::string("step: GPU accuracy ") +
+              (config.gpu_accuracy == Settings::GpuAccuracy::Low ? "Low" : "High") +
+              (config.reactive_flushing ? ", reactive flushing" : ", no reactive flushing"));
     Settings::values.use_speed_limit.SetValue(config.speed_limit);
     if (!config.speed_limit) WriteDiag("step: speed limit off");
     WriteDiag(config.cpu_accuracy == Settings::CpuAccuracy::Accurate
@@ -1106,14 +1127,17 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                     const ControllerOptions options = input.Options();
                     // Upscaling as this boot applied it (a boot.cfg override included); only the
                     // GPU thread writes it while the game runs, and it is paused now.
-                    menu.emplace(GameMenuSettings{options.style, options.swap_face_buttons,
-                                                  options.deadzone, g_can_fullscreen.load(),
-                                                  g_fullscreen.load(), LoadSystemSettings().show_performance_stats,
-                                                  pulse_identity.has_value(),
-                                                  FromSettings(Settings::values.scaling_filter.GetValue(),
-                                                               Settings::values.fsr_sharpening_slider.GetValue()),
-                                                  config.material_capture_menu},
-                                 program_id != 0);
+                    GameMenuSettings menu_settings{options.style, options.swap_face_buttons,
+                                                   options.deadzone, g_can_fullscreen.load(),
+                                                   g_fullscreen.load(), LoadSystemSettings().show_performance_stats,
+                                                   pulse_identity.has_value(),
+                                                   FromSettings(Settings::values.scaling_filter.GetValue(),
+                                                                Settings::values.fsr_sharpening_slider.GetValue()),
+                                                   config.material_capture_menu};
+                    menu_settings.speed_limit = Settings::values.use_speed_limit.GetValue();
+                    menu_settings.volume = static_cast<std::uint8_t>(
+                        std::min<unsigned>(Settings::values.volume.GetValue(), 100) / 10 * 10);
+                    menu.emplace(menu_settings, program_id != 0);
                     if (game_title.empty()) {
                         std::string title;
                         void(system.GetAppLoader().ReadTitle(title));
@@ -1290,6 +1314,13 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                 }
                 if (result == GameMenuResult::FullScreen) {
                     g_fullscreen_request.store(menu->Settings().fullscreen ? 1 : 0);
+                }
+                if (result == GameMenuResult::QuickSettingsChanged) {
+                    // Read live by the frame limiter and the audio sink; this session only.
+                    Settings::values.use_speed_limit.SetValue(menu->Settings().speed_limit);
+                    Settings::values.volume.SetValue(menu->Settings().volume);
+                    WriteDiag("menu: speed limit " + std::string(menu->Settings().speed_limit ? "on" : "off") +
+                              ", volume " + std::to_string(menu->Settings().volume) + "%");
                 }
 
                 if (menu_surface) draw_menu();
@@ -2795,6 +2826,8 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                             config.cpu_accuracy = Settings::CpuAccuracy::Auto;
                             config.async_shaders = true;
                             config.upscaling = EdenXbox::Upscaling::Bilinear;
+                            config.gpu_accuracy = Settings::GpuAccuracy::Low;
+                            config.reactive_flushing = false;
                             WriteDiag("profile: performance");
                             break;
                         case EdenXbox::GameProfile::Compatibility:

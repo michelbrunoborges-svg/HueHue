@@ -20,13 +20,18 @@ struct FirmwareVersion {
     std::string display; ///< "19.0.1" as the firmware names itself.
     [[nodiscard]] unsigned Packed() const { return major << 16 | minor << 8 | micro; }
 };
-/// NS HUEHUE: a firmware copied and validated in a staging folder, waiting for the player to
-/// confirm it replaces the installed one (Arquivos e USB > Importar firmware).
+/// NS HUEHUE: a firmware copied to a staging folder, waiting for the player to confirm it
+/// replaces the installed one (Arquivos e USB > Importar firmware). What the checks found is only
+/// reported: every .nca of the folder is copied, as the player asked (19/10/2026).
 struct StagedFirmware {
     std::filesystem::path stage;
     FirmwareVersion version;
     unsigned files{};
     std::uint64_t bytes{};
+    unsigned unreadable{}; ///< NCAs the keys could not open.
+    unsigned foreign{};    ///< NCAs of a game (title id outside the system range).
+    bool incomplete{};     ///< SystemVersion (0809) or the Mii editor (1009) is missing.
+    [[nodiscard]] bool HasWarnings() const { return unreadable || foreign || incomplete; }
 };
 struct FileSetupStatus {
     bool keys_ready{};

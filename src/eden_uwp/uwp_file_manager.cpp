@@ -256,6 +256,7 @@ std::string ImportSystemFiles(const StorageFolder& source, FileImport kind,
         }
         FirmwareVersion staged_version;
         bool system_version = false, mii_editor = false;
+        unsigned unreadable = 0, foreign = 0;
         FileSys::RealVfsFilesystem vfs;
         for (const auto& file : files) {
             if (stop.stop_requested()) throw std::runtime_error(ImportError(I18n::Text::ImportCancelledKept));
@@ -268,9 +269,19 @@ std::string ImportSystemFiles(const StorageFolder& source, FileImport kind,
                 const auto u8path = path.u8string();
                 auto raw = vfs.OpenFile(std::string{reinterpret_cast<const char*>(u8path.data()), u8path.size()}, FileSys::OpenMode::Read);
                 FileSys::NCA nca{raw};
-                if (nca.GetStatus() != Loader::ResultStatus::Success) throw std::runtime_error(ImportError(I18n::Text::FirmwareUnreadable));
+                // Reported, not refused: the file stays in the copy.
+                if (nca.GetStatus() != Loader::ResultStatus::Success) {
+                    ++unreadable;
+                    LOG_WARNING(Frontend, "File manager: firmware file {} unreadable, copied anyway", winrt::to_string(file.Name()));
+                    progress.completed.fetch_add(1, std::memory_order_relaxed);
+                    continue;
+                }
                 const auto id = nca.GetTitleId();
-                if ((id >> 16) != (0x0100000000000000ULL >> 16)) throw std::runtime_error(ImportError(I18n::Text::FolderHasGameNca));
+                if ((id >> 16) != (0x0100000000000000ULL >> 16)) {
+                    ++foreign;
+                    LOG_WARNING(Frontend, "File manager: firmware file {} has title {:016X}, copied anyway",
+                                winrt::to_string(file.Name()), id);
+                }
                 if (IsSystemVersion(nca)) {
                     system_version = true;
                     staged_version = ReadVersion(nca);
@@ -281,13 +292,15 @@ std::string ImportSystemFiles(const StorageFolder& source, FileImport kind,
         }
         if (keys && !ValidProductionKeys(std::filesystem::path{std::wstring{stage.Path()}} / "prod.keys"))
             throw std::runtime_error(ImportError(I18n::Text::KeysMissingHeaderKey));
-        if (!keys && (!system_version || !mii_editor)) throw std::runtime_error(ImportError(I18n::Text::FirmwareIncomplete));
+        const bool incomplete = !keys && (!system_version || !mii_editor);
+        if (incomplete) LOG_WARNING(Frontend, "File manager: firmware copy lacks SystemVersion or the Mii editor");
         if (stop.stop_requested()) throw std::runtime_error(ImportError(I18n::Text::ImportCancelledKept));
         if (!keys && stage_firmware) {
-            // Validated: the player confirms the version before it replaces the installed one.
+            // Copied: the player sees what the checks found and confirms before it replaces the installed one.
             std::scoped_lock lock{staged_mutex};
             staged_firmware = StagedFirmware{std::filesystem::path{std::wstring{stage.Path()}}, staged_version,
-                                             static_cast<unsigned>(files.size()), total_bytes};
+                                             static_cast<unsigned>(files.size()), total_bytes,
+                                             unreadable, foreign, incomplete};
             stage = nullptr;
             LOG_INFO(Frontend, "File manager: firmware {} staged ({} files)", staged_version.display, files.size());
             return std::string{FirmwareStagedMarker};

@@ -222,10 +222,15 @@ inline I18n::Text RegionText(Settings::Region region) {
 /// Languages a game falls back to when it lacks the preferred one, closest first.
 inline std::span<const Settings::Language> GameLanguageFallbacks(Settings::Language preferred) {
     using L = Settings::Language;
-    static constexpr std::array<L, 1> latin{L::Spanish}, spain{L::SpanishLatin},
-        british{L::EnglishAmerican}, american{L::EnglishBritish}, canadian{L::French},
-        french{L::FrenchCanadian}, brazilian{L::Portuguese}, portuguese{L::PortugueseBrazilian},
-        simplified{L::ChineseTraditional}, traditional{L::ChineseSimplified};
+    static constexpr std::array<L, 1> british{L::EnglishAmerican}, american{L::EnglishBritish},
+        canadian{L::French}, french{L::FrenchCanadian}, simplified{L::ChineseTraditional},
+        traditional{L::ChineseSimplified};
+    // Iberian languages stay among themselves before English (the player asked for pt-BR: pt-PT,
+    // then Spanish; Latin America's first, as Brazil's neighbours speak it).
+    static constexpr std::array<L, 3> brazilian{L::Portuguese, L::SpanishLatin, L::Spanish},
+        portuguese{L::PortugueseBrazilian, L::Spanish, L::SpanishLatin},
+        latin{L::Spanish, L::PortugueseBrazilian, L::Portuguese},
+        spain{L::SpanishLatin, L::Portuguese, L::PortugueseBrazilian};
     switch (preferred) {
     case L::SpanishLatin:        return latin;
     case L::Spanish:             return spain;
@@ -243,8 +248,8 @@ inline std::span<const Settings::Language> GameLanguageFallbacks(Settings::Langu
     }
 }
 
-/// The language to give a game that declares `supports`: the preferred one, its closest variant,
-/// English, or else the first language it has. A game that declares nothing gets the preferred.
+/// The language to give a game that declares `supports`: the preferred one, its closest
+/// languages (GameLanguageFallbacks), English, or else the first language it has. A game that declares nothing gets the preferred.
 template <typename Supports>
 Settings::Language PickGameLanguage(Settings::Language preferred, Supports&& supports) {
     using L = Settings::Language;

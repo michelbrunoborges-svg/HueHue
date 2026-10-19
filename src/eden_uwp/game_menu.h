@@ -13,7 +13,8 @@
 #include "eden_uwp/upscaling.h"
 
 namespace EdenXbox {
-// In-game menu: View + Menu held for a second (Escape on a keyboard) pauses the game and opens it.
+// In-game menu: View + Menu held for two seconds (Escape on a keyboard) pauses the game and opens
+// it (the player asked for 2 s, 19/10/2026: long enough that no game press opens it by accident).
 // The guide button belongs to the system, so the shortcut has to come from game buttons: Switch -
 // and +, which almost no game holds together.
 
@@ -23,7 +24,7 @@ namespace EdenXbox {
 class MenuComboFilter {
 public:
     static constexpr std::uint32_t PendingMs = 100;
-    static constexpr std::uint32_t HoldMs = 1000;
+    static constexpr std::uint32_t HoldMs = 2000;
 
     /// Filters this poll's + / - and returns true when the combo fires.
     bool Filter(bool& plus, bool& minus, std::uint32_t now_ms) {
@@ -102,6 +103,9 @@ struct GameMenuSettings {
     bool offer_upscaling{};
     /// Opt-in diagnostic package: capture from a controller without a keyboard.
     bool material_capture{};
+    /// Quick settings (NS HUEHUE): applied at once to this session, not saved.
+    bool speed_limit{true};
+    std::uint8_t volume{100}; ///< Percent, in steps of 10.
 };
 
 /// Library: back to home, keeping a Pulse session when they are on. LibraryWithoutSession: the
@@ -110,6 +114,7 @@ enum class GameMenuResult : std::uint8_t {
     None, Resume, Library, SettingsChanged, FullScreen, Cheats, PerformanceStatsChanged, UpscalingChanged,
     LibraryWithoutSession,
     CaptureGraphics,
+    QuickSettingsChanged, ///< Speed limit or volume: Settings() has the new values.
 };
 
 /// One row as drawn: a label, and the value of a setting (changed with left/right) or of a page.
@@ -125,7 +130,7 @@ class GameMenu {
 public:
     enum Item : std::size_t {
         Continue, Cheats, Mods, Style, FaceButtons, Deadzone, FullScreen, ImageUpscaling, PerformanceStats, Library,
-        CaptureGraphics,
+        CaptureGraphics, SpeedLimit, Volume,
     };
 
     /// `cheats`: the game can have cheats (it has a title id), so the menu offers them.
@@ -137,6 +142,8 @@ public:
         // NS HUEHUE: Ampliacao da imagem lives in the game's Desempenho e graficos, saved per game.
         if (settings.offer_upscaling) items.push_back(ImageUpscaling);
         items.push_back(PerformanceStats);
+        // Quick settings, as the player knows them from other builds: speed and sound.
+        items.insert(items.end(), {SpeedLimit, Volume});
         if (settings.material_capture) items.push_back(CaptureGraphics);
         items.push_back(Library);
     }
@@ -218,6 +225,11 @@ private:
             return {Tr(Text::Upscaling), Tr(UpscalingText(settings.upscaling)), Choice};
         case PerformanceStats:
             return {Tr(Text::PerformanceStats), Tr(settings.show_performance_stats ? Text::Yes : Text::No), Choice};
+        case SpeedLimit:
+            return {Tr(Text::MenuSpeedLimit), Tr(settings.speed_limit ? Text::Yes : Text::No), Choice};
+        case Volume:
+            return {Tr(Text::MenuVolume), settings.volume == 0 ? Tr(Text::MenuMuted)
+                                                               : std::to_wstring(settings.volume) + L"%", Choice};
         case FullScreen:
             return {Tr(Text::MenuFullScreen), Tr(settings.fullscreen ? Text::Yes : Text::No), Choice};
         case Library:
@@ -266,6 +278,15 @@ private:
         case PerformanceStats:
             settings.show_performance_stats = !settings.show_performance_stats;
             return GameMenuResult::PerformanceStatsChanged;
+        case SpeedLimit:
+            settings.speed_limit = !settings.speed_limit;
+            return GameMenuResult::QuickSettingsChanged;
+        case Volume:
+            // Right/A louder, left quieter; A past 100% wraps to mute.
+            if (back) settings.volume = settings.volume >= 10 ? static_cast<std::uint8_t>(settings.volume - 10) : 0;
+            else settings.volume = settings.volume >= 100 ? (action == MenuAction::Confirm ? 0 : 100)
+                                                          : static_cast<std::uint8_t>(settings.volume + 10);
+            return GameMenuResult::QuickSettingsChanged;
         case FullScreen:
             settings.fullscreen = !settings.fullscreen;
             return GameMenuResult::FullScreen;

@@ -10,18 +10,22 @@ int main() {
     using namespace EdenXbox;
     auto check = [](bool ok) { if (!ok) std::abort(); };
 
-    // Both pressed together: never reach the game, fire once after a second held.
+    // Both pressed together: never reach the game, fire once after two seconds held.
     {
         MenuComboFilter f;
         int fires = 0;
-        for (std::uint32_t t = 0; t <= 1500; t += 4) {
+        for (std::uint32_t t = 0; t <= 1900; t += 4) {
+            bool plus = true, minus = true;
+            check(!f.Filter(plus, minus, t));
+        }
+        for (std::uint32_t t = 1904; t <= 2500; t += 4) {
             bool plus = true, minus = true;
             fires += f.Filter(plus, minus, t);
             check(!plus && !minus);
         }
         check(fires == 1);
         bool plus = false, minus = false;
-        check(!f.Filter(plus, minus, 1504) && !plus && !minus);
+        check(!f.Filter(plus, minus, 2504) && !plus && !minus);
     }
     // View first, Menu 40 ms later: still the combo, - never delivered; released early: no fire.
     {
@@ -69,7 +73,7 @@ int main() {
     // Menu model, in Spanish.
     I18n::SetUiLanguage(*I18n::FindUiLanguage(L"es"));
     GameMenu menu{{ConsoleControllerStyle::Auto, false, 0.12f}};
-    check(menu.Rows().size() == 7 && menu.SelectedItem() == GameMenu::Continue);
+    check(menu.Rows().size() == 9 && menu.SelectedItem() == GameMenu::Continue);
     check(menu.Apply(MenuAction::Confirm) == GameMenuResult::Resume);
     check(menu.Apply(MenuAction::Back) == GameMenuResult::Resume);
     check(menu.Apply(MenuAction::Toggle) == GameMenuResult::Resume);
@@ -100,7 +104,7 @@ int main() {
     // A game with a title id offers its cheats, second, with how many are on.
     GameMenu with_cheats{{ConsoleControllerStyle::Auto, false, 0.12f}, true};
     with_cheats.SetCheatsOn(3);
-    check(with_cheats.Rows().size() == 8);
+    check(with_cheats.Rows().size() == 10);
     check(with_cheats.Rows()[1].kind == GameMenuRow::Kind::Page && with_cheats.Rows()[1].value == L"3 activos");
     check(with_cheats.Apply(MenuAction::Down) == GameMenuResult::None && with_cheats.SelectedItem() == GameMenu::Cheats);
     check(with_cheats.Apply(MenuAction::Right) == GameMenuResult::None);
@@ -111,7 +115,7 @@ int main() {
     // PC: full screen sits above the display rows and "back to the library"; the Series menu never
     // shows it.
     GameMenu pc{{ConsoleControllerStyle::Auto, false, 0.12f, true, false}};
-    check(pc.Rows().size() == 8 && pc.Rows()[4].label == L"Pantalla completa" && pc.Rows()[4].value == L"No");
+    check(pc.Rows().size() == 10 && pc.Rows()[4].label == L"Pantalla completa" && pc.Rows()[4].value == L"No");
     for (int i = 0; i < 4; ++i) pc.Apply(MenuAction::Up);
     check(pc.SelectedItem() == GameMenu::FullScreen && pc.Selected() == 4);
     check(pc.Apply(MenuAction::Confirm) == GameMenuResult::FullScreen && pc.Settings().fullscreen);

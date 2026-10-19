@@ -798,6 +798,16 @@ enum class Text : std::uint16_t {
     NsThemeHintImport,
 
 
+    NsFirmwareWarnUnreadable,
+    NsFirmwareWarnForeign,
+    NsFirmwareWarnIncomplete,
+    NsFirmwareWarn,
+    NsReadNoTitlekey,
+    NsReadOldKeys,
+    NsReadFailed,
+    MenuSpeedLimit,
+    MenuVolume,
+    MenuMuted,
     Count
 };
 inline constexpr std::size_t TextCount = static_cast<std::size_t>(Text::Count);

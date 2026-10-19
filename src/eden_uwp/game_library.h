@@ -26,7 +26,12 @@ struct LibraryEntry {
     std::wstring display_version; ///< Effective NACP version, e.g. 2.0.0.
     std::wstring pulse_saved; ///< When the kept Pulse session was saved; empty without one.
     bool pulse_current{};     ///< That session was made by this build, so it can resume.
+    /// Why the game's own title and cover could not be read (LibraryUnreadable), shown under its tile.
+    std::uint8_t unreadable{};
 };
+/// NS HUEHUE: a dump the metadata reader could not open: no title, no cover (the game's icon is
+/// read from its own files) and usually no boot either.
+enum LibraryUnreadable : std::uint8_t { ReadOk, ReadNoTitlekey, ReadOldKeys, ReadFailed };
 struct LibraryScan {
     std::vector<LibraryEntry> entries;
     std::string error;

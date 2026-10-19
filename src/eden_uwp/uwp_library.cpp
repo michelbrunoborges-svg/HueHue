@@ -270,6 +270,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     struct SavesDone {
         SaveBackup::Result result;
         SaveBackup::FolderInfo info;
+        bool restored{}; ///< Pick: the folder's saves were brought in.
     };
     SaveBackup::Progress saves_progress;
     std::future<SavesDone> saves_future;
@@ -872,9 +873,10 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     SaveBackup::RememberFolder(folder);
                     done.info = SaveBackup::Inspect();
                     if (done.info.has_backup && done.info.other_install) {
-                        done.result.outcome = SaveBackup::Outcome::OtherInstall;
-                        done.result.files = done.info.files;
-                        done.result.games = done.info.games;
+                        // Its saves come in at once (the player asked, 19/10/2026): Restore keeps
+                        // this console's first and makes the folder this installation's.
+                        done.result = SaveBackup::Restore(saves_progress, stop);
+                        done.restored = true;
                     } else {
                         done.result = SaveBackup::Backup(false, saves_progress, stop);
                     }
@@ -1186,6 +1188,20 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                                 configuration.notice = I18n::Format(T::NsFirmwareConfirmReinstall, {next_name});
                             else
                                 configuration.notice = I18n::Format(T::NsFirmwareConfirmDowngrade, {now_name, next_name});
+                            if (firmware_staged->HasWarnings()) {
+                                // The checks only warn: everything was copied and A still installs it.
+                                std::wstring found;
+                                const auto add = [&found](std::wstring part) {
+                                    if (!found.empty()) found += L"; ";
+                                    found += part;
+                                };
+                                if (firmware_staged->foreign)
+                                    add(I18n::Format(T::NsFirmwareWarnForeign, {std::to_wstring(firmware_staged->foreign)}));
+                                if (firmware_staged->unreadable)
+                                    add(I18n::Format(T::NsFirmwareWarnUnreadable, {std::to_wstring(firmware_staged->unreadable)}));
+                                if (firmware_staged->incomplete) add(std::wstring{Tr(T::NsFirmwareWarnIncomplete)});
+                                configuration.notice = I18n::Format(T::NsFirmwareWarn, {found}) + L" " + configuration.notice;
+                            }
                         } else {
                             configuration.notice = Tr(T::ImportFailedKept);
                         }
@@ -1240,7 +1256,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 } else {
                     switch (result.outcome) {
                     case O::Done:
-                        text = saves_job == SavesJob::Restore
+                        text = saves_job == SavesJob::Restore || done.restored
                                    ? I18n::Format(T::NsSavesRestored, {number(result.games), number(result.copied)})
                                : result.copied ? I18n::Format(T::NsSavesDone, {number(result.copied), number(result.games)})
                                                : std::wstring{Tr(T::NsSavesUpToDate)};
@@ -2267,6 +2283,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                             found->build_id = entry.build_id;
                         }
                         found->title_loaded |= entry.title_loaded;
+                        found->unreadable = entry.unreadable;
                         // The player may have paged on meanwhile: keep icons only inside the window.
                         if (batch.icons && position_of[index] != SIZE_MAX && position_of[index] >= window_first &&
                             position_of[index] < page + PageVisible + PageSize)

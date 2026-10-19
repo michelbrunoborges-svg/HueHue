@@ -52,6 +52,11 @@ int main() {
     check(pick(L::German, {L::Japanese}) == L::Japanese);
     check(pick(L::Korean, {}) == L::Korean);
     check(pick(L::French, {L::French, L::EnglishAmerican}) == L::French);
+    // Brazilian Portuguese: Portugal's, then Spanish (Latin America's first), before English.
+    check(pick(L::PortugueseBrazilian, {L::Portuguese, L::Spanish, L::EnglishAmerican}) == L::Portuguese);
+    check(pick(L::PortugueseBrazilian, {L::Spanish, L::SpanishLatin, L::EnglishAmerican}) == L::SpanishLatin);
+    check(pick(L::PortugueseBrazilian, {L::Spanish, L::EnglishAmerican, L::Japanese}) == L::Spanish);
+    check(pick(L::PortugueseBrazilian, {L::EnglishAmerican, L::Japanese}) == L::EnglishAmerican);
 
     // Choices step through "follow the system" and wrap both ways.
     const auto regions = SelectableRegions();

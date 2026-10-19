@@ -282,17 +282,20 @@ private:
     void NsBackdrop(bool art) {
         const D2D1_RECT_F full = D2D1::RectF(0, 0, 1920, 1080);
         if (switch_layout) {
-            // Switch: the theme's solid ground; the home may show the Aurora panorama under a veil
-            // of the ground color (the art keeps the text readable, and its absence leaves the
-            // solid ground).
+            // Switch: the theme's solid ground; the wallpaper (the pack's or the Aurora panorama)
+            // under a veil of the ground color. The home shows it open; every other screen (the
+            // game grid, settings, the pages) under a fuller veil, so lists and text stay readable.
             Round(0, 0, 1920, 1080, 0, Palette::Backdrop);
             ID2D1Bitmap1* ground = nullptr;
-            if (art && current_pack) ground = PackImage(current_pack->background);
-            else if (art && wallpaper == WallpaperId::Aurora) {
+            if (current_pack) ground = PackImage(current_pack->background);
+            else if (wallpaper == WallpaperId::Aurora) {
                 if (!sw_aurora) sw_aurora = LoadAssetBitmap(L"sw/aurora-wallpaper.png");
                 ground = sw_aurora.Get();
             }
-            if (ground) {
+            if (ground && !art) {
+                NsImage(ground, full, true);
+                NsFill(0, 0, 1920, 1080, 0, Palette::Backdrop, 0.80f);
+            } else if (ground) {
                 {
                     NsImage(ground, D2D1::RectF(0, 150, 1920, 1080), true);
                     const D2D1_GRADIENT_STOP stops[] = {{0.0f, D2D1::ColorF(Palette::Backdrop, 1.0f)},
@@ -708,7 +711,13 @@ private:
         if (!entry.source_name.empty()) under += (under.empty() ? L"" : L" · ") + entry.source_name;
         if (!entry.pulse_saved.empty()) under += under.empty() ? L"Pulse" : L" · Pulse";
         if (under.empty()) under = entry.relative_path.extension().wstring();
-        Text(under, cx + 15, cy + 252, 17, Palette::TextSecondary, CardWidth - 30, 26);
+        // A dump the keys cannot open: say which key it lacks instead of the folder.
+        if (entry.unreadable)
+            under = Tr(entry.unreadable == ReadNoTitlekey ? T::NsReadNoTitlekey
+                       : entry.unreadable == ReadOldKeys  ? T::NsReadOldKeys
+                                                          : T::NsReadFailed);
+        Text(under, cx + 15, cy + 252, 17, entry.unreadable ? Palette::Warning : Palette::TextSecondary,
+             CardWidth - 30, 26);
     }
 
     // 02-05, 09, 47, 51 · Meus jogos
@@ -907,7 +916,7 @@ private:
             Text(I18n::Format(T::Importing, {std::to_wstring(panel.completed), std::to_wstring(panel.total)}),
                  left, 920, 24, Palette::Accent, width, 40);
         else if (!panel.notice.empty())
-            Text(panel.notice, left, 920, 23, Palette::Warning, width, 70, false, true);
+            Text(panel.notice, left, 912, panel.notice.size() > 160 ? 20.0f : 23.0f, Palette::Warning, width, 100, false, true);
         // The license notice the GPL asks of an interactive program, in one quiet line under the
         // sections (the Creditos page was removed).
         Text(I18n::Format(T::NsLegalLine, {version_string}), 96, 760, 17, Palette::TextSecondary, 350, 200, false, true);

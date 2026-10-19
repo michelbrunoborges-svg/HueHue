@@ -68,7 +68,8 @@ enum class IdleSpin : std::uint8_t { Adaptive, Off, Fixed };
 enum class JitCache : std::uint8_t { Normal, Small, Large };
 
 struct GameTuning {
-    GameProfile profile{GameProfile::Default};
+    /// Desempenho by default (the player asked, 19/10/2026): quality is the player's choice per game.
+    GameProfile profile{GameProfile::Performance};
     GameResolution resolution{GameResolution::Tv};
     FpsLimit fps{FpsLimit::Auto};
     std::uint8_t fps_manual{45};  ///< 0 (no limit) to 60, any value (FpsLimit::Manual).
