@@ -192,3 +192,28 @@ Os prints do CI rodam num Windows sem GPU, com o mesmo código Direct2D.
 - **Aprovação:** Michel aprovou os 16 fundos de `design/theme-assets-v1` em 19/10/2026 (“estão
   aprovados”). Distribuição: o 16 · NS HUEHUE vai no appx; os outros 15 continuam pelo
   Importar temas (USB), fora do repositório e do release públicos.
+
+## 0.4.1 (19/10, noite): pedidos do teste no Xbox
+
+- **Firmware:** a verificação só avisa. Todos os `.nca` da pasta são copiados. NCA de jogo,
+  arquivo que as chaves não abrem ou falta do SystemVersion/Mii aparecem como "Erro na
+  verificação: …; os arquivos foram copiados mesmo assim", antes da confirmação (A instala).
+- **Desempenho por padrão:** jogo sem ajuste salvo abre no perfil Desempenho (GPU em precisão
+  baixa e sem *reactive flushing*, como os builds Android do Eden; imagem bilinear). O antigo
+  "Padrão" passou a se chamar **Equilibrado** (GPU precisa). Ajustes já salvos não mudam.
+- **Idioma do jogo:** pt-BR → pt-PT → espanhol (latino, depois o da Espanha) → inglês. Os idiomas
+  são lidos do NACP da atualização quando existe (atualizações costumam acrescentar idiomas).
+- **Menu do jogo:** View + Menu (− e +) segurados por **2 s** abrem o menu (antes 1 s). Novas
+  linhas: Limitar a velocidade e Volume (valem para a sessão). "Voltar à biblioteca" virou
+  **Fechar o jogo**. A dica do atalho aparece ao abrir um jogo e em Controles.
+- **Saves:** ao escolher uma pasta que já tem saves de outra instalação, eles são importados na
+  hora (os atuais ficam guardados em `ns_saves_before_restore`). Restaurar continua no menu.
+- **Capas:** não são baixadas: vêm do próprio arquivo do jogo. Quando o arquivo não abre, o
+  cartão diz o motivo (sem a chave do jogo: importe o title.keys; chaves antigas: atualize o
+  prod.keys; arquivo ilegível) e o log registra o status.
+- **Fundo do tema** (pacote ou Aurora) também na grade de jogos, configurações e páginas, sob
+  um véu de 80% da cor do tema.
+- **Motor:** eden-xbox/Jadyx até **0.3.4.0** (PSO preparado em segundo plano e menos esperas
+  de pipeline no D3D12, sessões Pulse versionadas e com zstd, Vulkan e ReShade fora do build da
+  Store). Os módulos OpenGL/Mesa do NS HUEHUE continuam.
+- Versão do pacote: **0.4.1.<build>**.
