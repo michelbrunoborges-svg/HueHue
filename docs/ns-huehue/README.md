@@ -189,3 +189,6 @@ Os prints do CI rodam num Windows sem GPU, com o mesmo código Direct2D.
   `registered.backup` (Restaurar firmware anterior). A pasta de origem nunca é alterada. Busca
   online: não configurada (não há fonte autorizada para baixar firmware).
 - Versão do pacote: **0.4.0.<build>**.
+- **Aprovação:** Michel aprovou os 16 fundos de `design/theme-assets-v1` em 19/10/2026 (“estão
+  aprovados”). Distribuição: o 16 · NS HUEHUE vai no appx; os outros 15 continuam pelo
+  Importar temas (USB), fora do repositório e do release públicos.
