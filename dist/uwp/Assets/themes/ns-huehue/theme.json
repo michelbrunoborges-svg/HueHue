@@ -2,22 +2,53 @@
   "schemaVersion": 1,
   "id": "ns-huehue",
   "name": "NS HUEHUE",
-  "version": "1.0",
-  "status": "provisorio",
-  "source": "Composição do pacote aprovado design/ns-huehue-v1 (graffiti-background.jpg + mascot.png humano), sem arte nova.",
-  "base": "switch-dark",
-  "background": "background.jpg",
-  "thumbnail": "thumbnail.jpg",
-  "colors": {
-    "background": "#0B0F0C",
-    "foreground": "#F4F7F5",
-    "surface": "#161D19",
-    "muted": "#A6B5B7",
-    "border": "#2F3D34",
-    "focus": "#8AFF00",
-    "selection": "#1F3A17",
-    "accent": "#8AFF00",
-    "warning": "#FFCF32",
-    "error": "#FF6B74"
+  "number": 16,
+  "version": "1.0.0-provisional",
+  "visualApproval": "PENDING_FINAL_ASSET_REVIEW",
+  "baseLayout": "switch-home",
+  "contentVariant": "CHARACTER_ART_PENDING_REVIEW",
+  "assets": {
+    "wallpaper": "wallpaper.png",
+    "iconSvg": "icon.svg",
+    "iconPng": "icon.png",
+    "thumbnail": "thumbnail.png",
+    "homePreview": "preview.png"
+  },
+  "palette": {
+    "background": "#17191c",
+    "surface": "#25142b",
+    "foreground": "#F5F5F5",
+    "secondaryText": "#D2D6D9",
+    "accent": "#8aff00",
+    "focus": "#27D8E8",
+    "border": "#7C858B",
+    "warning": "#FFE08C",
+    "error": "#FF929A"
+  },
+  "wallpaper": {
+    "mode": "cover",
+    "position": "center",
+    "uiScrim": {
+      "bottomOpacity": 0.94,
+      "topOpacity": 0.12
+    },
+    "intrinsicWidth": 1672,
+    "intrinsicHeight": 941,
+    "nativePixelsPreserved": true
+  },
+  "attribution": "Wallpaper generated with image_gen. Theme icon is an original editable vector emblem. Game identity retained as visual concept; runtime game covers come from user library.",
+  "files": {
+    "wallpaper.png": {
+      "bytes": 2785642,
+      "sha256": "ef24e633f789dff93c5a016e166edb42d1d85df42973eef4f41b653279cb78a7"
+    },
+    "icon.svg": {
+      "bytes": 683,
+      "sha256": "cc42e4ba8e8c23f408a6d9b06b337158cdb10a45ed3306ae18454c26e5380735"
+    },
+    "icon.png": {
+      "bytes": 27434,
+      "sha256": "9573a189e5bcd9dcf3c69045af741f3d1106caeb1167f454d0fe3b1109facdd9"
+    }
   }
 }

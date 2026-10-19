@@ -82,15 +82,29 @@ std::optional<ThemePack> ParsePack(const std::string& text, const fs::path& fold
         pack.id = Widen(manifest.value("id", std::string{}));
         pack.name = Widen(manifest.value("name", std::string{}));
         pack.version = Widen(manifest.value("version", std::string{"1"}));
-        if (!ValidId(pack.id) || pack.name.empty() || pack.name.size() > 48) return std::nullopt;
+        if (!ValidId(pack.id) || pack.name.empty() || pack.name.size() > 64) return std::nullopt;
         // The built-in ids belong to the built-in themes.
         if (ParseTheme(pack.id)) return std::nullopt;
-        const auto base = manifest.value("base", std::string{"switch-dark"});
-        if (base == "switch-dark") pack.base = ThemeId::SwitchDark;
-        else if (base == "switch-light") pack.base = ThemeId::SwitchLight;
-        else return std::nullopt;
-        const auto background = Widen(manifest.value("background", std::string{}));
-        const auto thumbnail = Widen(manifest.value("thumbnail", std::string{}));
+        // The design pack's manifests (design/theme-assets-v1) name the art under "assets" and
+        // the colors under "palette"; both forms are read.
+        const json assets = manifest.contains("assets") && manifest["assets"].is_object() ? manifest["assets"] : json::object();
+        const json palette = manifest.contains("colors") && manifest["colors"].is_object() ? manifest["colors"]
+                           : manifest.contains("palette") && manifest["palette"].is_object() ? manifest["palette"]
+                                                                                            : json::object();
+        if (manifest.contains("base")) {
+            const auto base = manifest.value("base", std::string{});
+            if (base == "switch-dark") pack.base = ThemeId::SwitchDark;
+            else if (base == "switch-light") pack.base = ThemeId::SwitchLight;
+            else return std::nullopt;
+        } else {
+            // No base: the ground's lightness picks it.
+            const auto ground = palette.contains("background") ? ParseColor(palette["background"]) : std::nullopt;
+            pack.base = ground && Light(*ground) ? ThemeId::SwitchLight : ThemeId::SwitchDark;
+        }
+        const auto background = Widen(manifest.contains("background") ? manifest.value("background", std::string{})
+                                                                       : assets.value("wallpaper", std::string{}));
+        const auto thumbnail = Widen(manifest.contains("thumbnail") ? manifest.value("thumbnail", std::string{})
+                                                                    : assets.value("thumbnail", std::string{}));
         if (!ValidImageName(background) || (!thumbnail.empty() && !ValidImageName(thumbnail))) return std::nullopt;
         pack.background = folder / background;
         pack.thumbnail = thumbnail.empty() ? pack.background : folder / thumbnail;
@@ -102,13 +116,14 @@ std::optional<ThemePack> ParsePack(const std::string& text, const fs::path& fold
             }
         }
         ThemeColors colors = BaseThemeColors(pack.base);
-        if (const auto found = manifest.find("colors"); found != manifest.end() && found->is_object()) {
-            const auto& c = *found;
+        {
+            const auto& c = palette;
             const auto take = [&](const char* key) { return c.contains(key) ? ParseColor(c[key]) : std::nullopt; };
             if (const auto v = take("background")) colors.backdrop = *v;
             if (const auto v = take("foreground")) colors.text = *v;
             if (const auto v = take("surface")) colors.panel = colors.row = colors.secondary = colors.menu_button = *v;
             if (const auto v = take("muted")) colors.text_secondary = colors.text_hint = colors.muted = *v;
+            if (const auto v = take("secondaryText")) colors.text_secondary = colors.text_hint = colors.muted = *v;
             if (const auto v = take("border")) colors.line = colors.divider = colors.track = *v;
             if (const auto v = take("focus")) colors.focus = *v;
             if (const auto v = take("selection")) colors.row_active = colors.accent_deep = colors.nav_selected = colors.toast = *v;

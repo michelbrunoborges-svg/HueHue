@@ -175,10 +175,12 @@ Os prints do CI rodam num Windows sem GPU, com o mesmo código Direct2D.
   (schemaVersion 1, id, nome, versão, base `switch-dark`/`switch-light`, fundo, miniatura e
   cores) e a imagem 16:9. Temas → Importar temas (USB) copia e valida pacotes de uma pasta. O
   seletor rola pelo catálogo; prévia, aplicação e volta ao anterior como nos outros temas; o id
-  do pacote fica salvo e, se o pacote sumir, volta o Grafite. Incluído o pacote **NS HUEHUE**
-  (provisório) montado só com a arte aprovada do pack v1 (fundo grafite + mascote humano). Os
-  outros 15 temas do painel V2 dependem das artes (não incluídas: personagens e marcas de
-  terceiros não são desenhados aqui).
+  do pacote fica salvo e, se o pacote sumir, volta o Grafite. O leitor aceita também o formato
+  dos manifestos de `NXZero-HueHue/design/theme-assets-v1` (`assets.wallpaper`,
+  `assets.thumbnail`, `palette`; base clara/escura pela cor de fundo). Incluído no pacote só o
+  tema **16 · NS HUEHUE** (provisório, da entrega de 19/10). Os outros 15 têm personagens e
+  marcas de terceiros (e o logo do Xbox): ficam fora do appx e do repositório públicos e entram
+  pelo Importar temas (USB), a partir da pasta da entrega.
 - **Firmware** (issue #5): Arquivos e USB → Importar firmware copia e valida numa pasta
   temporária, mostra a versão lida do arquivo SystemVersion (0100000000000809) e pede
   confirmação (instalar, atualizar, reinstalar ou versão mais antiga) antes de trocar; checa o
