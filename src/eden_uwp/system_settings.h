@@ -33,9 +33,10 @@ struct SystemSettings {
     bool show_performance_stats{}; ///< Persistent global HUD preference, off on first install.
     bool show_adult_mods{};                           ///< The mods store lists mods rated for adults.
     bool pulse_sessions{true}; ///< Back to home keeps the game where it is (pulse_sessions.h).
-    /// NS HUEHUE: the menus' layout. 0: NS HUEHUE (the design pack); 1: NS HUEHUE - Switch (a
-    /// console-style home: a row of large game tiles over a row of round buttons).
-    std::uint8_t menu_layout{};
+    /// NS HUEHUE theme (theme.h): 0 HueHue Grafite (the default), 1 Switch Escuro, 2 Switch Claro;
+    /// and the Switch home's ground, 0 solid, 1 Aurora. Kept under stable ids (theme.h ThemeKey).
+    std::uint8_t theme{};
+    std::uint8_t wallpaper{};
     Upscaling upscaling{Upscaling::Bilinear};         ///< Set from the in-game menu.
 
     bool operator==(const SystemSettings&) const = default;

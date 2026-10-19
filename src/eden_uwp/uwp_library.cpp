@@ -3,6 +3,7 @@
 #include "eden_uwp/uwp_library.h"
 #include "eden_uwp/stick_navigation.h"
 #include "eden_uwp/save_backup.h"
+#include "eden_uwp/theme.h"
 #include "eden_uwp/controller_catalog.h"
 #include "eden_uwp/text_entry_input.h"
 #include "eden_uwp/uwp_library_canvas.h"
@@ -202,12 +203,19 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     unsigned home_row = 0;
     // NS HUEHUE - Switch layout (Sistema > Layout do menu): the home is a row of game tiles
     // (recent first, then the rest, up to 12, and Todos os jogos) over a row of round buttons.
-    constexpr unsigned SwitchButtons = 8;
+    constexpr unsigned SwitchButtons = 6;
     constexpr size_t SwitchTiles = 12;
     unsigned sw_row = 0;     // 0 the tiles, 1 the buttons
     size_t sw_tile = 0;
     unsigned sw_button = 0;
     std::vector<size_t> sw_tiles;
+    // Sistema > Temas: the candidate is only drawn (previewed) until Aplicar saves it.
+    bool themes_page = false;
+    bool theme_previewing = false;
+    unsigned themes_card = 0, themes_focus = 0, themes_wallpaper = 0;
+    std::wstring themes_notice;
+    auto themes_notice_until = std::chrono::steady_clock::time_point::max();
+    const auto switch_home = [&] { return IsSwitchTheme(static_cast<ThemeId>(std::min<int>(system_page.settings.theme, 2))); };
     unsigned library_tab = 0;
     int library_focus = -1;
     std::wstring query;
@@ -604,7 +612,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     panel.keyboard.open = true; panel.keyboard.capturing = false; dirty = true;
                 } else actions |= Play;
             } else if (dy < 152 || dy > 996) actions |= Quit;
-        } else if (home && system_page.settings.menu_layout == 0) {
+        } else if (home && !switch_home()) {
             // The home menu: five 500x70 buttons from (96, 444), 88 apart.
             if (dx >= 96 && dx < 596 && dy >= 431 && dy < 431 + NxHomeRows * 91.0f) {
                 home_row = std::min(NxHomeRows - 1, static_cast<unsigned>((dy - 431) / 91));
@@ -766,6 +774,14 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             system_notice_until = now + std::chrono::seconds{3};
             break;
         }
+        case SystemPageEffect::OpenThemes:
+            themes_page = true;
+            theme_previewing = false;
+            themes_card = std::min<unsigned>(system_page.settings.theme, 2);
+            themes_wallpaper = system_page.settings.wallpaper ? 1 : 0;
+            themes_focus = 0;
+            themes_notice.clear();
+            break;
         case SystemPageEffect::None:
         case SystemPageEffect::EditName:
             break;
@@ -1186,6 +1202,56 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 dirty = true;
             }
         }
+        if (!themes_notice.empty() && now >= themes_notice_until) {
+            themes_notice.clear();
+            themes_notice_until = std::chrono::steady_clock::time_point::max();
+            dirty = true;
+        }
+        if (themes_page && actions) {
+            // Temas: Left/Right pick the candidate, Down reaches Previa / Aplicar tema / the ground.
+            // Focusing or previewing saves nothing; Aplicar keeps the previous theme on failure.
+            const auto apply = [&] {
+                const auto before = system_page.settings;
+                system_page.settings.theme = static_cast<std::uint8_t>(themes_card);
+                system_page.settings.wallpaper = static_cast<std::uint8_t>(themes_wallpaper);
+                if (SaveSystemSettings(system_page.settings)) {
+                    themes_page = theme_previewing = false;
+                    system_page.open = false;
+                    configuration.open = false;
+                    configuration.files = false;
+                    home = true;
+                    sw_row = 0;
+                    library_say(I18n::Format(T::NsThemeApplied, {Tr(ThemeName(static_cast<ThemeId>(themes_card)))}),
+                                now + std::chrono::seconds{3});
+                } else {
+                    system_page.settings = before;
+                    theme_previewing = false;
+                    themes_notice = Tr(T::NsThemeFailed);
+                    themes_notice_until = now + std::chrono::seconds{6};
+                }
+            };
+            if (theme_previewing) {
+                if (actions & Play) apply();
+                else if (actions & Quit) theme_previewing = false;
+            } else if (actions & Quit) {
+                themes_page = false;
+            } else if (themes_focus == 0) {
+                if (actions & Left) themes_card = (themes_card + ThemeCount - 1) % ThemeCount;
+                if (actions & Right) themes_card = (themes_card + 1) % ThemeCount;
+                if (actions & (Down | Play)) themes_focus = 1;
+            } else {
+                if ((actions & Left) && themes_focus > 1) --themes_focus;
+                if ((actions & Right) && themes_focus < 3) ++themes_focus;
+                if (actions & Up) themes_focus = 0;
+                if (actions & Play) {
+                    if (themes_focus == 1) theme_previewing = true;
+                    else if (themes_focus == 2) apply();
+                    else themes_wallpaper = themes_wallpaper ? 0 : 1;
+                }
+            }
+            actions = 0;
+            dirty = true;
+        }
         if (system_page.open && configuration.open && !settings) {
             // The name editor takes its input in the handlers above; the page waits behind it.
             if (!system_page.name_editor && actions) {
@@ -1213,7 +1279,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             go_section(1 + ((actions & NextTab) ? (section == 0 ? 0 : (at + 1) % 3) : (at + 2) % 3));
             actions = 0;
         }
-        if (home && system_page.settings.menu_layout == 1 && actions && !game_options.open && !settings &&
+        if (home && switch_home() && !themes_page && actions && !game_options.open && !settings &&
             !configuration.open && !panel.keyboard.open && !picker && !validation.valid() && !missing_content &&
             !configuration.busy && !search_editor) {
             // NS HUEHUE - Switch: Left/Right along a row, Up/Down between the tiles and the buttons.
@@ -1264,20 +1330,22 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 if (pressed & Up) sw_row = 0;
                 if (pressed & Play) {
                     switch (sw_button) {
-                    case 0: go_section(1); library_tab = 0; break;            // Todos os jogos
-                    case 1: go_section(1); library_tab = 1; break;            // Favoritos
-                    case 2: go_section(1); library_tab = 2; break;            // Recentes
-                    case 3: open_search(); break;                             // Buscar
-                    case 4:                                                   // Saves (USB)
+                    case 0: go_section(1); library_tab = 0; break;            // Biblioteca
+                    case 1:                                                   // Arquivos e USB
+                        go_section(2);
+                        configuration.files = true;
+                        configuration.selected = 0;
+                        break;
+                    case 2:                                                   // Saves (USB)
                         go_section(2);
                         configuration.selected = HomeSaves;
                         saves_page = true;
                         saves_row = saves_folder ? 2 : 0;
                         saves_confirm = 0;
                         break;
-                    case 5: go_section(3); break;                             // Controles
-                    case 6: go_section(2); break;                             // Configuracoes
-                    default: return std::nullopt;                             // Sair
+                    case 3: go_section(3); break;                             // Controles
+                    case 4: go_section(2); break;                             // Configuracoes
+                    default: open_search(); break;                            // Buscar
                     }
                     metadata_dirty = true;
                 }
@@ -2139,7 +2207,11 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 tuning_page ? &tuning : nullptr, tuning_row,
                 game_options.game < scan.entries.size() &&
                     std::find(favorites.begin(), favorites.end(), scan.entries[game_options.game].launch_path) != favorites.end()};
-            if (home && system_page.settings.menu_layout == 1 && !loading) rebuild_tiles();
+            if ((home || theme_previewing) && !loading) rebuild_tiles();
+            const ThemesView themes_view{themes_page, theme_previewing, themes_card, themes_focus,
+                                         std::min<unsigned>(system_page.settings.theme, 2), themes_wallpaper, themes_notice};
+            const unsigned frame_theme = theme_previewing ? themes_card : std::min<unsigned>(system_page.settings.theme, 2);
+            const unsigned frame_wallpaper = themes_page ? themes_wallpaper : system_page.settings.wallpaper;
             rebuild_shown();
             const SavesView saves_view{saves_page, saves_row, saves_folder, saves.folder, saves.automatic,
                                        saves.last_time, saves.last_games, saves_future.valid(),
@@ -2150,7 +2222,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                           false, library_tab, library_focus, &shown, &favorites, query,
                           search_editor ? &*search_editor : nullptr, false, &translated, translations_ready,
                           &online, online_page, online_row, static_cast<unsigned>(edit_target), &saves_view,
-                          system_page.settings.menu_layout, &sw_tiles, sw_row, sw_tile, sw_button});
+                          frame_theme, frame_wallpaper, themes_page ? &themes_view : nullptr, &sw_tiles, sw_row,
+                          sw_tile, sw_button});
             dirty = false;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds{16});

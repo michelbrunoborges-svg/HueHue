@@ -59,6 +59,16 @@ struct SavesView {
     std::uint32_t done{}, total{};
     std::wstring_view notice;
 };
+/// NS HUEHUE Configuracoes > Sistema > Temas (theme.h): the cards, the buttons and the preview.
+struct ThemesView {
+    bool open{};
+    bool previewing{};     ///< The candidate's home is on screen; nothing is saved yet.
+    unsigned card{};       ///< The candidate (ThemeId).
+    unsigned focus{};      ///< 0 the cards, 1 Previa, 2 Aplicar tema, 3 the home's ground.
+    unsigned current{};    ///< The theme applied (ThemeId).
+    unsigned wallpaper{};  ///< The candidate ground (0 solid, 1 Aurora).
+    std::wstring_view notice;
+};
 /// Everything one frame of the library shows.
 struct LibraryView {
     const LibraryScan& scan;
@@ -93,7 +103,9 @@ struct LibraryView {
     unsigned edit_target{};                ///< 0: the keyboard types the search; 1-3: server, port, password.
     const SavesView* saves{};              ///< NS HUEHUE Configuracoes > Saves (USB).
     // NS HUEHUE - Switch layout (Sistema > Layout do menu).
-    unsigned menu_layout{};                ///< 0 the pack's, 1 Switch.
+    unsigned theme{};                      ///< ThemeId of this frame (the candidate while previewing).
+    unsigned wallpaper{};                  ///< The Switch home's ground (0 solid, 1 Aurora).
+    const ThemesView* themes{};            ///< Sistema > Temas, while open.
     const std::vector<std::size_t>* home_tiles{}; ///< Its game tiles (entries), then Todos os jogos.
     unsigned home_tile_row{};              ///< 0 the tiles, 1 the buttons.
     std::size_t home_tile{};

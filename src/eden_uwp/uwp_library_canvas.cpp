@@ -3,6 +3,7 @@
 #include "eden_uwp/uwp_library_canvas.h"
 #include "eden_uwp/pro_controller_geometry.h"
 #include "eden_uwp/save_backup.h"
+#include "eden_uwp/theme.h"
 
 #include <algorithm>
 #include <array>
@@ -131,7 +132,15 @@ public:
         if (const auto active = SelectController(panel.devices, options.controller_id))
             swap_prompt_faces = SwapControllerFaceButtons(panel.devices[*active], options.swap_face_buttons);
         player_name = view.system.settings.user_name;
-        switch_layout = view.menu_layout == 1;
+        // The theme of this frame (the candidate while Temas previews it); the graffiti colors
+        // come back when the frame ends, for the surfaces that do not take themes.
+        theme = static_cast<ThemeId>(std::min<unsigned>(view.theme, 2));
+        wallpaper = view.wallpaper ? WallpaperId::Aurora : WallpaperId::Solid;
+        switch_layout = IsSwitchTheme(theme);
+        light_theme = theme == ThemeId::SwitchLight;
+        pad_connected = !view.panel.devices.empty() || view.panel.xbox;
+        ApplyThemePalette(theme);
+        struct RestorePalette { ~RestorePalette() { ApplyThemePalette(ThemeId::Graffiti); } } restore_palette;
         target->BeginDraw();
         target->Clear(D2D1::ColorF(Palette::Backdrop));
         // A page that fails to draw skips its frame instead of closing the app (the library's
@@ -152,7 +161,9 @@ public:
         const auto& panel = view.panel;
         const auto& configuration = view.configuration;
         // The NS HUEHUE sections; the pages that keep Eden's own layout draw over the pack's ground.
-        if (view.search && view.edit_target) DrawNsField(view, *view.search);
+        if (view.themes && view.themes->previewing) { if (switch_layout) DrawSwitchHome(view); else DrawNsHome(view); }
+        else if (view.themes && view.themes->open) DrawThemes(view);
+        else if (view.search && view.edit_target) DrawNsField(view, *view.search);
         else if (view.controller_panel) DrawNsControls(view);
         else if (configuration.open && view.system.open) DrawSystemPage(view.system);
         else if (configuration.open) DrawNsSettings(view);
@@ -161,9 +172,10 @@ public:
         else if (view.search) DrawNsSearch(view, *view.search);
         else DrawNsLibrary(view);
         if (panel.keyboard.open) DrawKeyboard(panel.keyboard);
-        if (configuration.open && view.system.open && view.system.name_editor) DrawNameEditor(view.system);
+        if (configuration.open && view.system.open && view.system.name_editor && !view.themes) DrawNameEditor(view.system);
         if (view.game_options.game || view.game_options.content) DrawGameOptions(view.game_options);
         if (view.missing_content) Content::DrawMissingContent(*this);
+        if (view.themes && view.themes->previewing) DrawThemePreviewBanner(view);
     }
     void InvalidateCovers() { covers.clear(); pictures.clear(); }
 private:
@@ -199,6 +211,7 @@ private:
         return out;
     }
     ID2D1Bitmap1* NsIcon(std::wstring_view name, bool dark = false) {
+        if (light_theme) dark = !dark; // white glyphs would vanish on the light ground
         const std::wstring key = L"ns/icon-" + std::wstring{name} + (dark ? L"-dark.png" : L".png");
         auto found = ns_icons.find(key);
         if (found == ns_icons.end()) found = ns_icons.emplace(key, LoadAssetBitmap(key)).first;
@@ -233,8 +246,13 @@ private:
     }
     /// The pack's focus: a 3 px outline 5 px out, with a faint halo.
     void NsFocus(float x, float y, float w, float h, float radius) {
-        NsStroke(x - 10, y - 10, w + 20, h + 20, radius + 10, 10, Palette::Accent, 0.12f);
-        NsStroke(x - 6.5f, y - 6.5f, w + 13, h + 13, radius + 6.5f, 3, Palette::Accent);
+        if (switch_layout) {
+            // Switch: one cyan outline 6 px out (theme-tokens.json focus).
+            NsStroke(x - 7, y - 7, w + 14, h + 14, radius + 4, 4, Palette::Focus);
+            return;
+        }
+        NsStroke(x - 10, y - 10, w + 20, h + 20, radius + 10, 10, Palette::Focus, 0.12f);
+        NsStroke(x - 6.5f, y - 6.5f, w + 13, h + 13, radius + 6.5f, 3, Palette::Focus);
     }
     /// A left-to-right fade of `color` from `from` to `to` alpha, between `start` and `end` (0..1).
     void NsFade(D2D1_RECT_F rect, unsigned color, float from, float to, float start, float end) {
@@ -256,9 +274,28 @@ private:
     void NsBackdrop(bool art) {
         const D2D1_RECT_F full = D2D1::RectF(0, 0, 1920, 1080);
         if (switch_layout) {
-            // NS HUEHUE - Switch: the console's plain dark ground, no art.
-            Round(0, 0, 1920, 1080, 0, Sw::Ground);
-            NsFade(D2D1::RectF(0, 0, 1920, 1080), 0x000000, 0.0f, 0.18f, 0.0f, 1.0f);
+            // Switch: the theme's solid ground; the home may show the Aurora panorama under a veil
+            // of the ground color (the art keeps the text readable, and its absence leaves the
+            // solid ground).
+            Round(0, 0, 1920, 1080, 0, Palette::Backdrop);
+            if (art && wallpaper == WallpaperId::Aurora) {
+                if (!sw_aurora) sw_aurora = LoadAssetBitmap(L"sw/aurora-wallpaper.png");
+                if (sw_aurora) {
+                    NsImage(sw_aurora.Get(), D2D1::RectF(0, 150, 1920, 1080), true);
+                    const D2D1_GRADIENT_STOP stops[] = {{0.0f, D2D1::ColorF(Palette::Backdrop, 1.0f)},
+                                                        {0.12f, D2D1::ColorF(Palette::Backdrop, 0.0f)},
+                                                        {0.55f, D2D1::ColorF(Palette::Backdrop, 0.0f)},
+                                                        {0.78f, D2D1::ColorF(Palette::Backdrop, 0.92f)}};
+                    auto* const render = static_cast<ID2D1RenderTarget*>(target.Get());
+                    ComPtr<ID2D1GradientStopCollection> collection;
+                    ComPtr<ID2D1LinearGradientBrush> veil;
+                    if (SUCCEEDED(render->CreateGradientStopCollection(stops, 4, &collection)) &&
+                        SUCCEEDED(render->CreateLinearGradientBrush(
+                            D2D1::LinearGradientBrushProperties(D2D1::Point2F(0, 150), D2D1::Point2F(0, 1080)),
+                            collection.Get(), &veil)))
+                        target->FillRectangle(D2D1::RectF(0, 150, 1920, 1080), veil.Get());
+                }
+            }
             return;
         }
         Round(0, 0, 1920, 1080, 0, Palette::Backdrop);
@@ -278,6 +315,7 @@ private:
         else Text(L"NS HUEHUE", 96, 48, 40, Palette::Magenta, 250, 56, true);
     }
     void NsHeader(int active) {
+        if (switch_layout) { SwHeader(); return; }
         NsBrand();
         // Sections 1..3: Meus jogos, Configuracoes, Controles.
         static constexpr std::array<T, 3> nav{T::NsNavGames, T::NsNavSettings, T::NsNavControls};
@@ -304,6 +342,7 @@ private:
     };
     /// The rule and the button glyphs at the bottom: only the shortcuts this screen has.
     void NsFooter(std::initializer_list<NsKey> keys) {
+        if (switch_layout) { SwFooter(keys); return; }
         Round(96, 996, 1728, 1, 0, Ns::Divider);
         float x = 96;
         for (const NsKey& key : keys) {
@@ -337,7 +376,7 @@ private:
     void NsRow(float x, float y, float w, std::wstring_view label, std::wstring_view value,
                bool focus, float size = 27, float height = 78) {
         Round(x, y, w, height, 0, focus ? Palette::RowActive : Palette::Row);
-        Round(x, y + height - 1, w, 1, 0, 0x2a393d);
+        Round(x, y + height - 1, w, 1, 0, switch_layout ? Ns::Line : 0x2a393d);
         if (focus) NsFocus(x, y, w, height, 2);
         Text(label, x + 22, y + (height - size * 1.45f) / 2, size, Palette::Text, w * 0.55f, size * 1.6f);
         if (!value.empty())
@@ -382,107 +421,222 @@ private:
         NsToast(view.notice);
     }
 
-    // NS HUEHUE - Switch: a console-style home. The tiles of the recent games in a row (the
-    // selected one framed, its name over it), Todos os jogos at the end, and a row of round
-    // buttons under them for the sections; the clock and the player at the top.
-    struct Sw {
-        static constexpr unsigned Ground = 0x2d3034;
-        static constexpr unsigned Tile = 0x3b3f44;
-        static constexpr unsigned Button = 0x41464c;
-        static constexpr unsigned Focus = 0x1fd2f2;
-        static constexpr unsigned Text = 0xf2f4f5;
-        static constexpr unsigned Muted = 0xa9b0b6;
-    };
-    void SwFocus(float x, float y, float w, float h, float radius) {
-        NsStroke(x - 9, y - 9, w + 18, h + 18, radius + 9, 6, Sw::Focus);
-        NsStroke(x - 3, y - 3, w + 6, h + 6, radius + 3, 2, 0xffffff, 0.9f);
+    // NS HUEHUE - Switch themes (design/ns-huehue-switch-v1, V1.1): the header with the profile,
+    // the clock and the controller state; the footer with the name on the left and the shortcuts on
+    // the right; the home as a row of game tiles over round shortcuts.
+    ID2D1Bitmap1* SwIcon(std::wstring_view name) {
+        const std::wstring key = L"sw/icon-" + std::wstring{name} + L".png";
+        auto found = ns_icons.find(key);
+        if (found == ns_icons.end()) found = ns_icons.emplace(key, LoadAssetBitmap(key)).first;
+        return found->second.Get();
+    }
+    /// A white glyph of the pack drawn in `color` (the icons are white; the light theme and the
+    /// shortcuts tint them).
+    void SwTint(ID2D1Bitmap1* glyph, D2D1_RECT_F box, unsigned color) {
+        if (!glyph) return;
+        brush->SetColor(D2D1::ColorF(color));
+        const auto mode = target->GetAntialiasMode();
+        target->SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);
+        target->FillOpacityMask(glyph, brush.Get(), &box, nullptr);
+        target->SetAntialiasMode(mode);
+    }
+    void SwHeader() {
+        // The profile (the console keeps one; its name is under Sistema).
+        brush->SetColor(D2D1::ColorF(0xcdebe0));
+        target->FillEllipse(D2D1::Ellipse(D2D1::Point2F(109, 64), 32, 32), brush.Get());
+        SwTint(SwIcon(L"user"), D2D1::RectF(91, 46, 127, 82), 0x24302c);
+        const std::wstring name = player_name.empty() ? std::wstring{Tr(T::NsPlayer)} : player_name;
+        Text(L"NS HUEHUE — Switch  ·  " + name, 172, 44, 26, Palette::TextSecondary, 900, 40);
+        // The clock and the controller, from the right edge.
+        const std::wstring state{Tr(pad_connected ? T::NsSwPadConnected : T::NsSwNoPad)};
+        const float state_width = MeasureText(state, 30, false) + 4;
+        const float state_x = 1844 - state_width;
+        Text(state, state_x, 40, 30, Palette::Text, state_width, 46);
+        SwTint(SwIcon(L"network"), D2D1::RectF(state_x - 56, 46, state_x - 20, 82), Palette::Text);
+        SYSTEMTIME now{};
+        GetLocalTime(&now);
+        wchar_t clock[8]{};
+        swprintf(clock, 8, L"%02u:%02u", static_cast<unsigned>(now.wHour), static_cast<unsigned>(now.wMinute));
+        const float clock_width = MeasureText(clock, 30, false) + 4;
+        Text(clock, state_x - 82 - clock_width, 40, 30, Palette::Text, clock_width, 46);
+    }
+    void SwFooter(std::initializer_list<NsKey> keys) {
+        Round(76, 994, 1768, 1, 0, Ns::Divider);
+        Text(L"NS HUEHUE — Switch", 76, 1018, 26, Palette::TextSecondary, 600, 40);
+        float total = 0;
+        for (const NsKey& key : keys) total += 34 + 10 + MeasureText(Tr(key.label), 26, false) + 36;
+        float x = 1844 - total + 36;
+        for (const NsKey& key : keys) {
+            wchar_t letter = key.letter;
+            if (swap_prompt_faces && (letter == L'A' || letter == L'B')) letter = letter == L'A' ? L'B' : L'A';
+            brush->SetColor(D2D1::ColorF(Palette::Text));
+            target->FillEllipse(D2D1::Ellipse(D2D1::Point2F(x + 17, 1038), 17, 17), brush.Get());
+            Text(std::wstring(1, letter), x, 1022, 21, Palette::Backdrop, 34, 32, true, false, true);
+            const auto label = Tr(key.label);
+            const float width = MeasureText(label, 26, false);
+            Text(label, x + 44, 1019, 26, Palette::Text, width + 6, 40);
+            x += 44 + width + 36;
+        }
     }
     void DrawSwitchHome(const LibraryView& view) {
         DesignSpace space(target.Get());
-        NsBackdrop(false);
-        // The player and the clock.
-        const std::wstring name = player_name.empty() ? std::wstring{Tr(T::NsPlayer)} : player_name;
-        brush->SetColor(D2D1::ColorF(Sw::Button));
-        target->FillEllipse(D2D1::Ellipse(D2D1::Point2F(130, 84), 38, 38), brush.Get());
-        NsImage(NsIcon(L"user"), D2D1::RectF(108, 62, 152, 106), false);
-        Text(name, 184, 62, 26, Sw::Text, 700, 44);
-        {
-            SYSTEMTIME now{};
-            GetLocalTime(&now);
-            wchar_t clock[8]{};
-            swprintf(clock, 8, L"%02u:%02u", static_cast<unsigned>(now.wHour), static_cast<unsigned>(now.wMinute));
-            Text(clock, 1524, 60, 32, Sw::Text, 300, 48, false, false, false, true);
-        }
-        // The tiles: four whole ones on screen, the row following the selection.
+        NsBackdrop(true);
+        SwHeader();
+        // The tiles: 300 px, the focused one 348 px framed in cyan; the row starts at x 115 and
+        // scrolls so the focused tile is always whole.
         static const std::vector<size_t> none;
         const auto& tiles = view.home_tiles ? *view.home_tiles : none;
         const size_t count = tiles.size() + 1;
         const size_t selected = std::min(view.home_tile, count - 1);
-        constexpr float size = 368, gap = 28, top = 262;
-        const size_t first = selected < 3 ? 0 : selected - 3;
         const bool on_tiles = view.home_tile_row == 0;
-        for (size_t i = first; i < std::min(count, first + 5); ++i) {
-            const float x = 96 + static_cast<float>(i - first) * (size + gap);
-            if (x > 1920) break;
-            const D2D1_RECT_F box = D2D1::RectF(x, top, x + size, top + size);
-            NsFill(x, top, size, size, 6, Sw::Tile);
+        constexpr float tile = 300, big = 348, gap = 28, row_top = 335;
+        const size_t first = selected > 4 ? selected - 4 : 0;
+        float x = 123;
+        float focused_x = 123;
+        const bool empty = view.scan.entries.empty() && !view.loading;
+        for (size_t i = first; i < count && x < 1920; ++i) {
+            const bool focus = i == selected;
+            const float size = focus ? big : tile;
+            const float y = focus ? row_top - (big - tile) / 2 : row_top;
+            const D2D1_RECT_F box = D2D1::RectF(x, y, x + size, y + size);
+            NsFill(x, y, size, size, 4, Palette::Panel);
             if (i < tiles.size() && tiles[i] < view.scan.entries.size()) {
                 const LibraryEntry& entry = view.scan.entries[tiles[i]];
-                ID2D1Bitmap1* const art = CoverBitmap(entry);
-                if (art) NsImage(art, box, true);
-                else {
-                    NsImage(ns_fallback.Get(), box, true, 0.5f);
-                    Text(entry.name, x + 20, top + size - 96, 24, Sw::Text, size - 40, 80, true, true);
+                if (ID2D1Bitmap1* const art = CoverBitmap(entry)) {
+                    NsImage(art, box, true);
+                } else {
+                    NsFill(x, y, size, size, 4, light_theme ? 0xdfe3e3 : 0x454545);
+                    Text(entry.name, x + 24, y + size - 104, 28, Palette::Text, size - 48, 84, true, true);
                 }
             } else {
-                // Todos os jogos (or, with none yet, where they come in).
-                const bool empty = view.scan.entries.empty() && !view.loading;
-                NsImage(NsIcon(empty ? L"folder" : L"games"), D2D1::RectF(x + 136, top + 110, x + 232, top + 206), false);
-                Text(Tr(empty ? T::NsSwAddGames : T::NsSwAllGames), x + 20, top + 230, 26, Sw::Text, size - 40, 44,
+                SwTint(SwIcon(empty ? L"folder" : L"games"), D2D1::RectF(x + size / 2 - 48, y + 92, x + size / 2 + 48, y + 188),
+                       Palette::Text);
+                Text(Tr(empty ? T::NsSwAddGames : T::NsSwAllGames), x + 16, y + 214, 28, Palette::Text, size - 32, 44,
                      true, false, true);
             }
-            if (on_tiles && i == selected) SwFocus(x, top, size, size, 6);
-        }
-        // The selected tile's name above the row.
-        if (on_tiles) {
-            const float x = 96 + static_cast<float>(selected - first) * (size + gap);
-            std::wstring title = selected < tiles.size() && tiles[selected] < view.scan.entries.size()
-                                     ? view.scan.entries[tiles[selected]].name
-                                     : std::wstring{Tr(view.scan.entries.empty() && !view.loading ? T::NsSwAddGames : T::NsSwAllGames)};
-            Text(title, std::min(x, 1824.0f - 900), 200, 30, Sw::Focus, 900, 44, true);
-        }
-        // The round buttons.
-        static constexpr std::array<std::pair<T, const wchar_t*>, 8> buttons{{
-            {T::NsSwAllGames, L"games"}, {T::NsSwFavorites, L"star"}, {T::NsSwRecent, L"refresh"},
-            {T::NsSwSearch, L"search"}, {T::NsSwSaves, L"usb"}, {T::NsNavControls, L"pad"},
-            {T::NsNavSettings, L"settings"}, {T::NsSwExit, L"close"}}};
-        constexpr float diameter = 112, spacing = 44, row_y = 716;
-        const float left = (1920 - (8 * diameter + 7 * spacing)) / 2;
-        for (size_t i = 0; i < buttons.size(); ++i) {
-            const float x = left + static_cast<float>(i) * (diameter + spacing);
-            const bool focus = !on_tiles && i == view.home_button;
-            brush->SetColor(D2D1::ColorF(Sw::Button));
-            target->FillEllipse(D2D1::Ellipse(D2D1::Point2F(x + diameter / 2, row_y + diameter / 2), diameter / 2, diameter / 2),
-                                brush.Get());
             if (focus) {
-                brush->SetColor(D2D1::ColorF(Sw::Focus));
-                target->DrawEllipse(D2D1::Ellipse(D2D1::Point2F(x + diameter / 2, row_y + diameter / 2), diameter / 2 + 9,
-                                                  diameter / 2 + 9), brush.Get(), 6);
+                focused_x = x;
+                if (on_tiles) NsStroke(x - 8, y - 8, size + 16, size + 16, 8, 4, Palette::Focus);
+                else NsStroke(x - 1, y - 1, size + 2, size + 2, 4, 2, Ns::Line);
             }
-            NsImage(NsIcon(buttons[i].second), D2D1::RectF(x + 30, row_y + 30, x + 82, row_y + 82), false);
-            if (focus)
-                Text(Tr(buttons[i].first), x + diameter / 2 - 200, row_y + diameter + 22, 26, Sw::Focus, 400, 40, true,
-                     false, true);
+            x += size + gap;
         }
-        // Only the shortcuts this screen has.
+        // The selected tile's name under the row.
+        if (on_tiles) {
+            const std::wstring title = selected < tiles.size() && tiles[selected] < view.scan.entries.size()
+                                           ? view.scan.entries[tiles[selected]].name
+                                           : std::wstring{Tr(empty ? T::NsSwAddGames : T::NsSwAllGames)};
+            Text(title, focused_x, 680, 34, Palette::Accent, 1100, 48);
+        }
+        // Six round shortcuts of 106 px (Biblioteca, Arquivos e USB, Saves, Controles,
+        // Configuracoes, Buscar), the glyphs tinted as in the pack.
+        struct Shortcut { const wchar_t* icon; unsigned tint; T label; };
+        const std::array<Shortcut, 6> shortcuts{{
+            {L"folder", 0xf08c2a, T::NsSwLibrary}, {L"usb", 0xe0461f, T::NsSettingsFiles},
+            {L"games", 0x1fa7dd, T::NsSwSaves}, {L"pad", Palette::Text, T::NsNavControls},
+            {L"settings", Palette::Text, T::NsNavSettings}, {L"search", Palette::Text, T::NsSwSearch}}};
+        constexpr float diameter = 106, center_y = 828;
+        for (size_t i = 0; i < shortcuts.size(); ++i) {
+            const float cx = 495 + static_cast<float>(i) * 176;
+            const bool focus = !on_tiles && i == view.home_button;
+            brush->SetColor(D2D1::ColorF(Palette::Panel));
+            target->FillEllipse(D2D1::Ellipse(D2D1::Point2F(cx, center_y), diameter / 2, diameter / 2), brush.Get());
+            if (focus) {
+                brush->SetColor(D2D1::ColorF(Palette::Focus));
+                target->DrawEllipse(D2D1::Ellipse(D2D1::Point2F(cx, center_y), diameter / 2 + 8, diameter / 2 + 8),
+                                    brush.Get(), 4);
+                Text(Tr(shortcuts[i].label), cx - 220, center_y + diameter / 2 + 18, 26, Palette::Accent, 440, 40, false,
+                     false, true);
+            }
+            SwTint(SwIcon(shortcuts[i].icon), D2D1::RectF(cx - 26, center_y - 26, cx + 26, center_y + 26), shortcuts[i].tint);
+        }
         const bool game = on_tiles && selected < tiles.size();
         if (game)
-            NsFooter({{L'A', Palette::Accent, T::NsSwStart}, {L'X', Palette::Text, T::NsSwOptions},
-                      {L'Y', Palette::Text, T::NsSwSearch}, {L'B', Ns::Error, T::Exit}});
+            NsFooter({{L'Y', Palette::Text, T::NsSwSearch}, {L'X', Palette::Text, T::NsSwOptions},
+                      {L'A', Palette::Accent, T::NsSwStart}});
         else
-            NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'Y', Palette::Text, T::NsSwSearch},
-                      {L'B', Ns::Error, T::Exit}});
+            NsFooter({{L'B', Ns::Error, T::Exit}, {L'A', Palette::Accent, T::NsConfirm}});
         NsToast(view.notice);
+    }
+
+    // 53 · Temas: the three themes as cards, Previa, Aplicar tema and the home's ground.
+    void DrawThemeMiniature(ThemeId id, D2D1_RECT_F box) {
+        if (id == ThemeId::Graffiti) {
+            if (!sw_preview) sw_preview = LoadAssetBitmap(L"sw/huehue-preview.png");
+            if (sw_preview) NsImage(sw_preview.Get(), box, true);
+            else NsFill(box.left, box.top, box.right - box.left, box.bottom - box.top, 0, 0x071012);
+            return;
+        }
+        const bool light = id == ThemeId::SwitchLight;
+        const float w = box.right - box.left, h = box.bottom - box.top;
+        NsFill(box.left, box.top, w, h, 0, light ? 0xf2f2ef : 0x2d2d2d);
+        static constexpr std::array<unsigned, 4> tints{0x2a9d8f, 0xb03a78, 0xb7802a, 0x2f55b5};
+        const float t = w / 6.2f;
+        for (size_t i = 0; i < tints.size(); ++i)
+            NsFill(box.left + w * 0.06f + static_cast<float>(i) * (t + 8), box.top + h * 0.3f, t, t, 2, tints[i]);
+        NsStroke(box.left + w * 0.06f - 3, box.top + h * 0.3f - 3, t + 6, t + 6, 3, 2, 0x27d8e8);
+        for (int i = 0; i < 6; ++i) {
+            brush->SetColor(D2D1::ColorF(light ? 0x9aa0a1 : 0x8a8a8a));
+            target->FillEllipse(D2D1::Ellipse(D2D1::Point2F(box.left + w * 0.24f + i * w * 0.1f, box.top + h * 0.82f), 4, 4),
+                                brush.Get());
+        }
+    }
+    void DrawThemes(const LibraryView& view) {
+        const auto& themes = *view.themes;
+        DesignSpace space(target.Get());
+        NsBackdrop(false);
+        NsHeader(2);
+        NsTitle(Tr(T::NsThemes));
+        Text(Tr(T::NsThemesSubtitle), 96, 266, 24, Palette::TextSecondary, 1600, 36);
+        static constexpr std::array<std::pair<ThemeId, T>, ThemeCount> cards{{
+            {ThemeId::Graffiti, T::NsThemeGraffitiDesc}, {ThemeId::SwitchLight, T::NsThemeSwitchDesc},
+            {ThemeId::SwitchDark, T::NsThemeSwitchDesc}}};
+        constexpr float card_w = 550, card_h = 420, top = 330;
+        for (size_t i = 0; i < cards.size(); ++i) {
+            const float x = 96 + static_cast<float>(i) * (card_w + 39);
+            const auto id = cards[i].first;
+            const bool current = static_cast<unsigned>(id) == themes.current;
+            NsFill(x, top, card_w, card_h, 4, Palette::Panel);
+            NsStroke(x + 0.5f, top + 0.5f, card_w - 1, card_h - 1, 4, current ? 2.0f : 1.0f, current ? Palette::Focus : Ns::Line);
+            DrawThemeMiniature(id, D2D1::RectF(x + 14, top + 14, x + card_w - 14, top + 238));
+            Text(Tr(ThemeName(id)), x + 26, top + 258, 30, Palette::Text, card_w - 52, 44, true);
+            Text(Tr(cards[i].second), x + 26, top + 306, 22, Palette::TextSecondary, card_w - 52, 34);
+            Text(current ? L"✓ " + std::wstring{Tr(T::NsThemeSelected)} : std::wstring{Tr(T::NsThemeAvailable)}, x + 26,
+                 top + 350, 22, current ? Palette::Accent : Palette::TextSecondary, card_w - 52, 34);
+            if (themes.focus == 0 && static_cast<unsigned>(id) == themes.card) NsFocus(x, top, card_w, card_h, 4);
+        }
+        // Previa, Aplicar tema and the Switch home's ground.
+        const float by = 800;
+        const std::array<std::pair<std::wstring, float>, 3> buttons{{
+            {std::wstring{Tr(T::NsThemePreview)}, 296},
+            {std::wstring{Tr(T::NsThemeApply)}, 300},
+            {I18n::Format(T::NsThemeWallpaper, {Tr(themes.wallpaper ? T::NsWallpaperAurora : T::NsWallpaperSolid)}), 420}}};
+        float bx = 96;
+        for (size_t i = 0; i < buttons.size(); ++i) {
+            const bool focus = themes.focus == i + 1;
+            NsFill(bx, by, buttons[i].second, 70, 4, Ns::Secondary);
+            NsStroke(bx + 0.5f, by + 0.5f, buttons[i].second - 1, 69, 4, 1, Ns::Line);
+            Text(buttons[i].first, bx + 24, by + 14, 28, Palette::Text, buttons[i].second - 48, 42, true);
+            if (focus) NsFocus(bx, by, buttons[i].second, 70, 4);
+            bx += buttons[i].second + 24;
+        }
+        Text(I18n::Format(T::NsThemeCurrent, {Tr(ThemeName(static_cast<ThemeId>(std::min(themes.current, 2U))))}), 1224,
+             822, 24, Palette::TextSecondary, 598, 36, false, false, false, true);
+        const T hint = themes.focus == 0 ? T::NsThemeHintCards : themes.focus == 1 ? T::NsThemeHintPreview
+                     : themes.focus == 2 ? T::NsThemeHintApply : T::NsThemeHintWallpaper;
+        Text(Tr(hint), 96, 900, 21, Palette::TextSecondary, 1728, 70, false, true);
+        NsToast(themes.notice);
+        NsFooter({{L'B', Ns::Error, T::Back}, {L'A', Palette::Accent, T::NsConfirm}});
+    }
+    /// 54 · Previa: the candidate theme's home under a band that says it is not applied yet.
+    void DrawThemePreviewBanner(const LibraryView& view) {
+        DesignSpace space(target.Get());
+        const std::wstring text = I18n::Format(T::NsThemePreviewBanner, {Tr(ThemeName(theme))});
+        const float width = MeasureText(text, 26, true) + 80;
+        NsFill((1920 - width) / 2, 132, width, 60, 30, Palette::Panel, 0.96f);
+        NsStroke((1920 - width) / 2, 132, width, 60, 30, 2, Palette::Focus);
+        Text(text, (1920 - width) / 2, 142, 26, Palette::Text, width, 40, true, false, true);
+        (void)view;
     }
 
     bool IsFavorite(const LibraryView& view, const LibraryEntry& entry) const {
@@ -523,7 +677,7 @@ private:
     // 09 · Biblioteca vazia: A opens Arquivos e USB.
     void DrawNsEmpty() {
         NsTitle(Tr(T::NsEmptyTitle));
-        NsImage(ns_mascot.Get(), D2D1::RectF(1190, 150, 1890, 1050), false, 0.6f, 0.5f, 1.0f);
+        if (!switch_layout) NsImage(ns_mascot.Get(), D2D1::RectF(1190, 150, 1890, 1050), false, 0.6f, 0.5f, 1.0f);
         NsImage(NsIcon(L"games"), D2D1::RectF(186, 268, 240, 322), false);
         Text(Tr(T::NsEmptyHeadline), 186, 330, 76, Palette::Text, 950, 100, true);
         Text(Tr(T::NsEmptyBody), 186, 440, 28, Palette::Text, 950, 50);
@@ -722,7 +876,14 @@ private:
         NsBackdrop(false);
         NsHeader(3);
         NsTitle(Tr(T::NsNavControls));
-        NsImage(NsIcon(L"pad"), D2D1::RectF(300, 402, 800, 802), false);
+        if (switch_layout) {
+            // Switch themes: the Xbox controller drawing of the approved pack (V1.1).
+            if (!sw_controller) sw_controller = LoadAssetBitmap(L"sw/xbox-controller.png");
+            if (light_theme) NsFill(230, 400, 640, 410, 12, 0x3a3e40);
+            NsImage(sw_controller ? sw_controller.Get() : NsIcon(L"pad"), D2D1::RectF(250, 402, 850, 802), false);
+        } else {
+            NsImage(NsIcon(L"pad"), D2D1::RectF(300, 402, 800, 802), false);
+        }
         const auto callout = [&](T text, float x, float y, bool right) {
             const auto label = Tr(text);
             const float w = MeasureText(label, 26, false) + 4;
@@ -1264,9 +1425,10 @@ private:
         {
             DesignSpace space(target.Get());
             NsBackdrop(false);
-            NsBrand();
+            if (switch_layout) SwHeader();
+            else NsBrand();
         }
-        Round(L::PanelX, L::PanelY, L::PanelWidth, L::PanelHeight, 24, 0x101b1e);
+        Round(L::PanelX, L::PanelY, L::PanelWidth, L::PanelHeight, 24, Palette::Panel);
         PageHeader(L::RowX, 99, ConfigurationIcon::Language, Tr(T::SystemTitle), Tr(T::SystemSubtitle));
         static constexpr std::array<ConfigurationIcon, SystemPage::RowCount> icons{
             ConfigurationIcon::User, ConfigurationIcon::Settings, ConfigurationIcon::Language, ConfigurationIcon::Controller,
@@ -1277,12 +1439,12 @@ private:
             const float y = L::RowTop + static_cast<float>(i) * L::RowStride;
             const bool active = i == page.selected;
             RowFrame(L::RowX, y, L::RowWidth, L::RowHeight, active, icons[i]);
-            Text(Tr(SystemRowTitle(row)), L::RowX + 72, y + 2, 19, 0xf4f7f5, 420, 28, true);
-            Text(Tr(SystemRowHint(row)), L::RowX + 72, y + 24, 14, 0xbcbcc5, 440, 20);
-            const unsigned accent = active ? 0x8aff00 : 0xa6b5b7;
+            Text(Tr(SystemRowTitle(row)), L::RowX + 72, y + 2, 19, Palette::Text, 420, 28, true);
+            Text(Tr(SystemRowHint(row)), L::RowX + 72, y + 24, 14, Palette::TextSecondary, 440, 20);
+            const unsigned accent = active ? Palette::Accent : Palette::TextSecondary;
             const float right = L::RowX + L::RowWidth - 28;
             const float middle = y + L::RowHeight / 2;
-            const bool choice = row == SystemPage::MenuLayout || row == SystemPage::InterfaceLanguage || row == SystemPage::GameLanguage ||
+            const bool choice = row == SystemPage::InterfaceLanguage || row == SystemPage::GameLanguage ||
                                 row == SystemPage::Region || row == SystemPage::AdultMods || row == SystemPage::PerformanceStats ||
                                 row == SystemPage::PulseSessions;
             if (choice) {
@@ -1294,10 +1456,10 @@ private:
             }
             const auto value = SystemRowValue(page, row);
             if (!value.empty())
-                Text(value, L::RowX + 500, y + (L::RowHeight - 30) / 2, 19, active ? 0xf4f7f5 : 0xdadae0,
+                Text(value, L::RowX + 500, y + (L::RowHeight - 30) / 2, 19, active ? Palette::Text : Palette::Text,
                      right - 22 - (L::RowX + 500), 30, active, false, false, true);
         }
-        if (!page.notice.empty()) Text(page.notice, L::RowX + 4, L::Notice, 16, 0x8aff00, L::RowWidth - 20, 28);
+        if (!page.notice.empty()) Text(page.notice, L::RowX + 4, L::Notice, 16, Palette::Accent, L::RowWidth - 20, 28);
         ControlPrompt(Navigation::Explore, Tr(T::Select), L::RowX + 4, L::Footer, 110);
         ControlPrompt(Navigation::Play, Tr(T::Change), L::RowX + 380, L::Footer, 110);
         ControlPrompt(Navigation::Back, Tr(T::Back), L::RowX + L::RowWidth - 230, L::Footer, 150);
@@ -1610,7 +1772,12 @@ private:
     std::unordered_map<std::wstring, ComPtr<ID2D1Bitmap1>> ns_icons;
     ComPtr<IDWriteTextFormat> graffiti_format;
     std::wstring player_name; ///< The System page's name for the header chip (empty: "Jogador 1").
-    bool switch_layout{};     ///< NS HUEHUE - Switch (Sistema > Layout do menu).
+    bool switch_layout{};     ///< A Switch theme (theme.h): its header, footer, focus and home.
+    bool light_theme{};       ///< Switch Claro.
+    bool pad_connected{};
+    ThemeId theme{ThemeId::Graffiti};
+    WallpaperId wallpaper{WallpaperId::Solid};
+    ComPtr<ID2D1Bitmap1> sw_aurora, sw_controller, sw_preview;
     std::wstring version_string;
     std::array<ComPtr<ID2D1PathGeometry>, 5> controller_paths;
     PromptFamily prompt_family{PromptFamily::Keyboard};

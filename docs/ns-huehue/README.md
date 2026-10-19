@@ -153,8 +153,15 @@ Os prints do CI rodam num Windows sem GPU, com o mesmo código Direct2D.
   ASTC opaco BC1/BC3; fastmem desligado/híbrido/completo; liberar pipelines ociosos; espera dos
   núcleos (adaptativa/bloquear/girar); cache do JIT 64/128/256 MiB. São opções que o motor já
   tinha só pelo `boot.cfg`; a página rola (10 linhas visíveis de 19).
-- **Sistema → Layout do menu:** NS HUEHUE - Padrão ou NS HUEHUE - Switch. O Switch troca o início
-  por uma fila de capas grandes (recentes primeiro, até 12, e Todos os jogos), o nome do jogo
-  selecionado em cima, uma fila de botões redondos (Todos os jogos, Favoritos, Recentes, Buscar,
-  Saves, Controles, Configurações, Sair), relógio e jogador no topo, e o fundo liso nas outras
-  telas. A inicia o jogo, X abre as opções, Y busca.
+- **Sistema → Temas** (design `NXZero-HueHue/design/ns-huehue-switch-v1`, V1.1 aprovado em 19/10):
+  HueHue Grafite (padrão, o de sempre), Switch Escuro e Switch Claro, com prévia que não salva,
+  aplicação que mantém o tema anterior se não der para salvar, e fundo do início sólido ou Aurora.
+  Ids estáveis em LocalSettings (`system_theme_id`: `huehue-graffiti`, `switch-dark`,
+  `switch-light`; `system_wallpaper_id`: `solid`, `aurora`), separados dos saves.
+  `src/eden_uwp/theme.h` põe as cores do tema em `Palette`/`Ns` no começo de cada quadro da
+  biblioteca e devolve as do grafite no fim (o menu do jogo e o teclado do jogo ficam como são).
+  Nos temas Switch: cabeçalho com perfil, relógio e controle; rodapé com o nome à esquerda e os
+  atalhos à direita; foco ciano; ícones tingidos; o início é a fila de capas (300 px, a focada
+  348 px) com o nome embaixo e seis atalhos redondos de 106 px (Biblioteca, Arquivos e USB, Saves,
+  Controles, Configurações, Buscar: o "Sobre" do pack saiu, como pedido antes); Controles usa o
+  desenho do controle Xbox do pack. Assets do pack em `dist/uwp/Assets/sw`.

@@ -13,11 +13,12 @@
 #include "eden_uwp/system_settings.h"
 #include "eden_uwp/text_entry.h"
 #include "eden_uwp/text_entry_panel.h"
+#include "eden_uwp/theme.h"
 
 namespace EdenXbox {
 
 struct SystemPage {
-    enum Row : std::size_t { UserName, MenuLayout, InterfaceLanguage, GameLanguage, Region, AdultMods, PerformanceStats, PulseSessions, ClearCache, RowCount };
+    enum Row : std::size_t { UserName, Theme, InterfaceLanguage, GameLanguage, Region, AdultMods, PerformanceStats, PulseSessions, ClearCache, RowCount };
 
     bool open{};
     std::size_t selected{};
@@ -34,6 +35,7 @@ enum class SystemPageEffect : std::uint8_t {
     EditName,   ///< The name editor opened.
     NameDone,   ///< The editor closed with a new name in settings: save and apply.
     ClearCache, ///< Clear the library cache.
+    OpenThemes, ///< Open the Temas page.
 };
 
 enum class SystemInput : std::uint8_t { Up, Down, Left, Right, Confirm, Back };
@@ -76,9 +78,9 @@ inline SystemPageEffect HandleSystemInput(SystemPage& page, SystemInput input) {
         page.name_editor.emplace(settings.user_name, MaxUserNameLength);
         page.editor_notice.clear();
         return SystemPageEffect::EditName;
-    case Row::MenuLayout:
-        settings.menu_layout = settings.menu_layout ? 0 : 1;
-        return SystemPageEffect::Changed;
+    case Row::Theme:
+        // Temas opens its own page (preview, then apply); focusing a theme never saves it.
+        return input == SystemInput::Confirm ? SystemPageEffect::OpenThemes : SystemPageEffect::None;
     case Row::InterfaceLanguage:
         settings.ui_language = *SystemPageDetail::StepUiLanguage(settings.ui_language, back);
         return SystemPageEffect::Changed;
@@ -127,7 +129,7 @@ inline I18n::Text SystemRowTitle(SystemPage::Row row) {
     using I18n::Text;
     switch (row) {
     case SystemPage::UserName:          return Text::UserName;
-    case SystemPage::MenuLayout:        return Text::NsMenuLayout;
+    case SystemPage::Theme:             return Text::NsThemes;
     case SystemPage::InterfaceLanguage: return Text::InterfaceLanguage;
     case SystemPage::GameLanguage:      return Text::GameLanguage;
     case SystemPage::Region:            return Text::ConsoleRegion;
@@ -142,7 +144,7 @@ inline I18n::Text SystemRowHint(SystemPage::Row row) {
     using I18n::Text;
     switch (row) {
     case SystemPage::UserName:          return Text::UserNameHint;
-    case SystemPage::MenuLayout:        return Text::NsMenuLayoutHint;
+    case SystemPage::Theme:             return Text::NsThemesHint;
     case SystemPage::InterfaceLanguage: return Text::InterfaceLanguageHint;
     case SystemPage::GameLanguage:      return Text::GameLanguageHint;
     case SystemPage::Region:            return Text::ConsoleRegionHint;
@@ -163,8 +165,8 @@ inline std::wstring SystemRowValue(const SystemPage& page, SystemPage::Row row) 
     switch (row) {
     case SystemPage::UserName:
         return settings.user_name.empty() ? std::wstring{DefaultUserName} : settings.user_name;
-    case SystemPage::MenuLayout:
-        return std::wstring{I18n::Tr(settings.menu_layout ? Text::NsLayoutSwitch : Text::NsLayoutStandard)};
+    case SystemPage::Theme:
+        return std::wstring{I18n::Tr(ThemeName(static_cast<ThemeId>(std::min<int>(settings.theme, 2))))};
     case SystemPage::InterfaceLanguage:
         if (const auto* language = I18n::FindUiLanguage(settings.ui_language))
             return std::wstring{language->native_name};

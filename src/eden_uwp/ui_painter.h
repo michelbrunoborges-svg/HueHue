@@ -23,34 +23,38 @@ namespace EdenXbox {
 
 /// The frontend's colors (0xRRGGBB): the NS HUEHUE design pack v1 (design/ns-huehue-v1, approved
 /// by Michel on 17/10/2026). Dark teal-black ground, neon green focus, pink brand.
+/// NS HUEHUE themes (theme.h): these hold the active theme's colors. The library canvas sets them
+/// at the start of each frame and puts the graffiti ones back at its end; never mid-frame.
 namespace Palette {
-inline constexpr unsigned Backdrop = 0x071012;
-inline constexpr unsigned Panel = 0x101b1e;
-inline constexpr unsigned Row = 0x162124;
-inline constexpr unsigned RowActive = 0x1a321e;
-inline constexpr unsigned Accent = 0x8aff00;
-inline constexpr unsigned AccentDeep = 0x173b12;
-inline constexpr unsigned Magenta = 0xff1493;
-inline constexpr unsigned OnAccent = 0x071012;
-inline constexpr unsigned Text = 0xf4f7f5;
-inline constexpr unsigned TextSecondary = 0xa6b5b7;
-inline constexpr unsigned TextHint = 0xbccacb;
-inline constexpr unsigned Warning = 0xffcf32;
-inline constexpr unsigned Track = 0x253033;
+inline unsigned Backdrop = 0x071012;
+inline unsigned Panel = 0x101b1e;
+inline unsigned Row = 0x162124;
+inline unsigned RowActive = 0x1a321e;
+inline unsigned Accent = 0x8aff00;
+/// The focus outline (the accent in the pack; cyan in the Switch themes).
+inline unsigned Focus = 0x8aff00;
+inline unsigned AccentDeep = 0x173b12;
+inline unsigned Magenta = 0xff1493;
+inline unsigned OnAccent = 0x071012;
+inline unsigned Text = 0xf4f7f5;
+inline unsigned TextSecondary = 0xa6b5b7;
+inline unsigned TextHint = 0xbccacb;
+inline unsigned Warning = 0xffcf32;
+inline unsigned Track = 0x253033;
 } // namespace Palette
 
 /// Tokens of the NS HUEHUE design pack that the palette above does not name (styles.css).
 namespace Ns {
-inline constexpr unsigned Line = 0x354347;      // borders
-inline constexpr unsigned Divider = 0x304137;   // header and footer rules
-inline constexpr unsigned Secondary = 0x172225; // secondary buttons and chips
-inline constexpr unsigned MenuButton = 0x081113;
-inline constexpr unsigned NavSelected = 0x163d17;
-inline constexpr unsigned Muted = 0x73858a;
-inline constexpr unsigned Error = 0xff6b74;
-inline constexpr unsigned KeyX = 0x36c6ff;
-inline constexpr unsigned KeyY = 0xffcf32;
-inline constexpr unsigned Toast = 0x1d3822;
+inline unsigned Line = 0x354347;      // borders
+inline unsigned Divider = 0x304137;   // header and footer rules
+inline unsigned Secondary = 0x172225; // secondary buttons and chips
+inline unsigned MenuButton = 0x081113;
+inline unsigned NavSelected = 0x163d17;
+inline unsigned Muted = 0x73858a;
+inline unsigned Error = 0xff6b74;
+inline unsigned KeyX = 0x36c6ff;
+inline unsigned KeyY = 0xffcf32;
+inline unsigned Toast = 0x1d3822;
 } // namespace Ns
 
 /// As cores do logo HUEHUE (verde, azul e amarelo da bandeira).
