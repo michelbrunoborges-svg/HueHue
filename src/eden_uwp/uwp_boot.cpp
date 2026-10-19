@@ -481,6 +481,8 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
               (config.gpu_accuracy == Settings::GpuAccuracy::Low ? "Low" : "High") +
               (config.reactive_flushing ? ", reactive flushing" : ", no reactive flushing"));
     Settings::values.use_speed_limit.SetValue(config.speed_limit);
+    // The in-game menu's volume lasts one game: the next one starts at full volume.
+    Settings::values.volume.SetValue(100);
     if (!config.speed_limit) WriteDiag("step: speed limit off");
     WriteDiag(config.cpu_accuracy == Settings::CpuAccuracy::Accurate
                   ? "step: CPU accuracy Accurate" : "step: CPU accuracy Auto");
