@@ -19,7 +19,8 @@
 
 namespace EdenXbox {
 
-enum class ThemeId : std::uint8_t { Graffiti, SwitchDark, SwitchLight };
+/// In the order Temas shows them (the persisted value is the id string, ThemeKey).
+enum class ThemeId : std::uint8_t { Graffiti, SwitchLight, SwitchDark };
 inline constexpr std::size_t ThemeCount = 3;
 /// The Switch home's ground: the theme's solid color or the Aurora panorama (assets/sw).
 enum class WallpaperId : std::uint8_t { Solid, Aurora };
@@ -33,7 +34,7 @@ inline constexpr std::wstring_view ThemeKey(ThemeId id) {
     return L"huehue-graffiti";
 }
 inline std::optional<ThemeId> ParseTheme(std::wstring_view key) {
-    for (const auto id : {ThemeId::Graffiti, ThemeId::SwitchDark, ThemeId::SwitchLight})
+    for (const auto id : {ThemeId::Graffiti, ThemeId::SwitchLight, ThemeId::SwitchDark})
         if (key == ThemeKey(id)) return id;
     return std::nullopt;
 }
@@ -58,27 +59,30 @@ inline constexpr bool IsSwitchTheme(ThemeId id) { return id != ThemeId::Graffiti
 /// Puts the theme's colors in Palette and Ns (ui_painter.h). The library canvas calls it before a
 /// frame and with Graffiti after it, so the other surfaces (the in-game menu, the game keyboard)
 /// keep the pack's colors.
-inline void ApplyThemePalette(ThemeId id) {
-    struct Colors {
-        unsigned backdrop, panel, row, row_active, accent, focus, accent_deep, magenta, on_accent, text,
-            text_secondary, text_hint, warning, track, line, divider, secondary, menu_button, nav_selected,
-            muted, error, toast;
-    };
-    static constexpr Colors graffiti{0x071012, 0x101b1e, 0x162124, 0x1a321e, 0x8aff00, 0x8aff00, 0x173b12,
-                                     0xff1493, 0x071012, 0xf4f7f5, 0xa6b5b7, 0xbccacb, 0xffcf32, 0x253033,
-                                     0x354347, 0x304137, 0x172225, 0x081113, 0x163d17, 0x73858a, 0xff6b74,
-                                     0x1d3822};
+struct ThemeColors {
+    unsigned backdrop, panel, row, row_active, accent, focus, accent_deep, magenta, on_accent, text,
+        text_secondary, text_hint, warning, track, line, divider, secondary, menu_button, nav_selected,
+        muted, error, toast;
+};
+/// A built-in theme's colors.
+inline const ThemeColors& BaseThemeColors(ThemeId id) {
+    static constexpr ThemeColors graffiti{0x071012, 0x101b1e, 0x162124, 0x1a321e, 0x8aff00, 0x8aff00, 0x173b12,
+                                          0xff1493, 0x071012, 0xf4f7f5, 0xa6b5b7, 0xbccacb, 0xffcf32, 0x253033,
+                                          0x354347, 0x304137, 0x172225, 0x081113, 0x163d17, 0x73858a, 0xff6b74,
+                                          0x1d3822};
     // theme-tokens.json: background, foreground, surface, muted, border, focus, selection.
-    static constexpr Colors dark{0x2d2d2d, 0x383838, 0x383838, 0x17484d, 0x27d8e8, 0x27d8e8, 0x17484d,
-                                 0x27d8e8, 0x0b2a2e, 0xfafafa, 0xc2c2c2, 0xc2c2c2, 0xffcf32, 0x4a4a4a,
-                                 0x626262, 0x4a4a4a, 0x383838, 0x383838, 0x17484d, 0x9a9a9a, 0xff6b74,
-                                 0x17484d};
+    static constexpr ThemeColors dark{0x2d2d2d, 0x383838, 0x383838, 0x17484d, 0x27d8e8, 0x27d8e8, 0x17484d,
+                                      0x27d8e8, 0x0b2a2e, 0xfafafa, 0xc2c2c2, 0xc2c2c2, 0xffcf32, 0x4a4a4a,
+                                      0x626262, 0x4a4a4a, 0x383838, 0x383838, 0x17484d, 0x9a9a9a, 0xff6b74,
+                                      0x17484d};
     // Light: the focus stays cyan; accent text is #006773 so it reads on the light ground.
-    static constexpr Colors light{0xf2f2ef, 0xffffff, 0xffffff, 0xd9f7fa, 0x006773, 0x27d8e8, 0xd9f7fa,
-                                  0x006773, 0xffffff, 0x303334, 0x606667, 0x606667, 0x8a5a00, 0xd8dcdc,
-                                  0xc8cdce, 0xd5d9da, 0xffffff, 0xffffff, 0xd9f7fa, 0x7a8081, 0xc2323d,
-                                  0xd9f7fa};
-    const Colors& c = id == ThemeId::SwitchDark ? dark : id == ThemeId::SwitchLight ? light : graffiti;
+    static constexpr ThemeColors light{0xf2f2ef, 0xffffff, 0xffffff, 0xd9f7fa, 0x006773, 0x27d8e8, 0xd9f7fa,
+                                       0x006773, 0xffffff, 0x303334, 0x606667, 0x606667, 0x8a5a00, 0xd8dcdc,
+                                       0xc8cdce, 0xd5d9da, 0xffffff, 0xffffff, 0xd9f7fa, 0x7a8081, 0xc2323d,
+                                       0xd9f7fa};
+    return id == ThemeId::SwitchDark ? dark : id == ThemeId::SwitchLight ? light : graffiti;
+}
+inline void ApplyThemeColors(const ThemeColors& c) {
     Palette::Backdrop = c.backdrop;
     Palette::Panel = c.panel;
     Palette::Row = c.row;
@@ -102,5 +106,6 @@ inline void ApplyThemePalette(ThemeId id) {
     Ns::Error = c.error;
     Ns::Toast = c.toast;
 }
+inline void ApplyThemePalette(ThemeId id) { ApplyThemeColors(BaseThemeColors(id)); }
 
 } // namespace EdenXbox

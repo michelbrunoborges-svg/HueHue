@@ -139,7 +139,9 @@ public:
         switch_layout = IsSwitchTheme(theme);
         light_theme = theme == ThemeId::SwitchLight;
         pad_connected = !view.panel.devices.empty() || view.panel.xbox;
-        ApplyThemePalette(theme);
+        current_pack = view.pack;
+        if (current_pack) ApplyThemeColors(current_pack->colors);
+        else ApplyThemePalette(theme);
         struct RestorePalette { ~RestorePalette() { ApplyThemePalette(ThemeId::Graffiti); } } restore_palette;
         target->BeginDraw();
         target->Clear(D2D1::ColorF(Palette::Backdrop));
@@ -233,6 +235,12 @@ private:
                            D2D1_INTERPOLATION_MODE_LINEAR);
         if (cover) target->PopAxisAlignedClip();
     }
+    /// The cover of a game without one: the graffiti pack's, or the Switch pack's in its themes.
+    ID2D1Bitmap1* CoverFallback() {
+        if (!switch_layout) return ns_fallback.Get();
+        if (!sw_fallback) sw_fallback = LoadAssetBitmap(L"sw/cover-fallback.png");
+        return sw_fallback ? sw_fallback.Get() : ns_fallback.Get();
+    }
     void NsFill(float x, float y, float w, float h, float radius, unsigned color, float alpha = 1) {
         brush->SetColor(D2D1::ColorF(color, alpha));
         target->FillRoundedRectangle(D2D1::RoundedRect(D2D1::RectF(x, y, x + w, y + h), radius, radius),
@@ -278,10 +286,15 @@ private:
             // of the ground color (the art keeps the text readable, and its absence leaves the
             // solid ground).
             Round(0, 0, 1920, 1080, 0, Palette::Backdrop);
-            if (art && wallpaper == WallpaperId::Aurora) {
+            ID2D1Bitmap1* ground = nullptr;
+            if (art && current_pack) ground = PackImage(current_pack->background);
+            else if (art && wallpaper == WallpaperId::Aurora) {
                 if (!sw_aurora) sw_aurora = LoadAssetBitmap(L"sw/aurora-wallpaper.png");
-                if (sw_aurora) {
-                    NsImage(sw_aurora.Get(), D2D1::RectF(0, 150, 1920, 1080), true);
+                ground = sw_aurora.Get();
+            }
+            if (ground) {
+                {
+                    NsImage(ground, D2D1::RectF(0, 150, 1920, 1080), true);
                     const D2D1_GRADIENT_STOP stops[] = {{0.0f, D2D1::ColorF(Palette::Backdrop, 1.0f)},
                                                         {0.12f, D2D1::ColorF(Palette::Backdrop, 0.0f)},
                                                         {0.55f, D2D1::ColorF(Palette::Backdrop, 0.0f)},
@@ -505,8 +518,9 @@ private:
                 if (ID2D1Bitmap1* const art = CoverBitmap(entry)) {
                     NsImage(art, box, true);
                 } else {
-                    NsFill(x, y, size, size, 4, light_theme ? 0xdfe3e3 : 0x454545);
-                    Text(entry.name, x + 24, y + size - 104, 28, Palette::Text, size - 48, 84, true, true);
+                    NsImage(CoverFallback(), box, true);
+                    NsFill(x, y + size - 120, size, 120, 0, 0x000000, 0.45f);
+                    Text(entry.name, x + 24, y + size - 104, 28, 0xffffff, size - 48, 84, true, true);
                 }
             } else {
                 SwTint(SwIcon(empty ? L"folder" : L"games"), D2D1::RectF(x + size / 2 - 48, y + 92, x + size / 2 + 48, y + 188),
@@ -583,60 +597,84 @@ private:
     }
     void DrawThemes(const LibraryView& view) {
         const auto& themes = *view.themes;
+        static const std::vector<ThemePack> no_packs;
+        const auto& packs = themes.packs ? *themes.packs : no_packs;
         DesignSpace space(target.Get());
         NsBackdrop(false);
         NsHeader(2);
         NsTitle(Tr(T::NsThemes));
-        Text(Tr(T::NsThemesSubtitle), 96, 266, 24, Palette::TextSecondary, 1600, 36);
-        static constexpr std::array<std::pair<ThemeId, T>, ThemeCount> cards{{
-            {ThemeId::Graffiti, T::NsThemeGraffitiDesc}, {ThemeId::SwitchLight, T::NsThemeSwitchDesc},
-            {ThemeId::SwitchDark, T::NsThemeSwitchDesc}}};
+        Text(Tr(T::NsThemesSubtitle), 96, 266, 24, Palette::TextSecondary, 1300, 36);
+        const size_t count = ThemeCount + packs.size();
+        const auto card_name = [&](size_t card) -> std::wstring {
+            if (card < ThemeCount) return std::wstring{Tr(ThemeName(static_cast<ThemeId>(card)))};
+            return packs[card - ThemeCount].name;
+        };
+        Text(std::to_wstring(std::min<size_t>(themes.card, count - 1) + 1) + L" / " + std::to_wstring(count) +
+                 (count > 3 ? L"   ◀ ▶" : L""),
+             1424, 270, 24, Palette::TextSecondary, 400, 36, false, false, false, true);
+        // Three cards on screen; the row scrolls with the candidate.
         constexpr float card_w = 550, card_h = 420, top = 330;
-        for (size_t i = 0; i < cards.size(); ++i) {
-            const float x = 96 + static_cast<float>(i) * (card_w + 39);
-            const auto id = cards[i].first;
-            const bool current = static_cast<unsigned>(id) == themes.current;
+        const size_t selected = std::min<size_t>(themes.card, count - 1);
+        const size_t first = count <= 3 ? 0 : std::min(selected > 0 ? selected - 1 : 0, count - 3);
+        for (size_t slot = 0; slot < 3 && first + slot < count; ++slot) {
+            const size_t card = first + slot;
+            const float x = 96 + static_cast<float>(slot) * (card_w + 39);
+            const bool current = card == themes.current;
             NsFill(x, top, card_w, card_h, 4, Palette::Panel);
             NsStroke(x + 0.5f, top + 0.5f, card_w - 1, card_h - 1, 4, current ? 2.0f : 1.0f, current ? Palette::Focus : Ns::Line);
-            DrawThemeMiniature(id, D2D1::RectF(x + 14, top + 14, x + card_w - 14, top + 238));
-            Text(Tr(ThemeName(id)), x + 26, top + 258, 30, Palette::Text, card_w - 52, 44, true);
-            Text(Tr(cards[i].second), x + 26, top + 306, 22, Palette::TextSecondary, card_w - 52, 34);
+            const D2D1_RECT_F mini = D2D1::RectF(x + 14, top + 14, x + card_w - 14, top + 238);
+            std::wstring description;
+            if (card < ThemeCount) {
+                DrawThemeMiniature(static_cast<ThemeId>(card), mini);
+                description = Tr(card == 0 ? T::NsThemeGraffitiDesc : T::NsThemeSwitchDesc);
+            } else {
+                const auto& pack = packs[card - ThemeCount];
+                if (ID2D1Bitmap1* const thumb = PackImage(pack.thumbnail)) NsImage(thumb, mini, true);
+                else NsFill(mini.left, mini.top, mini.right - mini.left, mini.bottom - mini.top, 0, pack.colors.backdrop);
+                description = I18n::Format(T::NsThemePackDesc, {Tr(pack.base == ThemeId::SwitchLight ? T::NsThemeSwitchLight
+                                                                                                    : T::NsThemeSwitchDark),
+                                                               pack.version});
+            }
+            Text(card_name(card), x + 26, top + 258, 30, Palette::Text, card_w - 52, 44, true);
+            Text(description, x + 26, top + 306, 22, Palette::TextSecondary, card_w - 52, 34);
             Text(current ? L"✓ " + std::wstring{Tr(T::NsThemeSelected)} : std::wstring{Tr(T::NsThemeAvailable)}, x + 26,
                  top + 350, 22, current ? Palette::Accent : Palette::TextSecondary, card_w - 52, 34);
-            if (themes.focus == 0 && static_cast<unsigned>(id) == themes.card) NsFocus(x, top, card_w, card_h, 4);
+            if (themes.focus == 0 && card == selected) NsFocus(x, top, card_w, card_h, 4);
         }
-        // Previa, Aplicar tema and the Switch home's ground.
+        // Previa, Aplicar tema, the Switch home's ground and Importar temas.
         const float by = 800;
-        const std::array<std::pair<std::wstring, float>, 3> buttons{{
-            {std::wstring{Tr(T::NsThemePreview)}, 296},
-            {std::wstring{Tr(T::NsThemeApply)}, 300},
-            {I18n::Format(T::NsThemeWallpaper, {Tr(themes.wallpaper ? T::NsWallpaperAurora : T::NsWallpaperSolid)}), 420}}};
+        const std::array<std::pair<std::wstring, float>, 4> buttons{{
+            {std::wstring{Tr(T::NsThemePreview)}, 250},
+            {std::wstring{Tr(T::NsThemeApply)}, 290},
+            {I18n::Format(T::NsThemeWallpaper, {Tr(themes.wallpaper ? T::NsWallpaperAurora : T::NsWallpaperSolid)}), 330},
+            {std::wstring{Tr(T::NsThemesImport)}, 380}}};
         float bx = 96;
         for (size_t i = 0; i < buttons.size(); ++i) {
             const bool focus = themes.focus == i + 1;
             NsFill(bx, by, buttons[i].second, 70, 4, Ns::Secondary);
             NsStroke(bx + 0.5f, by + 0.5f, buttons[i].second - 1, 69, 4, 1, Ns::Line);
-            Text(buttons[i].first, bx + 24, by + 14, 28, Palette::Text, buttons[i].second - 48, 42, true);
+            Text(buttons[i].first, bx + 22, by + 15, 26, Palette::Text, buttons[i].second - 44, 40, true);
             if (focus) NsFocus(bx, by, buttons[i].second, 70, 4);
-            bx += buttons[i].second + 24;
+            bx += buttons[i].second + 20;
         }
-        Text(I18n::Format(T::NsThemeCurrent, {Tr(ThemeName(static_cast<ThemeId>(std::min(themes.current, 2U))))}), 1224,
-             822, 24, Palette::TextSecondary, 598, 36, false, false, false, true);
+        Text(I18n::Format(T::NsThemeCurrent, {card_name(std::min<size_t>(themes.current, count - 1))}), 96, 880, 22,
+             Palette::TextSecondary, 800, 34);
         const T hint = themes.focus == 0 ? T::NsThemeHintCards : themes.focus == 1 ? T::NsThemeHintPreview
-                     : themes.focus == 2 ? T::NsThemeHintApply : T::NsThemeHintWallpaper;
-        Text(Tr(hint), 96, 900, 21, Palette::TextSecondary, 1728, 70, false, true);
+                     : themes.focus == 2 ? T::NsThemeHintApply : themes.focus == 3 ? T::NsThemeHintWallpaper
+                                                                                 : T::NsThemeHintImport;
+        Text(Tr(hint), 96, 918, 21, Palette::TextSecondary, 1728, 70, false, true);
         NsToast(themes.notice);
         NsFooter({{L'B', Ns::Error, T::Back}, {L'A', Palette::Accent, T::NsConfirm}});
     }
     /// 54 · Previa: the candidate theme's home under a band that says it is not applied yet.
     void DrawThemePreviewBanner(const LibraryView& view) {
         DesignSpace space(target.Get());
-        const std::wstring text = I18n::Format(T::NsThemePreviewBanner, {Tr(ThemeName(theme))});
+        const std::wstring name = view.pack ? view.pack->name : std::wstring{Tr(ThemeName(theme))};
+        const std::wstring text = I18n::Format(T::NsThemePreviewBanner, {name});
         const float width = MeasureText(text, 26, true) + 80;
         NsFill((1920 - width) / 2, 132, width, 60, 30, Palette::Panel, 0.96f);
         NsStroke((1920 - width) / 2, 132, width, 60, 30, 2, Palette::Focus);
         Text(text, (1920 - width) / 2, 142, 26, Palette::Text, width, 40, true, false, true);
-        (void)view;
     }
 
     bool IsFavorite(const LibraryView& view, const LibraryEntry& entry) const {
@@ -655,7 +693,7 @@ private:
         const D2D1_RECT_F cover = D2D1::RectF(cx + 8, cy + 8, cx + CardWidth - 8, cy + 207);
         Round(cover.left, cover.top, cover.right - cover.left, cover.bottom - cover.top, 4, 0x0d1a1d);
         ID2D1Bitmap1* const art = CoverBitmap(entry);
-        NsImage(art ? art : ns_fallback.Get(), cover, true);
+        NsImage(art ? art : CoverFallback(), cover, true);
         if (IsFavorite(view, entry)) {
             NsFill(cover.right - 50, cover.top + 10, 40, 40, 20, Palette::Backdrop, 0.7f);
             NsImage(NsIcon(L"star"), D2D1::RectF(cover.right - 44, cover.top + 16, cover.right - 16, cover.top + 44), false);
@@ -846,10 +884,21 @@ private:
                 else if (i == 2) title = Tr(T::ImportFirmware);
                 else if (i == 3) title = Tr(T::ContentUpdates);
                 else if (i == 4) title = Tr(T::ContentDlc);
-                else title = I18n::Format(T::RemoveFolder, {panel.status.sources[i - 5].name});
-                const std::wstring value = i == 1 ? std::wstring{Tr(panel.status.keys_ready ? T::KeysReady : T::KeysMissing)}
-                                         : i == 2 ? I18n::Format(T::FirmwareFiles, {std::to_wstring(panel.status.firmware_files)})
-                                                  : std::wstring{L"›"};
+                else if (i == FileRowRestoreFirmware) title = Tr(T::NsFirmwareRestore);
+                else if (i == FileRowOnlineFirmware) title = Tr(T::NsFirmwareOnline);
+                else title = I18n::Format(T::RemoveFolder, {panel.status.sources[i - FileRowSources].name});
+                const auto& firmware = panel.status.firmware;
+                const auto& backup = panel.status.firmware_backup;
+                const std::wstring value =
+                    i == 1 ? std::wstring{Tr(panel.status.keys_ready ? T::KeysReady : T::KeysMissing)}
+                    : i == 2 ? (panel.status.firmware_files == 0 ? std::wstring{Tr(T::NsFirmwareNone)}
+                                : firmware.known ? I18n::Format(T::NsFirmwareVersionFiles, {Widen(firmware.display),
+                                                                                           std::to_wstring(panel.status.firmware_files)})
+                                                 : I18n::Format(T::FirmwareFiles, {std::to_wstring(panel.status.firmware_files)}))
+                    : i == FileRowRestoreFirmware ? (!panel.status.has_backup ? std::wstring{Tr(T::NsFirmwareNoBackupShort)}
+                                                     : backup.known ? Widen(backup.display) : std::wstring{L"›"})
+                    : i == FileRowOnlineFirmware ? std::wstring{Tr(T::NsFirmwareOnlineValue)}
+                                                 : std::wstring{L"›"};
                 NsRow(left, 356 + static_cast<float>(i - first) * 78, width, title, value, i == panel.selected);
             }
             Text(Tr(T::FilesSubtitle), left, 770, 21, Palette::TextSecondary, width, 60, false, true);
@@ -877,10 +926,10 @@ private:
         NsHeader(3);
         NsTitle(Tr(T::NsNavControls));
         if (switch_layout) {
-            // Switch themes: the Xbox controller drawing of the approved pack (V1.1).
+            // Switch themes: the Xbox controller drawing of the approved pack (V1.1), inside the
+            // callouts (A/B on its right end at 970).
             if (!sw_controller) sw_controller = LoadAssetBitmap(L"sw/xbox-controller.png");
-            if (light_theme) NsFill(230, 400, 640, 410, 12, 0x3a3e40);
-            NsImage(sw_controller ? sw_controller.Get() : NsIcon(L"pad"), D2D1::RectF(250, 402, 850, 802), false);
+            NsImage(sw_controller ? sw_controller.Get() : NsIcon(L"pad"), D2D1::RectF(300, 430, 800, 770), false);
         } else {
             NsImage(NsIcon(L"pad"), D2D1::RectF(300, 402, 800, 802), false);
         }
@@ -1777,7 +1826,17 @@ private:
     bool pad_connected{};
     ThemeId theme{ThemeId::Graffiti};
     WallpaperId wallpaper{WallpaperId::Solid};
-    ComPtr<ID2D1Bitmap1> sw_aurora, sw_controller, sw_preview;
+    ComPtr<ID2D1Bitmap1> sw_aurora, sw_controller, sw_preview, sw_fallback;
+    const ThemePack* current_pack{};
+    std::unordered_map<std::wstring, ComPtr<ID2D1Bitmap1>> pack_images; ///< Decoded once, by path.
+    ID2D1Bitmap1* PackImage(const std::filesystem::path& path) {
+        auto found = pack_images.find(path.wstring());
+        if (found == pack_images.end()) {
+            if (pack_images.size() > 24) pack_images.clear(); // a few backgrounds and thumbnails at most
+            found = pack_images.emplace(path.wstring(), LoadAssetBitmap(path)).first; // absolute: replaces the root
+        }
+        return found->second.Get();
+    }
     std::wstring version_string;
     std::array<ComPtr<ID2D1PathGeometry>, 5> controller_paths;
     PromptFamily prompt_family{PromptFamily::Keyboard};

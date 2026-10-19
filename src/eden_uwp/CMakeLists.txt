@@ -62,6 +62,9 @@ add_executable(eden-uwp WIN32
     uwp_system_settings.cpp
     uwp_system_settings.h
     save_backup.cpp
+    theme_catalog.cpp
+    theme_catalog.h
+    theme.h
     save_backup.h
     library_cache.cpp
     library_cache.h

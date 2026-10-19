@@ -191,4 +191,33 @@ Shot "11t-configuracoes-claro"
 Key "e"
 Shot "18t-controles-claro"
 Close
+Launch
+# Catalogo: o pacote NS HUEHUE (Assets/themes), previa e aplicado; Arquivos e USB com o firmware.
+Key "{DOWN}"
+Key "{RIGHT}"
+Key "{RIGHT}"
+Key "{RIGHT}"
+Key "{RIGHT}"
+Key "{ENTER}"
+Key "{ENTER}"
+Key "{DOWN}"
+Key "{ENTER}"
+Key "{RIGHT}"
+Key "{RIGHT}"
+Shot "53b-temas-catalogo"
+Key "{DOWN}"
+Key "{ENTER}"
+Shot "54b-previa-ns-huehue"
+Key "{ESC}"
+Key "{RIGHT}"
+Key "{ENTER}"
+Shot "57c-inicio-ns-huehue"
+Key "{DOWN}"
+Key "{RIGHT}"
+Key "{ENTER}"
+Shot "12-arquivos-e-usb"
+for ($i = 0; $i -lt 6; $i++) { Key "{DOWN}" }
+Key "{ENTER}"
+Shot "12b-firmware-online"
+Close
 Get-ChildItem $Out

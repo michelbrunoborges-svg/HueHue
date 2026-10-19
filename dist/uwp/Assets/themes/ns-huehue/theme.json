@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "ns-huehue",
+  "name": "NS HUEHUE",
+  "version": "1.0",
+  "status": "provisorio",
+  "source": "Composição do pacote aprovado design/ns-huehue-v1 (graffiti-background.jpg + mascot.png humano), sem arte nova.",
+  "base": "switch-dark",
+  "background": "background.jpg",
+  "thumbnail": "thumbnail.jpg",
+  "colors": {
+    "background": "#0B0F0C",
+    "foreground": "#F4F7F5",
+    "surface": "#161D19",
+    "muted": "#A6B5B7",
+    "border": "#2F3D34",
+    "focus": "#8AFF00",
+    "selection": "#1F3A17",
+    "accent": "#8AFF00",
+    "warning": "#FFCF32",
+    "error": "#FF6B74"
+  }
+}

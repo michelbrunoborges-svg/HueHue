@@ -166,6 +166,7 @@ inline std::wstring SystemRowValue(const SystemPage& page, SystemPage::Row row) 
     case SystemPage::UserName:
         return settings.user_name.empty() ? std::wstring{DefaultUserName} : settings.user_name;
     case SystemPage::Theme:
+        if (!settings.theme_pack.empty()) return settings.theme_pack; // a catalog pack, by id
         return std::wstring{I18n::Tr(ThemeName(static_cast<ThemeId>(std::min<int>(settings.theme, 2))))};
     case SystemPage::InterfaceLanguage:
         if (const auto* language = I18n::FindUiLanguage(settings.ui_language))

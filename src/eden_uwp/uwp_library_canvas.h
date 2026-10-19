@@ -19,6 +19,7 @@
 #include "eden_uwp/uwp_input.h"
 #include "eden_uwp/uwp_controllers.h"
 #include "eden_uwp/uwp_file_manager.h"
+#include "eden_uwp/theme_catalog.h"
 namespace EdenXbox {
 /// NS HUEHUE search page (1920x1080 design units): where the keyboard's keys sit, so the canvas
 /// and the pointer agree.
@@ -63,11 +64,12 @@ struct SavesView {
 struct ThemesView {
     bool open{};
     bool previewing{};     ///< The candidate's home is on screen; nothing is saved yet.
-    unsigned card{};       ///< The candidate (ThemeId).
-    unsigned focus{};      ///< 0 the cards, 1 Previa, 2 Aplicar tema, 3 the home's ground.
-    unsigned current{};    ///< The theme applied (ThemeId).
+    unsigned card{};       ///< The candidate: a ThemeId below ThemeCount, else packs[card - ThemeCount].
+    unsigned focus{};      ///< 0 the cards, 1 Previa, 2 Aplicar tema, 3 the home's ground, 4 Importar temas.
+    unsigned current{};    ///< The card applied.
     unsigned wallpaper{};  ///< The candidate ground (0 solid, 1 Aurora).
     std::wstring_view notice;
+    const std::vector<ThemePack>* packs{}; ///< The catalog's packs.
 };
 /// Everything one frame of the library shows.
 struct LibraryView {
@@ -110,6 +112,7 @@ struct LibraryView {
     unsigned home_tile_row{};              ///< 0 the tiles, 1 the buttons.
     std::size_t home_tile{};
     unsigned home_button{};
+    const ThemePack* pack{};               ///< The frame's theme is this catalog pack (its colors and art).
 };
 class LibraryCanvas {
 public:

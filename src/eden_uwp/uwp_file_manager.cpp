@@ -7,7 +7,10 @@
 #include <cctype>
 #include <cwctype>
 #include <filesystem>
+#include <cstring>
 #include <fstream>
+#include <mutex>
+#include <utility>
 #include <stdexcept>
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Storage.AccessCache.h>
@@ -18,6 +21,7 @@
 #include "common/scope_exit.h"
 #include "core/crypto/key_manager.h"
 #include "core/file_sys/content_archive.h"
+#include "core/file_sys/romfs.h"
 #include "core/file_sys/vfs/vfs_real.h"
 #include "core/loader/loader.h"
 
@@ -43,8 +47,27 @@ void RequireInternalDestination(const std::filesystem::path& destination) {
     if (!path.starts_with(base + L"\\")) throw std::runtime_error(ImportError(I18n::Text::ImportDestinationInvalid));
 }
 
+std::filesystem::path FirmwarePath() {
+    return Common::FS::GetEdenPath(Common::FS::EdenPath::NANDDir) / "system/Contents/registered";
+}
+/// NS HUEHUE: the firmware the last install replaced, kept beside it for Restaurar.
+std::filesystem::path FirmwareBackupPath() {
+    return FirmwarePath().parent_path() / L"registered.backup";
+}
+/// Makes `previous` the firmware backup (the older backup goes).
+void KeepAsBackup(const std::filesystem::path& previous) {
+    std::error_code error;
+    std::filesystem::remove_all(FirmwareBackupPath(), error);
+    std::filesystem::rename(previous, FirmwareBackupPath(), error);
+    if (error) std::filesystem::remove_all(previous, error);
+}
+
 // Directory publication is confined to the app's internal keys/system-content folders.
 // Keep the previous installation until all source files have been copied and checked.
+// The steps are rename(destination -> .previous), rename(stage -> destination), then the
+// previous one goes (keys) or becomes the backup (firmware); a stop between them is resolved
+// here, at the next start: no destination means the previous one comes back, both mean the new
+// one was complete.
 bool RecoverDirectory(const std::filesystem::path& destination) {
     RequireInternalDestination(destination);
     const auto previous = destination.parent_path() / (destination.filename().wstring() + L".previous");
@@ -53,6 +76,7 @@ bool RecoverDirectory(const std::filesystem::path& destination) {
             std::filesystem::rename(previous, destination);
             return true;
         }
+        if (destination == FirmwarePath()) KeepAsBackup(previous);
         else std::filesystem::remove_all(previous);
     }
     return false;
@@ -70,11 +94,50 @@ void PublishDirectory(StorageFolder stage, const std::filesystem::path& destinat
     }
     // Failed cleanup is retried by ReadFileSetupStatus on the next library startup.
     std::error_code error;
-    if (exists) std::filesystem::remove_all(previous, error);
+    if (exists && destination == FirmwarePath()) KeepAsBackup(previous);
+    else if (exists) std::filesystem::remove_all(previous, error);
 }
-std::filesystem::path FirmwarePath() {
-    return Common::FS::GetEdenPath(Common::FS::EdenPath::NANDDir) / "system/Contents/registered";
+
+/// The version in a SystemVersion data NCA (0100000000000809): the archive's "file" is
+/// FirmwareVersionFormat (major, minor, micro at 0, the display version at 0x68).
+FirmwareVersion ReadVersion(FileSys::NCA& nca) {
+    FirmwareVersion version;
+    const auto romfs = nca.GetRomFS();
+    if (!romfs) return version;
+    const auto extracted = FileSys::ExtractRomFS(romfs);
+    const auto file = extracted ? extracted->GetFile("file") : nullptr;
+    if (!file) return version;
+    const auto data = file->ReadAllBytes();
+    if (data.size() < 0x80) return version;
+    version.known = true;
+    version.major = data[0];
+    version.minor = data[1];
+    version.micro = data[2];
+    const auto* text = reinterpret_cast<const char*>(data.data() + 0x68);
+    version.display.assign(text, strnlen(text, 0x18));
+    if (version.display.empty())
+        version.display = std::to_string(version.major) + "." + std::to_string(version.minor) + "." + std::to_string(version.micro);
+    return version;
 }
+bool IsSystemVersion(FileSys::NCA& nca) {
+    return nca.GetTitleId() == 0x0100000000000809ULL && nca.GetType() == FileSys::NCAContentType::Data;
+}
+/// The version of the firmware in `folder` (unknown when it has none or the keys cannot read it).
+FirmwareVersion FolderFirmwareVersion(const std::filesystem::path& folder) {
+    std::error_code error;
+    FileSys::RealVfsFilesystem vfs;
+    for (std::filesystem::directory_iterator it{folder, error}, end; !error && it != end; it.increment(error)) {
+        if (!it->is_regular_file(error) || it->path().extension() != ".nca") continue;
+        const auto u8path = it->path().u8string();
+        auto raw = vfs.OpenFile(std::string{reinterpret_cast<const char*>(u8path.data()), u8path.size()}, FileSys::OpenMode::Read);
+        if (!raw) continue;
+        FileSys::NCA nca{raw};
+        if (nca.GetStatus() == Loader::ResultStatus::Success && IsSystemVersion(nca)) return ReadVersion(nca);
+    }
+    return {};
+}
+std::mutex staged_mutex;
+std::optional<StagedFirmware> staged_firmware;
 bool ValidProductionKeys(const std::filesystem::path& file) {
     // Match Eden's text format, but reject a missing/zero/duplicated XTS header key
     // before replacing working data. Never log key material.
@@ -110,6 +173,25 @@ FileSetupStatus ReadFileSetupStatus() {
     for (std::filesystem::directory_iterator it{FirmwarePath(), error}, end; !error && it != end; it.increment(error)) {
         if (it->is_regular_file(error) && it->path().extension() == ".nca") ++result.firmware_files;
     }
+    {
+        // Staging folders left by a session that closed before its confirmation.
+        std::scoped_lock lock{staged_mutex};
+        std::vector<std::filesystem::path> stale;
+        for (std::filesystem::directory_iterator it{FirmwarePath().parent_path(), error}, end; !error && it != end;
+             it.increment(error)) {
+            const auto name = it->path().filename().wstring();
+            if (name.starts_with(L"registered.import") && (!staged_firmware || staged_firmware->stage != it->path()))
+                stale.push_back(it->path());
+        }
+        error.clear();
+        for (const auto& folder : stale) {
+            std::error_code remove_error;
+            std::filesystem::remove_all(folder, remove_error);
+        }
+    }
+    if (result.keys_ready && result.firmware_files) result.firmware = FolderFirmwareVersion(FirmwarePath());
+    result.has_backup = std::filesystem::is_directory(FirmwareBackupPath(), error);
+    if (result.keys_ready && result.has_backup) result.firmware_backup = FolderFirmwareVersion(FirmwareBackupPath());
     for (const auto& entry : StorageApplicationPermissions::FutureAccessList().Entries()) {
         const auto token = winrt::to_string(entry.Token);
         if (!token.starts_with("eden-games-")) continue;
@@ -124,7 +206,7 @@ void ForgetGameFolder(std::string_view token) {
 }
 
 std::string ImportSystemFiles(const StorageFolder& source, FileImport kind,
-                             FileImportProgress& progress, std::stop_token stop) {
+                             FileImportProgress& progress, std::stop_token stop, bool stage_firmware) {
     StorageFolder stage{nullptr};
     try {
         const bool keys = kind == FileImport::Keys;
@@ -163,6 +245,16 @@ std::string ImportSystemFiles(const StorageFolder& source, FileImport kind,
             if (files.empty()) throw std::runtime_error(ImportError(I18n::Text::NoFirmwareInFolder));
         }
         progress.total.store(static_cast<unsigned>(files.size()), std::memory_order_relaxed);
+        // The copy needs room for itself next to the installed set (and its backup).
+        std::uint64_t total_bytes = 0;
+        for (const auto& file : files) total_bytes += file.GetBasicPropertiesAsync().get().Size();
+        {
+            std::error_code space_error;
+            const auto space = std::filesystem::space(destination.parent_path(), space_error);
+            if (!space_error && space.available < total_bytes + (64ULL << 20))
+                throw std::runtime_error(ImportError(I18n::Text::NsFirmwareNoSpace));
+        }
+        FirmwareVersion staged_version;
         bool system_version = false, mii_editor = false;
         FileSys::RealVfsFilesystem vfs;
         for (const auto& file : files) {
@@ -179,7 +271,10 @@ std::string ImportSystemFiles(const StorageFolder& source, FileImport kind,
                 if (nca.GetStatus() != Loader::ResultStatus::Success) throw std::runtime_error(ImportError(I18n::Text::FirmwareUnreadable));
                 const auto id = nca.GetTitleId();
                 if ((id >> 16) != (0x0100000000000000ULL >> 16)) throw std::runtime_error(ImportError(I18n::Text::FolderHasGameNca));
-                system_version |= id == 0x0100000000000809ULL && nca.GetType() == FileSys::NCAContentType::Data;
+                if (IsSystemVersion(nca)) {
+                    system_version = true;
+                    staged_version = ReadVersion(nca);
+                }
                 mii_editor |= id == 0x0100000000001009ULL && nca.GetType() == FileSys::NCAContentType::Program;
             }
             progress.completed.fetch_add(1, std::memory_order_relaxed);
@@ -188,6 +283,15 @@ std::string ImportSystemFiles(const StorageFolder& source, FileImport kind,
             throw std::runtime_error(ImportError(I18n::Text::KeysMissingHeaderKey));
         if (!keys && (!system_version || !mii_editor)) throw std::runtime_error(ImportError(I18n::Text::FirmwareIncomplete));
         if (stop.stop_requested()) throw std::runtime_error(ImportError(I18n::Text::ImportCancelledKept));
+        if (!keys && stage_firmware) {
+            // Validated: the player confirms the version before it replaces the installed one.
+            std::scoped_lock lock{staged_mutex};
+            staged_firmware = StagedFirmware{std::filesystem::path{std::wstring{stage.Path()}}, staged_version,
+                                             static_cast<unsigned>(files.size()), total_bytes};
+            stage = nullptr;
+            LOG_INFO(Frontend, "File manager: firmware {} staged ({} files)", staged_version.display, files.size());
+            return std::string{FirmwareStagedMarker};
+        }
         PublishDirectory(stage, destination);
         stage = nullptr;
         if (keys) Core::Crypto::KeyManager::Instance().ReloadKeys();
@@ -200,6 +304,69 @@ std::string ImportSystemFiles(const StorageFolder& source, FileImport kind,
     } catch (const std::exception& e) {
         if (stage) { try { stage.DeleteAsync().get(); } catch (...) {} }
         return e.what();
+    }
+}
+
+std::optional<StagedFirmware> TakeStagedFirmware() {
+    std::scoped_lock lock{staged_mutex};
+    return std::exchange(staged_firmware, std::nullopt);
+}
+
+void DiscardStagedFirmware(const StagedFirmware& staged) {
+    std::error_code error;
+    if (staged.stage.filename().wstring().starts_with(L"registered.import")) std::filesystem::remove_all(staged.stage, error);
+}
+
+std::string CommitStagedFirmware(const StagedFirmware& staged) {
+    try {
+        if (!staged.stage.filename().wstring().starts_with(L"registered.import") || !std::filesystem::is_directory(staged.stage))
+            return I18n::ToUtf8(I18n::Tr(I18n::Text::ImportFailed));
+        RequireInternalDestination(staged.stage);
+        auto stage = StorageFolder::GetFolderFromPathAsync(BrokerPath(staged.stage)).get();
+        PublishDirectory(stage, FirmwarePath());
+        // Checked after the swap: the installed set must name the version that was confirmed.
+        const auto installed = FolderFirmwareVersion(FirmwarePath());
+        if (staged.version.known && (!installed.known || installed.Packed() != staged.version.Packed())) {
+            LOG_ERROR(Frontend, "File manager: installed firmware reads {}, expected {}; restoring the previous one",
+                      installed.display, staged.version.display);
+            RestoreFirmwareBackup();
+            return I18n::ToUtf8(I18n::Tr(I18n::Text::NsFirmwareVerifyFailed));
+        }
+        LOG_INFO(Frontend, "File manager: firmware {} installed", staged.version.display);
+        return {};
+    } catch (const winrt::hresult_error& e) {
+        LOG_ERROR(Frontend, "File manager: firmware install failed HRESULT={:08X}", static_cast<unsigned>(e.code().value));
+    } catch (const std::exception& e) {
+        LOG_ERROR(Frontend, "File manager: firmware install failed: {}", e.what());
+    }
+    DiscardStagedFirmware(staged);
+    return I18n::ToUtf8(I18n::Tr(I18n::Text::ImportFailed));
+}
+
+std::string RestoreFirmwareBackup() {
+    try {
+        const auto active = FirmwarePath();
+        const auto backup = FirmwareBackupPath();
+        RequireInternalDestination(backup);
+        RecoverDirectory(active);
+        if (!std::filesystem::is_directory(backup)) return I18n::ToUtf8(I18n::Tr(I18n::Text::NsFirmwareNoBackup));
+        // The backup takes the place through the same steps as an install (and the same
+        // recovery): the active set becomes .previous, then the backup becomes active.
+        const auto previous = active.parent_path() / L"registered.previous";
+        const bool exists = std::filesystem::exists(active);
+        if (exists) std::filesystem::rename(active, previous);
+        std::error_code error;
+        std::filesystem::rename(backup, active, error);
+        if (error) {
+            if (exists) std::filesystem::rename(previous, active);
+            return I18n::ToUtf8(I18n::Tr(I18n::Text::ImportFailed));
+        }
+        if (exists) std::filesystem::rename(previous, backup, error);
+        LOG_INFO(Frontend, "File manager: firmware backup restored");
+        return {};
+    } catch (const std::exception& e) {
+        LOG_ERROR(Frontend, "File manager: restoring the firmware backup failed: {}", e.what());
+        return I18n::ToUtf8(I18n::Tr(I18n::Text::ImportFailed));
     }
 }
 

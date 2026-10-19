@@ -4,6 +4,7 @@
 #include "eden_uwp/stick_navigation.h"
 #include "eden_uwp/save_backup.h"
 #include "eden_uwp/theme.h"
+#include "eden_uwp/theme_catalog.h"
 #include "eden_uwp/controller_catalog.h"
 #include "eden_uwp/text_entry_input.h"
 #include "eden_uwp/uwp_library_canvas.h"
@@ -150,6 +151,11 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     std::jthread setup_worker;
     FileImportProgress import_progress;
     std::future<std::string> import_future;
+    // NS HUEHUE firmware (Arquivos e USB): a validated copy waiting for the player's A, and what the
+    // worker is doing (0 import, 1 install the staged copy, 2 restore the backup).
+    std::optional<StagedFirmware> firmware_staged;
+    unsigned firmware_job = 0;
+    bool restore_confirm = false;
     std::jthread import_worker;
     std::chrono::steady_clock::time_point auto_pick_at{};
     unsigned setting_row = 0;
@@ -215,7 +221,29 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     unsigned themes_card = 0, themes_focus = 0, themes_wallpaper = 0;
     std::wstring themes_notice;
     auto themes_notice_until = std::chrono::steady_clock::time_point::max();
-    const auto switch_home = [&] { return IsSwitchTheme(static_cast<ThemeId>(std::min<int>(system_page.settings.theme, 2))); };
+    // The catalog (theme_catalog.h): the built-in three, then the packs. Card k of Temas is the
+    // built-in ThemeId k for k < ThemeCount, else theme_packs[k - ThemeCount].
+    std::vector<ThemePack> theme_packs = LoadThemePacks();
+    // The pack in use (its index), when the saved theme is one that still exists.
+    const auto active_pack = [&]() -> std::optional<size_t> {
+        const auto& id = system_page.settings.theme_pack;
+        if (id.empty()) return std::nullopt;
+        for (size_t i = 0; i < theme_packs.size(); ++i)
+            if (theme_packs[i].id == id) return i;
+        return std::nullopt;
+    };
+    const auto active_theme = [&]() -> ThemeId {
+        if (const auto pack = active_pack()) return theme_packs[*pack].base;
+        if (!system_page.settings.theme_pack.empty()) return ThemeId::Graffiti; // the pack is gone
+        return static_cast<ThemeId>(std::min<int>(system_page.settings.theme, 2));
+    };
+    const auto active_card = [&]() -> unsigned {
+        if (const auto pack = active_pack()) return static_cast<unsigned>(ThemeCount + *pack);
+        return static_cast<unsigned>(active_theme());
+    };
+    const auto switch_home = [&] { return IsSwitchTheme(active_theme()); };
+    std::future<ThemeImportResult> themes_import;
+    std::jthread themes_import_worker;
     unsigned library_tab = 0;
     int library_focus = -1;
     std::wstring query;
@@ -777,7 +805,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         case SystemPageEffect::OpenThemes:
             themes_page = true;
             theme_previewing = false;
-            themes_card = std::min<unsigned>(system_page.settings.theme, 2);
+            themes_card = active_card();
             themes_wallpaper = system_page.settings.wallpaper ? 1 : 0;
             themes_focus = 0;
             themes_notice.clear();
@@ -1063,6 +1091,17 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     else if (folder && picker_kind == 3 && content_session) content_session->AuthorizeFolder(folder);
                     else if (folder && picker_kind == 4 && mod_session) mod_session->AddFolder(folder);
                     else if (folder && picker_kind == 5) start_saves(SavesJob::Pick, folder);
+                    else if (folder && picker_kind == 6 && !themes_import.valid()) {
+                        std::packaged_task<ThemeImportResult(std::stop_token)> task{[folder](std::stop_token stop) {
+                            winrt::init_apartment(winrt::apartment_type::multi_threaded);
+                            struct Uninitialize { ~Uninitialize() { winrt::uninit_apartment(); } } guard;
+                            return ImportThemePacks(folder, stop);
+                        }};
+                        themes_import = task.get_future();
+                        themes_import_worker = std::jthread(std::move(task));
+                        themes_notice = Tr(T::NsThemesImporting);
+                        themes_notice_until = std::chrono::steady_clock::time_point::max();
+                    }
                     else if (picker_kind >= 3) {} // A page's folder whose page closed meanwhile.
                     else if (folder) {
                         configuration.busy = true;
@@ -1075,7 +1114,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                                 if (old_metadata.joinable()) old_metadata.join();
                                 winrt::init_apartment(winrt::apartment_type::multi_threaded);
                                 struct Uninitialize { ~Uninitialize() { winrt::uninit_apartment(); } } guard;
-                                return ImportSystemFiles(folder, kind == 1 ? FileImport::Keys : FileImport::Firmware, import_progress, stop);
+                                return ImportSystemFiles(folder, kind == 1 ? FileImport::Keys : FileImport::Firmware, import_progress, stop,
+                                                         kind == 2);
                             }};
                         import_future = task.get_future();
                         import_worker = std::jthread(std::move(task));
@@ -1128,8 +1168,36 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             if (import_future.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
                 try {
                     const auto error = import_future.get();
-                    configuration.notice = error.empty() ? std::wstring{Tr(T::ImportDone)} : Wide(error);
+                    if (error == FirmwareStagedMarker) {
+                        // Copied and validated: say what it is against the installed one; A installs.
+                        firmware_staged = TakeStagedFirmware();
+                        if (firmware_staged) {
+                            const auto& candidate = firmware_staged->version;
+                            const auto& now_installed = configuration.status.firmware;
+                            const std::wstring next_name = candidate.known ? Wide(candidate.display) : std::wstring{L"?"};
+                            const std::wstring now_name = now_installed.known ? Wide(now_installed.display) : std::wstring{};
+                            const std::wstring size = std::to_wstring(firmware_staged->files) + L" · " +
+                                                      std::to_wstring(firmware_staged->bytes >> 20) + L" MB";
+                            if (!now_installed.known || configuration.status.firmware_files == 0)
+                                configuration.notice = I18n::Format(T::NsFirmwareConfirmInstall, {next_name, size});
+                            else if (!candidate.known || candidate.Packed() > now_installed.Packed())
+                                configuration.notice = I18n::Format(T::NsFirmwareConfirmUpdate, {now_name, next_name, size});
+                            else if (candidate.Packed() == now_installed.Packed())
+                                configuration.notice = I18n::Format(T::NsFirmwareConfirmReinstall, {next_name});
+                            else
+                                configuration.notice = I18n::Format(T::NsFirmwareConfirmDowngrade, {now_name, next_name});
+                        } else {
+                            configuration.notice = Tr(T::ImportFailedKept);
+                        }
+                    } else if (firmware_job == 1) {
+                        configuration.notice = error.empty() ? std::wstring{Tr(T::NsFirmwareInstalled)} : Wide(error);
+                    } else if (firmware_job == 2) {
+                        configuration.notice = error.empty() ? std::wstring{Tr(T::NsFirmwareRestored)} : Wide(error);
+                    } else {
+                        configuration.notice = error.empty() ? std::wstring{Tr(T::ImportDone)} : Wide(error);
+                    }
                 } catch (...) { configuration.notice = Tr(T::ImportFailedKept); }
+                firmware_job = 0;
                 configuration.busy = false;
                 // The old metadata worker has joined; discard results before rescanning.
                 metadata = {};
@@ -1207,12 +1275,34 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             themes_notice_until = std::chrono::steady_clock::time_point::max();
             dirty = true;
         }
+        if (themes_import.valid() && themes_import.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
+            ThemeImportResult result;
+            try { result = themes_import.get(); } catch (...) { result.error = "?"; }
+            theme_packs = LoadThemePacks();
+            themes_card = std::min<unsigned>(themes_card, static_cast<unsigned>(ThemeCount + theme_packs.size()) - 1);
+            themes_notice = !result.error.empty() ? Wide(result.error)
+                          : I18n::Format(T::NsThemesImported, {std::to_wstring(result.imported), std::to_wstring(result.skipped)});
+            themes_notice_until = now + std::chrono::seconds{8};
+            dirty = true;
+        }
         if (themes_page && actions) {
             // Temas: Left/Right pick the candidate, Down reaches Previa / Aplicar tema / the ground.
             // Focusing or previewing saves nothing; Aplicar keeps the previous theme on failure.
+            const unsigned cards = static_cast<unsigned>(ThemeCount + theme_packs.size());
+            const auto card_name = [&](unsigned card) -> std::wstring {
+                if (card < ThemeCount) return std::wstring{Tr(ThemeName(static_cast<ThemeId>(card)))};
+                return theme_packs[card - ThemeCount].name;
+            };
             const auto apply = [&] {
                 const auto before = system_page.settings;
-                system_page.settings.theme = static_cast<std::uint8_t>(themes_card);
+                if (themes_card < ThemeCount) {
+                    system_page.settings.theme = static_cast<std::uint8_t>(themes_card);
+                    system_page.settings.theme_pack.clear();
+                } else {
+                    const auto& pack = theme_packs[themes_card - ThemeCount];
+                    system_page.settings.theme = static_cast<std::uint8_t>(pack.base);
+                    system_page.settings.theme_pack = pack.id;
+                }
                 system_page.settings.wallpaper = static_cast<std::uint8_t>(themes_wallpaper);
                 if (SaveSystemSettings(system_page.settings)) {
                     themes_page = theme_previewing = false;
@@ -1221,8 +1311,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     configuration.files = false;
                     home = true;
                     sw_row = 0;
-                    library_say(I18n::Format(T::NsThemeApplied, {Tr(ThemeName(static_cast<ThemeId>(themes_card)))}),
-                                now + std::chrono::seconds{3});
+                    library_say(I18n::Format(T::NsThemeApplied, {card_name(themes_card)}), now + std::chrono::seconds{3});
                 } else {
                     system_page.settings = before;
                     theme_previewing = false;
@@ -1236,17 +1325,33 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             } else if (actions & Quit) {
                 themes_page = false;
             } else if (themes_focus == 0) {
-                if (actions & Left) themes_card = (themes_card + ThemeCount - 1) % ThemeCount;
-                if (actions & Right) themes_card = (themes_card + 1) % ThemeCount;
+                if (actions & Left) themes_card = (themes_card + cards - 1) % cards;
+                if (actions & Right) themes_card = (themes_card + 1) % cards;
                 if (actions & (Down | Play)) themes_focus = 1;
             } else {
                 if ((actions & Left) && themes_focus > 1) --themes_focus;
-                if ((actions & Right) && themes_focus < 3) ++themes_focus;
+                if ((actions & Right) && themes_focus < 4) ++themes_focus;
                 if (actions & Up) themes_focus = 0;
                 if (actions & Play) {
                     if (themes_focus == 1) theme_previewing = true;
                     else if (themes_focus == 2) apply();
-                    else themes_wallpaper = themes_wallpaper ? 0 : 1;
+                    else if (themes_focus == 3) themes_wallpaper = themes_wallpaper ? 0 : 1;
+                    else if (!themes_import.valid() && !picker) {
+                        // Importar temas: theme folders (theme.json + art) from a folder the
+                        // player picks, copied to LocalState/themes.
+                        picker_kind = 6;
+                        try {
+                            winrt::Windows::Storage::Pickers::FolderPicker folder_picker;
+                            folder_picker.SuggestedStartLocation(winrt::Windows::Storage::Pickers::PickerLocationId::ComputerFolder);
+                            folder_picker.FileTypeFilter().Append(L"*");
+                            picker = folder_picker.PickSingleFolderAsync();
+                            themes_notice = Tr(T::NsThemesPick);
+                            themes_notice_until = now + std::chrono::seconds{8};
+                        } catch (...) {
+                            themes_notice = Tr(T::PickerOpenFailed);
+                            themes_notice_until = now + std::chrono::seconds{4};
+                        }
+                    }
                 }
             }
             actions = 0;
@@ -1819,6 +1924,37 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             actions = 0;
             dirty = true;
         }
+        if (firmware_staged && !configuration.busy && actions) {
+            // The staged firmware: A installs it (the installed one becomes the backup), B drops it.
+            const auto start_firmware_job = [&](unsigned job, std::function<std::string()> work) {
+                firmware_job = job;
+                configuration.busy = true;
+                import_progress.completed = 0;
+                import_progress.total = 0;
+                metadata_worker.request_stop();
+                std::packaged_task<std::string(std::stop_token)> task{
+                    [work = std::move(work), old_metadata = std::move(metadata_worker)](std::stop_token) mutable {
+                        if (old_metadata.joinable()) old_metadata.join();
+                        winrt::init_apartment(winrt::apartment_type::multi_threaded);
+                        struct Uninitialize { ~Uninitialize() { winrt::uninit_apartment(); } } guard;
+                        return work();
+                    }};
+                import_future = task.get_future();
+                import_worker = std::jthread(std::move(task));
+            };
+            if (actions & Play) {
+                const StagedFirmware staged = *firmware_staged;
+                firmware_staged.reset();
+                configuration.notice = Tr(T::NsFirmwareInstalling);
+                start_firmware_job(1, [staged] { return CommitStagedFirmware(staged); });
+            } else if (actions & Quit) {
+                DiscardStagedFirmware(*firmware_staged);
+                firmware_staged.reset();
+                configuration.notice = Tr(T::NsFirmwareCancelled);
+            }
+            actions = 0;
+            dirty = true;
+        }
         if (configuration.open && saves_page && !settings && !picker && !configuration.busy && actions) {
             // Saves (USB): Pasta no HD externo, Backup automatico, Fazer backup agora, Restaurar.
             const auto say = [&](std::wstring text, std::chrono::seconds for_how_long) {
@@ -1866,7 +2002,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             const auto count = ConfigurationRowCount(configuration);
             if (actions & Up) configuration.selected = (configuration.selected + count - 1) % count;
             if (actions & Down) configuration.selected = (configuration.selected + 1) % count;
-            if (actions & (Up | Down)) dirty = true;
+            if (actions & (Up | Down)) { dirty = true; restore_confirm = false; }
             if (actions & Play) {
                 if (!configuration.files) {
                     switch (configuration.selected) {
@@ -1896,9 +2032,35 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                         std::move(bases), std::move(metadata_worker));
                     metadata = {}; game_options.open = true; game_options.game = 0;
                 }
-                else if (configuration.selected >= 5) {
+                else if (configuration.selected == FileRowRestoreFirmware) {
+                    if (!configuration.status.has_backup) configuration.notice = Tr(T::NsFirmwareNoBackup);
+                    else if (!restore_confirm) {
+                        restore_confirm = true;
+                        configuration.notice = I18n::Format(T::NsFirmwareConfirmRestore,
+                            {configuration.status.firmware_backup.known ? Wide(configuration.status.firmware_backup.display)
+                                                                        : std::wstring{L"?"}});
+                    } else {
+                        restore_confirm = false;
+                        firmware_job = 2;
+                        configuration.busy = true;
+                        import_progress.completed = 0;
+                        import_progress.total = 0;
+                        metadata_worker.request_stop();
+                        std::packaged_task<std::string(std::stop_token)> task{
+                            [old_metadata = std::move(metadata_worker)](std::stop_token) mutable {
+                                if (old_metadata.joinable()) old_metadata.join();
+                                return RestoreFirmwareBackup();
+                            }};
+                        import_future = task.get_future();
+                        import_worker = std::jthread(std::move(task));
+                    }
+                }
+                else if (configuration.selected == FileRowOnlineFirmware) {
+                    configuration.notice = Tr(T::NsFirmwareOnlineNone);
+                }
+                else if (configuration.selected >= FileRowSources) {
                     try {
-                        ForgetGameFolder(configuration.status.sources[configuration.selected - 5].token);
+                        ForgetGameFolder(configuration.status.sources[configuration.selected - FileRowSources].token);
                         configuration.notice = Tr(T::FolderRemoved);
                         configuration.selected = 0; refresh_setup(); start_scan();
                     } catch (...) { configuration.notice = Tr(T::FolderRemoveFailed); }
@@ -2209,8 +2371,12 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     std::find(favorites.begin(), favorites.end(), scan.entries[game_options.game].launch_path) != favorites.end()};
             if ((home || theme_previewing) && !loading) rebuild_tiles();
             const ThemesView themes_view{themes_page, theme_previewing, themes_card, themes_focus,
-                                         std::min<unsigned>(system_page.settings.theme, 2), themes_wallpaper, themes_notice};
-            const unsigned frame_theme = theme_previewing ? themes_card : std::min<unsigned>(system_page.settings.theme, 2);
+                                         active_card(), themes_wallpaper, themes_notice, &theme_packs};
+            // The frame's theme: the candidate while previewing, else the one in use.
+            const unsigned frame_card = theme_previewing ? themes_card : active_card();
+            const ThemePack* frame_pack = frame_card >= ThemeCount && frame_card - ThemeCount < theme_packs.size()
+                                              ? &theme_packs[frame_card - ThemeCount] : nullptr;
+            const unsigned frame_theme = frame_pack ? static_cast<unsigned>(frame_pack->base) : std::min(frame_card, 2U);
             const unsigned frame_wallpaper = themes_page ? themes_wallpaper : system_page.settings.wallpaper;
             rebuild_shown();
             const SavesView saves_view{saves_page, saves_row, saves_folder, saves.folder, saves.automatic,
@@ -2223,7 +2389,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                           search_editor ? &*search_editor : nullptr, false, &translated, translations_ready,
                           &online, online_page, online_row, static_cast<unsigned>(edit_target), &saves_view,
                           frame_theme, frame_wallpaper, themes_page ? &themes_view : nullptr, &sw_tiles, sw_row,
-                          sw_tile, sw_button});
+                          sw_tile, sw_button, frame_pack});
             dirty = false;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds{16});

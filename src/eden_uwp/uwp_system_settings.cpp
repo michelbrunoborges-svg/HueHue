@@ -59,8 +59,9 @@ SystemSettings LoadSystemSettings() {
         if (values.HasKey(PulseSessionsKey)) settings.pulse_sessions = winrt::unbox_value<bool>(values.Lookup(PulseSessionsKey));
         // An unknown or broken id keeps the graffiti theme (the default of existing installs).
         if (values.HasKey(ThemeKeyName)) {
-            if (const auto id = ParseTheme(winrt::unbox_value_or<winrt::hstring>(values.Lookup(ThemeKeyName), L"")))
-                settings.theme = static_cast<std::uint8_t>(*id);
+            const auto key = winrt::unbox_value_or<winrt::hstring>(values.Lookup(ThemeKeyName), L"");
+            if (const auto id = ParseTheme(key)) settings.theme = static_cast<std::uint8_t>(*id);
+            else if (!key.empty() && key.size() <= 64) settings.theme_pack = key.c_str(); // checked against the catalog
         }
         if (values.HasKey(WallpaperKeyName)) {
             if (const auto id = ParseWallpaper(winrt::unbox_value_or<winrt::hstring>(values.Lookup(WallpaperKeyName), L"")))
@@ -83,7 +84,9 @@ bool SaveSystemSettings(const SystemSettings& settings) {
         values.Insert(PerformanceStatsKey, winrt::box_value(settings.show_performance_stats));
         values.Insert(AdultModsKey, winrt::box_value(settings.show_adult_mods));
         values.Insert(PulseSessionsKey, winrt::box_value(settings.pulse_sessions));
-        values.Insert(ThemeKeyName, winrt::box_value(winrt::hstring{ThemeKey(static_cast<ThemeId>(std::min<int>(settings.theme, 2)))}));
+        values.Insert(ThemeKeyName, winrt::box_value(settings.theme_pack.empty()
+                                                         ? winrt::hstring{ThemeKey(static_cast<ThemeId>(std::min<int>(settings.theme, 2)))}
+                                                         : winrt::hstring{settings.theme_pack}));
         values.Insert(WallpaperKeyName, winrt::box_value(winrt::hstring{WallpaperKey(settings.wallpaper ? WallpaperId::Aurora : WallpaperId::Solid)}));
         values.Insert(UpscalingKey, winrt::box_value(static_cast<int32_t>(settings.upscaling)));
         return true;

@@ -165,3 +165,25 @@ Os prints do CI rodam num Windows sem GPU, com o mesmo código Direct2D.
   348 px) com o nome embaixo e seis atalhos redondos de 106 px (Biblioteca, Arquivos e USB, Saves,
   Controles, Configurações, Buscar: o "Sobre" do pack saiu, como pedido antes); Controles usa o
   desenho do controle Xbox do pack. Assets do pack em `dist/uwp/Assets/sw`.
+
+## 0.4.0 (19/10): catálogo de temas, firmware com backup e correções
+
+- **Correções dos temas Switch:** a ordem dos cartões em Temas (← → aplicavam o Claro no lugar do
+  Escuro), capa reserva do pack Switch e o desenho do controle sem cobrir os textos.
+- **Catálogo de temas** (`src/eden_uwp/theme_catalog.*`, issue #3 do NXZero-HueHue): além dos
+  três temas, pacotes em `Assets/themes/<id>` e `LocalState/themes/<id>` com `theme.json`
+  (schemaVersion 1, id, nome, versão, base `switch-dark`/`switch-light`, fundo, miniatura e
+  cores) e a imagem 16:9. Temas → Importar temas (USB) copia e valida pacotes de uma pasta. O
+  seletor rola pelo catálogo; prévia, aplicação e volta ao anterior como nos outros temas; o id
+  do pacote fica salvo e, se o pacote sumir, volta o Grafite. Incluído o pacote **NS HUEHUE**
+  (provisório) montado só com a arte aprovada do pack v1 (fundo grafite + mascote humano). Os
+  outros 15 temas do painel V2 dependem das artes (não incluídas: personagens e marcas de
+  terceiros não são desenhados aqui).
+- **Firmware** (issue #5): Arquivos e USB → Importar firmware copia e valida numa pasta
+  temporária, mostra a versão lida do arquivo SystemVersion (0100000000000809) e pede
+  confirmação (instalar, atualizar, reinstalar ou versão mais antiga) antes de trocar; checa o
+  espaço livre; troca por renomeação com recuperação ao abrir o app; confere a versão depois da
+  troca e volta a anterior se não bater; guarda o firmware substituído em
+  `registered.backup` (Restaurar firmware anterior). A pasta de origem nunca é alterada. Busca
+  online: não configurada (não há fonte autorizada para baixar firmware).
+- Versão do pacote: **0.4.0.<build>**.
