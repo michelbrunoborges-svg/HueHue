@@ -2517,7 +2517,7 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
             // Set when a game the GPU stopped on D3D12 was moved to OpenGL (game_compat.h).
             std::atomic<bool> switched_to_gl{false};
             std::atomic<bool> switched_firmware{false};
-            std::thread worker([&done, &boot_status, &switched_to_gl, surface, library_game]() {
+            std::thread worker([&done, &boot_status, &switched_to_gl, &switched_firmware, surface, library_game]() {
                 winrt::init_apartment(winrt::apartment_type::multi_threaded);
                 std::set_terminate(OnTerminate); // per-thread in the MSVC runtime
                 std::string nro_path;
