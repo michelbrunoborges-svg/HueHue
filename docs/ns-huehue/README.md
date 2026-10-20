@@ -217,3 +217,15 @@ Os prints do CI rodam num Windows sem GPU, com o mesmo código Direct2D.
   de pipeline no D3D12, sessões Pulse versionadas e com zstd, Vulkan e ReShade fora do build da
   Store). Os módulos OpenGL/Mesa do NS HUEHUE continuam.
 - Versão do pacote: **0.4.1.<build>**.
+
+## 0.4.2 (19/10, noite): issue #6 do NXZero-HueHue, P1-A
+
+- A issue #6 mapeou o código do NXZero-HueHue; o remapeamento para este repositório está no
+  comentário da issue (o caminho SPIR-V → DXIL pelo Mesa e o diagnóstico de pipelines já existiam
+  aqui; gravação em worker já é a opção "Comandos da GPU em outra thread").
+- **Shaders pendentes** (Desempenho e gráficos → avançado, por jogo, padrão "Esperar"): em "Não
+  esperar (experimental)" o draw cujo PSO ainda compila é pulado e contado, e o build segue nos
+  workers. Passagens de tela cheia (até 6 vértices), draws indiretos e todo compute continuam
+  esperando. `pso_defer=1` no boot.cfg liga o mesmo para testes. O log do pipeline traz
+  `deferral on (N draws skipped while building, M full-screen waits)`.
+- Versão do pacote: **0.4.2.<build>**.
