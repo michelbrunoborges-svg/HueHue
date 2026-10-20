@@ -1133,6 +1133,9 @@ private:
                                                      : I18n::Format(T::NsSkipValue, {std::to_wstring(tuning.frame_skip + 1)})},
             {T::NsTuningShaders, std::wstring{Tr(tuning.shaders == ShaderBuild::Fast ? T::NsShadersFast : T::NsShadersBalanced)}},
             {T::NsTuningMemory, std::wstring{Tr(tuning.memory == MemoryMode::Economy ? T::NsMemoryEconomy : T::NsMemoryNormal)}},
+            {T::NsTuningFirmware, std::wstring{Tr(tuning.firmware == FirmwareUse::Use ? T::NsFirmwareUse
+                                                  : tuning.firmware == FirmwareUse::Skip ? T::NsFirmwareSkip
+                                                                                          : T::NsFirmwareAuto)}},
             {T::NsAdvSpeedLimit, std::wstring{Tr(tuning.speed_limit ? T::NsOn : T::NsAdvUnlimited)}},
             {T::NsAdvPsoDefer, std::wstring{Tr(tuning.pso_defer ? T::NsPsoDeferOn : T::NsPsoDeferOff)}},
             {T::NsAdvRecordThread, std::wstring{Tr(tuning.record_thread ? T::NsOn : T::NsOff)}},
@@ -1168,7 +1171,7 @@ private:
              1300, 330, 20, Palette::TextSecondary, 180, 32, false, false, false, true);
         static constexpr std::array<T, TuningRowCount> hints{
             T::NsHintProfile, T::NsHintRenderer, T::NsHintGlShaders, T::NsHintResolution, T::NsHintUpscaling,
-            T::NsHintFps, T::NsHintFpsManual, T::NsHintSkip, T::NsHintShaders, T::NsHintMemory,
+            T::NsHintFps, T::NsHintFpsManual, T::NsHintSkip, T::NsHintShaders, T::NsHintMemory, T::NsHintFirmware,
             T::NsHintSpeedLimit, T::NsHintPsoDefer, T::NsHintRecordThread, T::NsHintPresentThread, T::NsHintAstc, T::NsHintAstcOpaque,
             T::NsHintFastmem, T::NsHintPsoEviction, T::NsHintIdleSpin, T::NsHintJit};
         Text(Tr(hints[std::min(selected, hints.size() - 1)]), 441, top + static_cast<float>(TuningRowsVisible) * row + 8, 19,

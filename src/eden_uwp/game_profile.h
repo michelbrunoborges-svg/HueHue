@@ -66,6 +66,9 @@ enum class FastmemMode : std::uint8_t { Off, Hybrid, Full };
 enum class IdleSpin : std::uint8_t { Adaptive, Off, Fixed };
 /// The JIT code cache per core.
 enum class JitCache : std::uint8_t { Normal, Small, Large };
+/// Firmware do console: Auto uses the installed one and, when the game closes with it in its
+/// first minute, sets it to Skip (game_compat.h); Use always; Skip runs it as without firmware.
+enum class FirmwareUse : std::uint8_t { Auto, Use, Skip };
 
 struct GameTuning {
     /// Desempenho by default (the player asked, 19/10/2026): quality is the player's choice per game.
@@ -92,6 +95,7 @@ struct GameTuning {
     /// Shaders pendentes (issue #6 P1-A, experimental): skip the draws whose PSO is still being
     /// built instead of stalling (full-screen passes and compute still wait).
     bool pso_defer{};
+    FirmwareUse firmware{FirmwareUse::Auto};
 
     bool operator==(const GameTuning&) const = default;
 
@@ -142,11 +146,11 @@ inline GameProfile NextGameProfile(GameProfile profile) {
 
 /// The rows of the Desempenho e graficos page, in order.
 enum class TuningRow : std::uint8_t {
-    Profile, Renderer, GlShaderPath, Resolution, Upscaling, Fps, FpsManual, FrameSkip, Shaders, Memory,
+    Profile, Renderer, GlShaderPath, Resolution, Upscaling, Fps, FpsManual, FrameSkip, Shaders, Memory, Firmware,
     // Avancado (experimental)
     SpeedLimit, PsoDefer, RecordThread, PresentThread, Astc, AstcOpaque, Fastmem, PsoEviction, IdleSpin, JitCache
 };
-inline constexpr std::size_t TuningRowCount = 20;
+inline constexpr std::size_t TuningRowCount = 21;
 /// Rows the page shows at once (it scrolls past them).
 inline constexpr std::size_t TuningRowsVisible = 10;
 
@@ -166,6 +170,7 @@ inline void StepTuning(GameTuning& tuning, TuningRow row, bool back, bool big = 
     case TuningRow::Resolution: tuning.resolution = cycle(tuning.resolution, GameResolutionCount); break;
     case TuningRow::Upscaling: tuning.upscaling = cycle(tuning.upscaling, TuningUpscalingCount); break;
     case TuningRow::Memory: tuning.memory = cycle(tuning.memory, 2); break;
+    case TuningRow::Firmware: tuning.firmware = cycle(tuning.firmware, 3); break;
     case TuningRow::Fps: tuning.fps = cycle(tuning.fps, 4); break;
     case TuningRow::FpsManual: {
         const int step = big ? 10 : 1;
@@ -198,7 +203,7 @@ inline std::filesystem::path File() {
     } catch (...) { return {}; }
 }
 /// "path \t profile [\t resolution \t fps \t manual \t skip \t shaders [\t renderer [\t gl
-/// [\t upscaling \t memory [\t speed record present astc opaque fastmem pso spin jit [\t defer]]]]]]"
+/// [\t upscaling \t memory [\t speed record present astc opaque fastmem pso spin jit [\t defer [\t firmware]]]]]]]"
 /// (older lines stop earlier: the rest keeps its defaults).
 inline std::map<std::string, GameTuning> Load() {
     std::map<std::string, GameTuning> all;
@@ -229,8 +234,9 @@ inline std::map<std::string, GameTuning> Load() {
             for (int& value : read) complete = complete && static_cast<bool>(fields >> value);
             if (complete) std::copy(std::begin(read), std::end(read), advanced);
         }
-        int defer = 0; // 0.4.2: Shaders pendentes
+        int defer = 0, firmware = 0; // 0.4.2: Shaders pendentes; 0.4.3: Firmware do console
         if (!(fields >> defer)) defer = 0;
+        else if (!(fields >> firmware)) firmware = 0;
         GameTuning tuning;
         tuning.profile = static_cast<GameProfile>(std::clamp(profile, 0, 3));
         tuning.resolution = static_cast<GameResolution>(std::clamp(resolution, 0, static_cast<int>(GameResolutionCount) - 1));
@@ -252,6 +258,7 @@ inline std::map<std::string, GameTuning> Load() {
         tuning.idle_spin = static_cast<IdleSpin>(std::clamp(advanced[7], 0, 2));
         tuning.jit_cache = static_cast<JitCache>(std::clamp(advanced[8], 0, 2));
         tuning.pso_defer = defer != 0;
+        tuning.firmware = static_cast<FirmwareUse>(std::clamp(firmware, 0, 2));
         all[line.substr(0, tab)] = tuning;
     }
     return all;
@@ -293,7 +300,7 @@ inline bool SaveGameTuning(const std::string& launch_path, const GameTuning& tun
             << '\t' << static_cast<int>(value.astc) << '\t' << int{value.astc_opaque_bc3} << '\t'
             << static_cast<int>(value.fastmem) << '\t' << int{value.pso_eviction} << '\t'
             << static_cast<int>(value.idle_spin) << '\t' << static_cast<int>(value.jit_cache) << '\t'
-            << int{value.pso_defer} << '\n';
+            << int{value.pso_defer} << '\t' << static_cast<int>(value.firmware) << '\n';
     }
     return static_cast<bool>(out);
 }

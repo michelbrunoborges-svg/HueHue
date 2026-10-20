@@ -31,7 +31,8 @@ struct StagedFirmware {
     unsigned unreadable{}; ///< NCAs the keys could not open.
     unsigned foreign{};    ///< NCAs of a game (title id outside the system range).
     bool incomplete{};     ///< SystemVersion (0809) or the Mii editor (1009) is missing.
-    [[nodiscard]] bool HasWarnings() const { return unreadable || foreign || incomplete; }
+    unsigned copy_failed{}; ///< Files that could not be copied (twice).
+    [[nodiscard]] bool HasWarnings() const { return unreadable || foreign || incomplete || copy_failed; }
 };
 struct FileSetupStatus {
     bool keys_ready{};
@@ -90,5 +91,13 @@ void DiscardStagedFirmware(const StagedFirmware& staged);
 /// Puts the backup back as the installed firmware (and the installed one as the backup).
 std::string RestoreFirmwareBackup();
 bool HasUsableHeaderKey();
+/// NS HUEHUE: Firmware do console = Nao usar. Sets the installed firmware aside
+/// (registered -> registered.hidden) for one game's boot, so it runs as without a firmware; true
+/// when it did. RestoreHiddenFirmware puts it back (after the game, and at every start in case
+/// the app closed with the game).
+bool HideFirmware();
+void RestoreHiddenFirmware();
+/// A firmware is installed (and not set aside).
+bool FirmwareInstalled();
 bool RunFileManagerGate(const std::function<void(std::string)>& diagnostic);
 } // namespace EdenXbox

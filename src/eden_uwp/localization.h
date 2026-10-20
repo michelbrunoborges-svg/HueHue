@@ -812,6 +812,15 @@ enum class Text : std::uint16_t {
     NsPsoDeferOff,
     NsPsoDeferOn,
     NsHintPsoDefer,
+    NsFirmwareWarnCopy,
+    NsImportFailedCode,
+    NsFirmwareStageGone,
+    NsTuningFirmware,
+    NsFirmwareAuto,
+    NsFirmwareUse,
+    NsFirmwareSkip,
+    NsHintFirmware,
+    NsFirmwareSwitched,
     Count
 };
 inline constexpr std::size_t TextCount = static_cast<std::size_t>(Text::Count);

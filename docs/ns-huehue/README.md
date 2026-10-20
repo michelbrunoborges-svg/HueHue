@@ -229,3 +229,23 @@ Os prints do CI rodam num Windows sem GPU, com o mesmo código Direct2D.
   esperando. `pso_defer=1` no boot.cfg liga o mesmo para testes. O log do pipeline traz
   `deferral on (N draws skipped while building, M full-screen waits)`.
 - Versão do pacote: **0.4.2.<build>**.
+
+## 0.4.3 (19/10, noite): firmware que não instalava e jogos que só rodavam sem firmware
+
+- **Causa do erro ao instalar o firmware (0.4.0 a 0.4.2):** logo depois de copiar e validar, a
+  biblioteca relia as configurações e a limpeza de pastas de importação antigas apagava a cópia
+  que esperava a confirmação; o A então falhava ("Não foi possível importar"). A cópia agora fica
+  protegida até o A ou o B.
+- A importação tolera mais: arquivo que não copia (duas tentativas) é contado e o resto segue;
+  pastas de NCA em partes (`xxx.nca/00`) são copiadas; se a pasta escolhida não tem `.nca`, o
+  firmware é procurado nas subpastas (até dois níveis). Pasta com dois SystemVersion: vale o mais
+  alto. As mensagens de erro trazem o código do Windows.
+- **Applets do sistema sempre do emulador (HLE):** com firmware instalado o Eden rodava os applets
+  do firmware (seleção de usuário, erro, Mii, amiibo, fotos, web) como um segundo processo do
+  console; jogos que abriam sem firmware travavam com ele (Super Mario Odyssey). `applets=lle` no
+  boot.cfg volta ao padrão do Eden para testes.
+- **Firmware do console** (Desempenho e gráficos, por jogo): Automático (usa; se o jogo fechar
+  com o firmware no primeiro minuto ou não carregar, passa a abrir sem ele e a biblioteca avisa),
+  Usar sempre, Não usar (o firmware fica de lado só durante aquele jogo e volta ao fim; se o app
+  fechar no meio, volta na próxima abertura).
+- Versão do pacote: **0.4.3.<build>**.

@@ -1200,6 +1200,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                                 if (firmware_staged->unreadable)
                                     add(I18n::Format(T::NsFirmwareWarnUnreadable, {std::to_wstring(firmware_staged->unreadable)}));
                                 if (firmware_staged->incomplete) add(std::wstring{Tr(T::NsFirmwareWarnIncomplete)});
+                                if (firmware_staged->copy_failed)
+                                    add(I18n::Format(T::NsFirmwareWarnCopy, {std::to_wstring(firmware_staged->copy_failed)}));
                                 configuration.notice = I18n::Format(T::NsFirmwareWarn, {found}) + L" " + configuration.notice;
                             }
                         } else {

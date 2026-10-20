@@ -422,6 +422,11 @@ struct BootConfig {
     /// builds default to), so the GPU caches flush to guest memory only when a game needs it.
     Settings::GpuAccuracy gpu_accuracy{Settings::GpuAccuracy::High};
     bool reactive_flushing{true};
+    /// "applets=lle": Eden's own applet modes (the firmware's applets as guests) instead of HLE.
+    bool lle_applets{};
+    /// Firmware do console = Nao usar (game_profile.h): the installed firmware is set aside for
+    /// this game's boot (HideFirmware) and put back when it ends.
+    bool hide_firmware{};
     /// NS HUEHUE Avancado: off lets the game run as fast as the console can (Eden's speed limit).
     bool speed_limit{true};
     /// Legacy setting for backends with draw-skipping async shaders. D3D12 always preserves
@@ -481,6 +486,25 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
         Settings::values.sink_id = Settings::AudioEngine::Null;
     }
     Settings::values.cpu_accuracy = config.cpu_accuracy;
+    // NS HUEHUE: every library applet the emulator's own (HLE), firmware or not. Eden's default
+    // runs the firmware's profile selector, error, Mii, amiibo, photo and web applets as guest
+    // processes (LLE) once a firmware is installed: a second guest with its own memory and
+    // frames, which left games that ran without firmware stuck with it (Super Mario Odyssey,
+    // 19/10/2026). "applets=lle" in boot.cfg brings Eden's defaults back for tests.
+    if (!config.lle_applets) {
+        using Settings::AppletMode;
+        for (auto* mode : {&Settings::values.cabinet_applet_mode, &Settings::values.error_applet_mode,
+                           &Settings::values.player_select_applet_mode, &Settings::values.mii_edit_applet_mode,
+                           &Settings::values.photo_viewer_applet_mode, &Settings::values.offline_web_applet_mode,
+                           &Settings::values.controller_applet_mode, &Settings::values.swkbd_applet_mode,
+                           &Settings::values.web_applet_mode})
+            mode->SetValue(AppletMode::HLE);
+        for (auto* mode : {&Settings::values.net_connect_applet_mode, &Settings::values.my_page_applet_mode,
+                           &Settings::values.data_erase_applet_mode, &Settings::values.shop_applet_mode,
+                           &Settings::values.login_share_applet_mode, &Settings::values.wifi_web_auth_applet_mode})
+            mode->SetValue(AppletMode::HLE);
+    }
+    WriteDiag(std::string("step: library applets ") + (config.lle_applets ? "Eden defaults (LLE)" : "all HLE"));
     Settings::values.gpu_accuracy.SetValue(config.gpu_accuracy);
     Settings::values.use_reactive_flushing.SetValue(config.reactive_flushing);
     WriteDiag(std::string("step: GPU accuracy ") +
@@ -661,7 +685,10 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
     // A game from the library leaves a session marker while it runs (game_compat.h): if the app
     // dies with it on D3D12 in its first minute, it opens on OpenGL next time.
     const GameRenderer session_renderer = gl_window ? GameRenderer::OpenGL : GameRenderer::D3D12;
-    if (config.pulse_sessions) WriteSession(nro_path, session_renderer, 0);
+    // Whether this game runs with the firmware (Firmware do console, game_compat.h fallback).
+    const bool session_firmware = FirmwareInstalled();
+    WriteDiag(std::string("step: firmware ") + (session_firmware ? "in use" : "not in use"));
+    if (config.pulse_sessions) WriteSession(nro_path, session_renderer, 0, UINT32_MAX, session_firmware);
     // The in-game menu and the game's keyboard: the D3D12 renderer draws them over its frame, the
     // OpenGL window over its own.
     const auto menu_screen_size = [&]() -> std::pair<u32, u32> {
@@ -1060,7 +1087,7 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                 const std::uint32_t free_mib =
                     QueryAppMemory(used, limit) && limit > used ? static_cast<std::uint32_t>((limit - used) >> 20)
                                                                 : UINT32_MAX;
-                WriteSession(nro_path, session_renderer, tick / TICKS_PER_SECOND, free_mib);
+                WriteSession(nro_path, session_renderer, tick / TICKS_PER_SECOND, free_mib, session_firmware);
             }
             if (u64 used{}, limit{}; config.memory_audit && tick % 10 == 0 &&
                                      QueryAppMemory(used, limit)) {
@@ -2429,6 +2456,13 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                         EdenXbox::I18n::Text::NsMemorySwitched, {GameNameFromPath(lost->launch_path)}));
                     WriteDiag("compat: memory economy for it from now on");
                 }
+            } else if (lost->firmware && lost->seconds < EdenXbox::CRASH_WINDOW_SECONDS &&
+                       EdenXbox::FallBackToNoFirmware(lost->launch_path)) {
+                // Closed in its first minute with the firmware: first without it (the cheaper
+                // change); if it closes again, the renderer goes next.
+                library_error = EdenXbox::I18n::ToUtf8(EdenXbox::I18n::Format(
+                    EdenXbox::I18n::Text::NsFirmwareSwitched, {GameNameFromPath(lost->launch_path)}));
+                WriteDiag("compat: it opens without the firmware next time");
             } else if (lost->renderer == EdenXbox::GameRenderer::D3D12 &&
                 lost->seconds < EdenXbox::CRASH_WINDOW_SECONDS && EdenXbox::FallBackToOpenGl(lost->launch_path)) {
                 library_error = EdenXbox::I18n::ToUtf8(
@@ -2482,6 +2516,7 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
             std::atomic<int> boot_status{0};
             // Set when a game the GPU stopped on D3D12 was moved to OpenGL (game_compat.h).
             std::atomic<bool> switched_to_gl{false};
+            std::atomic<bool> switched_firmware{false};
             std::thread worker([&done, &boot_status, &switched_to_gl, surface, library_game]() {
                 winrt::init_apartment(winrt::apartment_type::multi_threaded);
                 std::set_terminate(OnTerminate); // per-thread in the MSVC runtime
@@ -2625,6 +2660,9 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                             config.async_present = line.back() == '1';
                             WriteDiag(std::string("boot.cfg: presentation thread ") +
                                       (config.async_present ? "on" : "off"));
+                        } else if (line == "applets=lle") {
+                            config.lle_applets = true;
+                            WriteDiag("boot.cfg: library applets as Eden defaults them (LLE with firmware)");
                         } else if (line == "pso_defer=0" || line == "pso_defer=1") {
                             config.pso_defer = line.back() == '1';
                             WriteDiag("boot.cfg: " + line);
@@ -2864,6 +2902,7 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                         if (!tuning.speed_limit) config.speed_limit = false;
                         if (tuning.record_thread) config.async_record = true;
                         if (tuning.pso_defer) config.pso_defer = true;
+                        config.hide_firmware = tuning.firmware == EdenXbox::FirmwareUse::Skip;
                         if (!tuning.present_thread) config.async_present = false;
                         if (tuning.astc == EdenXbox::AstcMode::Cpu) config.astc = EdenXbox::BootConfig::Astc::Cpu;
                         else if (tuning.astc == EdenXbox::AstcMode::Bc3) config.astc = EdenXbox::BootConfig::Astc::Bc3;
@@ -2914,6 +2953,12 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                 // Capture any early throw to the diag file instead of a silent exit.
                 try {
                     WriteDiag("calling RunHeadlessBoot");
+                    // Firmware do console = Nao usar: set aside for this boot, back afterwards.
+                    EdenXbox::RestoreHiddenFirmware();
+                    if (config.hide_firmware && EdenXbox::HideFirmware())
+                        WriteDiag("firmware set aside for this game");
+                    struct PutBack { ~PutBack() { EdenXbox::RestoreHiddenFirmware(); } } put_back;
+                    const bool with_firmware = EdenXbox::FirmwareInstalled();
                     int rc = EdenXbox::RunHeadlessBoot(nro_path, surface, config);
                     if (rc == EdenXbox::PULSE_RESUME_FAILED) {
                         EdenXbox::PulseSessions::SetNotice(EdenXbox::I18n::ToUtf8(
@@ -2924,6 +2969,10 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                     }
                     boot_status.store(rc);
                     WriteDiag("RunHeadlessBoot returned " + std::to_string(rc) + " | " + MemoryReport());
+                    if (rc == 2 && library_game && with_firmware && EdenXbox::FallBackToNoFirmware(nro_path)) {
+                        switched_firmware.store(true);
+                        WriteDiag("compat: the game failed to load with the firmware; it opens without it next time");
+                    }
                     if (rc == 15 && library_game && !config.opengl && EdenXbox::FallBackToOpenGl(nro_path)) {
                         switched_to_gl.store(true);
                         WriteDiag("compat: the GPU stopped on D3D12; the game opens on OpenGL next time");
@@ -2961,7 +3010,10 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
             }
             worker.join();
             if (show_library && boot_status.load() == 2) {
-                library_error = EdenXbox::I18n::ToUtf8(EdenXbox::I18n::Tr(EdenXbox::I18n::Text::GameLoadFailed));
+                library_error = EdenXbox::I18n::ToUtf8(
+                    switched_firmware.load() && library_game
+                        ? EdenXbox::I18n::Format(EdenXbox::I18n::Text::NsFirmwareSwitched, {GameNameFromPath(*library_game)})
+                        : std::wstring{EdenXbox::I18n::Tr(EdenXbox::I18n::Text::GameLoadFailed)});
                 WriteDiag("boot load failed; returning to library for recovery");
                 continue;
             }

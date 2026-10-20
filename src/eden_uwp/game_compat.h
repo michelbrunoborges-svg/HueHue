@@ -59,15 +59,17 @@ struct LostSession {
     std::uint32_t seconds{}; ///< How long it had run, as last refreshed.
     /// The app's free memory under its limit at that refresh, in MiB (UINT32_MAX: not measured).
     std::uint32_t free_mib{UINT32_MAX};
+    bool firmware{}; ///< It ran with the installed firmware.
 };
 
 /// The boot, before the game starts and then every few seconds while it runs.
 inline void WriteSession(const std::string& launch_path, GameRenderer renderer, std::uint32_t seconds,
-                         std::uint32_t free_mib = UINT32_MAX) {
+                         std::uint32_t free_mib = UINT32_MAX, bool firmware = false) {
     const auto file = CompatDetail::SessionFile();
     if (file.empty()) return;
     std::ofstream out(file, std::ios::binary | std::ios::trunc);
-    out << launch_path << '\t' << static_cast<int>(renderer) << '\t' << seconds << '\t' << free_mib << '\n';
+    out << launch_path << '\t' << static_cast<int>(renderer) << '\t' << seconds << '\t' << free_mib << '\t'
+        << (firmware ? 1 : 0) << '\n';
 }
 
 /// The boot, when the game ended in any way it saw.
@@ -95,8 +97,10 @@ inline std::optional<LostSession> TakeLostSession() {
                 try {
                     session.renderer = std::stoi(renderer) == 1 ? GameRenderer::OpenGL : GameRenderer::D3D12;
                     session.seconds = static_cast<std::uint32_t>(std::stoul(seconds));
-                    if (std::getline(fields, free) && !free.empty())
+                    if (std::getline(fields, free, '\t') && !free.empty())
                         session.free_mib = static_cast<std::uint32_t>(std::stoul(free));
+                    std::string firmware;
+                    if (std::getline(fields, firmware) && !firmware.empty()) session.firmware = firmware[0] == '1';
                     lost = session;
                 } catch (...) {}
             }
@@ -111,6 +115,15 @@ inline bool FallBackToOpenGl(const std::string& launch_path) {
     auto tuning = LoadGameTuning(launch_path);
     if (tuning.renderer == GameRenderer::OpenGL) return false;
     tuning.renderer = GameRenderer::OpenGL;
+    return SaveGameTuning(launch_path, tuning);
+}
+
+/// A game that closed with the firmware while Firmware do console was Automatico runs without
+/// it next time. True when it changed.
+inline bool FallBackToNoFirmware(const std::string& launch_path) {
+    auto tuning = LoadGameTuning(launch_path);
+    if (tuning.firmware != FirmwareUse::Auto) return false;
+    tuning.firmware = FirmwareUse::Skip;
     return SaveGameTuning(launch_path, tuning);
 }
 

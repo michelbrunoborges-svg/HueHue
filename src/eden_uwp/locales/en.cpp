@@ -785,5 +785,14 @@ const Catalog EnglishCatalog = MakeCatalog({
     {Text::NsPsoDeferOff, L"Wait (accurate)"},
     {Text::NsPsoDeferOn, L"Don't wait (experimental)"},
     {Text::NsHintPsoDefer, L"Advanced (experimental). Don't wait: what uses a shader still being built is not drawn until it is ready (it may flicker or vanish for a moment), for fewer stutters. Full-screen passes and compute still wait."},
+    {Text::NsFirmwareWarnCopy, L"{0} file(s) could not be copied"},
+    {Text::NsImportFailedCode, L"Could not import (error {0}). Check the folder, the free space and the USB connection."},
+    {Text::NsFirmwareStageGone, L"The firmware copy is no longer there: import the folder again."},
+    {Text::NsTuningFirmware, L"Console firmware"},
+    {Text::NsFirmwareAuto, L"Automatic (use)"},
+    {Text::NsFirmwareUse, L"Always use"},
+    {Text::NsFirmwareSkip, L"Don't use"},
+    {Text::NsHintFirmware, L"Don't use: the game starts as if no firmware were installed (the emulator's own fonts and system data). Automatic: uses the firmware and, if the game closes with it in its first minute, starts without it from then on."},
+    {Text::NsFirmwareSwitched, L"{0} closed with the firmware: next time it starts without it (change it in Performance and graphics)"},
 });
 } // namespace EdenXbox::I18n
