@@ -88,6 +88,12 @@ Result Backup(bool replace_other, Progress& progress, std::stop_token stop);
 /// Puts the folder's saves back over this console's, keeping the replaced ones first.
 Result Restore(Progress& progress, std::stop_token stop);
 
+/// NS HUEHUE: the app's and the games' settings (LocalSettings, the per-game profiles, favorites,
+/// recent games, online settings) copied to <folder>/NS-HUEHUE-config, and back. Restoring
+/// replaces this console's settings with the copy's; the saves are not touched.
+Result BackupSettings();
+Result RestoreSettings();
+
 /// "19/10/2026 06:40" in local time, for the page and its notices.
 inline std::wstring FormatTime(std::int64_t seconds) {
     const std::time_t time = static_cast<std::time_t>(seconds);

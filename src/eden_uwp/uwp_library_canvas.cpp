@@ -178,13 +178,14 @@ public:
         if (view.game_options.game || view.game_options.content) DrawGameOptions(view.game_options);
         if (view.missing_content) Content::DrawMissingContent(*this);
         if (view.themes && view.themes->previewing) DrawThemePreviewBanner(view);
+        if (view.remap && view.remap->open) DrawRemapPage(*view.remap);
     }
     void InvalidateCovers() { covers.clear(); pictures.clear(); }
 private:
     // --- NS HUEHUE (design pack v1, design/ns-huehue-v1) ----------------------------------------
     // The approved screens are laid out on a 1920x1080 canvas; DesignSpace draws them there on top
     // of the library's own 1280x720 transform. Colors are the pack's tokens (ui_painter.h).
-    static constexpr size_t HomeRows = 3;
+    static constexpr size_t HomeRows = 5;
     static constexpr size_t GridColumns = 5;      // "covers": repeat(5, 1fr)
     static constexpr size_t GridVisible = 10;     // two rows on screen
     static constexpr float CardWidth = 323.2f;    // (1728 - 4 * 28) / 5
@@ -330,20 +331,11 @@ private:
         if (ns_logo) NsImage(ns_logo.Get(), D2D1::RectF(96, 31, 346, 121), false, 1, 0, 0.5f);
         else Text(L"NS HUEHUE", 96, 48, 40, Palette::Magenta, 250, 56, true);
     }
-    void NsHeader(int active) {
+    /// The logo and the player's name (19/10/2026: the section links are gone from every screen;
+    /// the sections are reached from the home only). `active` is kept for the callers.
+    void NsHeader([[maybe_unused]] int active) {
         if (switch_layout) { SwHeader(); return; }
         NsBrand();
-        // Sections 1..3: Meus jogos, Configuracoes, Controles.
-        static constexpr std::array<T, 3> nav{T::NsNavGames, T::NsNavSettings, T::NsNavControls};
-        float x = 396;
-        for (int i = 0; i < 3; ++i) {
-            const auto label = Tr(nav[static_cast<size_t>(i)]);
-            const float w = MeasureText(label, 27, false) + 44;
-            const bool on = i + 1 == active;
-            Text(label, x + 22, 52, 27, on ? Palette::Accent : Palette::TextSecondary, w, 44);
-            if (on) Round(x, 108, w, 4, 0, Palette::Accent);
-            x += w + 16;
-        }
         const std::wstring name = player_name.empty() ? std::wstring{Tr(T::NsPlayer)} : player_name;
         const float name_width = MeasureText(name, 24, false);
         Text(name, 1824 - name_width - 2, 56, 24, Palette::Text, name_width + 4, 40);
@@ -422,7 +414,8 @@ private:
         else Text(L"NS HUEHUE", 96, 150, 96, Palette::Magenta, 800, 130, true);
         Text(Spaced(Tr(T::NsTagline)), 97, 350, 24, Palette::Text, 900, 36);
         static constexpr std::array<std::pair<T, const wchar_t*>, HomeRows> items{{
-            {T::NsNavGames, L"games"}, {T::NsNavSettings, L"settings"}, {T::NsNavControls, L"pad"}}};
+            {T::NsNavGames, L"games"}, {T::NsTabFavorites, L"star"}, {T::NsTabRecent, L"play"},
+            {T::NsNavSettings, L"settings"}, {T::NsExitApp, L"close"}}};
         // .home-menu .button: 500 wide, 73 tall with its border, 18 apart.
         for (size_t i = 0; i < HomeRows; ++i) {
             const float y = 431 + static_cast<float>(i) * 91;
@@ -433,8 +426,34 @@ private:
             NsImage(NsIcon(items[i].second), D2D1::RectF(124, y + 18, 160, y + 54), false);
             Text(Tr(items[i].first), 180, y + 15, 28, focus ? Palette::Accent : Palette::Text, 400, 42, true);
         }
-        NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Exit}});
+        NsFooter({{L'A', Palette::Accent, T::NsConfirm}});
         NsToast(view.notice);
+        DrawExitPrompt(view);
+    }
+    /// Sair do NS with a saves folder: copy the saves first (A), leave (Y) or stay (B).
+    void DrawExitPrompt(const LibraryView& view) {
+        if (!view.exit_prompt) return;
+        NsFill(0, 0, 1920, 1080, 0, 0x000000, 0.6f);
+        NsFill(510, 360, 900, 360, 14, Palette::Panel);
+        NsStroke(510.5f, 360.5f, 899, 359, 14, 2, Palette::Accent);
+        Text(Tr(T::NsExitApp), 560, 392, 38, Palette::Text, 800, 54, true);
+        Text(Tr(view.exit_prompt == 2 ? T::NsExitCopying : T::NsExitAsk), 560, 462, 26, Palette::TextSecondary, 800, 140,
+             false, true);
+        if (view.exit_prompt == 1) {
+            const std::array<std::pair<wchar_t, T>, 3> keys{{{L'A', T::NsExitCopy}, {L'Y', T::NsExitNoCopy}, {L'B', T::Cancel}}};
+            float x = 560;
+            for (const auto& [letter, label] : keys) {
+                wchar_t shown = letter;
+                if (swap_prompt_faces && (shown == L'A' || shown == L'B')) shown = shown == L'A' ? L'B' : L'A';
+                brush->SetColor(D2D1::ColorF(letter == L'A' ? Palette::Accent : letter == L'Y' ? Ns::KeyY : Ns::Error));
+                target->FillEllipse(D2D1::Ellipse(D2D1::Point2F(x + 18, 658), 18, 18), brush.Get());
+                Text(std::wstring(1, shown), x, 641, 22, Palette::OnAccent, 36, 34, true, false, true);
+                const auto text = Tr(label);
+                const float width = MeasureText(text, 24, false);
+                Text(text, x + 48, 640, 24, Palette::Text, width + 6, 38);
+                x += 48 + width + 44;
+            }
+        }
     }
 
     // NS HUEHUE - Switch themes (design/ns-huehue-switch-v1, V1.1): the header with the profile,
@@ -545,16 +564,17 @@ private:
                                            : std::wstring{Tr(empty ? T::NsSwAddGames : T::NsSwAllGames)};
             Text(title, focused_x, 680, 34, Palette::Accent, 1100, 48);
         }
-        // Six round shortcuts of 106 px (Biblioteca, Arquivos e USB, Saves, Controles,
-        // Configuracoes, Buscar), the glyphs tinted as in the pack.
+        // Seven round shortcuts of 106 px (Biblioteca, Arquivos e USB, Saves, Controles,
+        // Configuracoes, Buscar, Sair do NS), the glyphs tinted as in the pack.
         struct Shortcut { const wchar_t* icon; unsigned tint; T label; };
-        const std::array<Shortcut, 6> shortcuts{{
+        const std::array<Shortcut, 7> shortcuts{{
             {L"folder", 0xf08c2a, T::NsSwLibrary}, {L"usb", 0xe0461f, T::NsSettingsFiles},
             {L"games", 0x1fa7dd, T::NsSwSaves}, {L"pad", Palette::Text, T::NsNavControls},
-            {L"settings", Palette::Text, T::NsNavSettings}, {L"search", Palette::Text, T::NsSwSearch}}};
+            {L"settings", Palette::Text, T::NsNavSettings}, {L"search", Palette::Text, T::NsSwSearch},
+            {L"close", 0xe0461f, T::NsExitApp}}};
         constexpr float diameter = 106, center_y = 828;
         for (size_t i = 0; i < shortcuts.size(); ++i) {
-            const float cx = 495 + static_cast<float>(i) * 176;
+            const float cx = 432 + static_cast<float>(i) * 176;
             const bool focus = !on_tiles && i == view.home_button;
             brush->SetColor(D2D1::ColorF(Palette::Panel));
             target->FillEllipse(D2D1::Ellipse(D2D1::Point2F(cx, center_y), diameter / 2, diameter / 2), brush.Get());
@@ -569,11 +589,12 @@ private:
         }
         const bool game = on_tiles && selected < tiles.size();
         if (game)
-            NsFooter({{L'Y', Palette::Text, T::NsSwSearch}, {L'X', Palette::Text, T::NsSwOptions},
-                      {L'A', Palette::Accent, T::NsSwStart}});
+            NsFooter({{L'L', Palette::Text, T::NsSwGamesLr}, {L'Y', Palette::Text, T::NsSwSearch},
+                      {L'X', Palette::Text, T::NsSwOptions}, {L'A', Palette::Accent, T::NsSwStart}});
         else
-            NsFooter({{L'B', Ns::Error, T::Exit}, {L'A', Palette::Accent, T::NsConfirm}});
+            NsFooter({{L'Y', Palette::Text, T::NsSwSearch}, {L'A', Palette::Accent, T::NsConfirm}});
         NsToast(view.notice);
+        DrawExitPrompt(view);
     }
 
     // 53 · Temas: the three themes as cards, Previa, Aplicar tema and the home's ground.
@@ -797,7 +818,8 @@ private:
         if (view.library_tab == 3 && view.shown && !view.shown->empty())
             Text(Tr(T::NsTranslationsHint), 96, 955, 21, Palette::TextSecondary, 1300, 34);
         NsFooter({{L'A', Palette::Accent, view.library_tab == 3 ? T::NsInstallTranslation : T::NsConfirm},
-                  {L'B', Ns::Error, T::Back}, {L'X', Ns::KeyX, T::NsOptions}, {L'Y', Ns::KeyY, T::NsSearch}});
+                  {L'B', Ns::Error, T::Back}, {L'X', Ns::KeyX, T::NsOptions}, {L'Y', Ns::KeyY, T::NsSearch},
+                  {L'L', Palette::TextSecondary, T::NsTabsLr}});
         NsToast(view.notice);
     }
 
@@ -842,47 +864,45 @@ private:
         } else if (!panel.files && section == HomeSaves && view.saves) {
             // Saves (USB): the folder on the external drive, the automatic copy, copy now, restore.
             const auto& saves = *view.saves;
-            const std::array<std::pair<T, std::wstring>, 4> rows{{
+            const std::array<std::pair<T, std::wstring>, 5> rows{{
                 {T::NsSavesFolder, !saves.has_folder ? std::wstring{Tr(T::NsSavesPick)}
                                    : saves.folder.empty() ? std::wstring{Tr(T::UsbFolder)} : saves.folder},
-                {T::NsSavesAuto, std::wstring{Tr(saves.automatic ? T::NsOn : T::NsOff)}},
                 {T::NsSavesBackupNow, saves.last_time
                                           ? I18n::Format(T::NsSavesLast, {SaveBackup::FormatTime(saves.last_time),
                                                                           std::to_wstring(saves.last_games)})
                                           : std::wstring{Tr(T::NsSavesNever)}},
-                {T::NsSavesRestore, L"›"}}};
+                {T::NsSavesRestore, L"›"},
+                {T::NsConfigBackup, L"›"},
+                {T::NsConfigRestore, L"›"}}};
             for (size_t i = 0; i < rows.size(); ++i)
-                NsRow(left, 356 + static_cast<float>(i) * 78, width, Tr(rows[i].first), rows[i].second,
-                      saves.page && i == saves.row);
-            static constexpr std::array<T, 4> hints{T::NsSavesHintFolder, T::NsSavesHintAuto, T::NsSavesHintBackup,
-                                                    T::NsSavesHintRestore};
-            Text(Tr(saves.page ? hints[std::min<size_t>(saves.row, 3)] : T::NsSavesOverview), left, 690, 21,
-                 Palette::TextSecondary, width, 140, false, true);
+                NsRow(left, 356 + static_cast<float>(i) * 70, width, Tr(rows[i].first), rows[i].second,
+                      saves.page && i == saves.row, 26, 70);
+            static constexpr std::array<T, 5> hints{T::NsSavesHintFolder, T::NsSavesHintBackup, T::NsSavesHintRestore,
+                                                    T::NsConfigHintBackup, T::NsConfigHintRestore};
+            Text(Tr(saves.page ? hints[std::min<size_t>(saves.row, 4)] : T::NsSavesOverview), left, 718, 21,
+                 Palette::TextSecondary, width, 120, false, true);
             if (saves.busy)
                 Text(I18n::Format(saves.restoring ? T::NsSavesRestoring : T::NsSavesCopying,
                                   {std::to_wstring(saves.done), std::to_wstring(saves.total)}),
                      left, 846, 24, Palette::Accent, width, 40);
             if (!saves.notice.empty()) Text(saves.notice, left, 892, 23, Palette::Warning, width, 96, false, true);
         } else if (!panel.files) {
-            // A preview of the section; A opens it.
-            std::array<std::pair<std::wstring, std::wstring>, 3> rows;
+            // A preview of the section (its two main values); A on the section opens it.
+            std::array<std::pair<std::wstring, std::wstring>, 2> rows;
             if (section == HomeSystem) {
                 rows = {{{std::wstring{Tr(T::UserName)}, view.system.settings.user_name.empty() ? std::wstring{Tr(T::NsPlayer)} : view.system.settings.user_name},
-                         {std::wstring{Tr(T::SystemTitle)}, std::wstring{I18n::CurrentUiLanguage().native_name}},
-                         {std::wstring{Tr(T::NsOpen)}, L"›"}}};
+                         {std::wstring{Tr(T::SystemTitle)}, std::wstring{I18n::CurrentUiLanguage().native_name}}}};
             } else if (section == HomeControllers) {
                 rows = {{{std::wstring{Tr(T::ControllerDevice)}, ControllerLabel(view.panel.devices, view.options.controller_id)},
-                         {std::wstring{Tr(T::ControllerSeenAs)}, std::wstring{Tr(ControllerStyleText(view.options.style))}},
-                         {std::wstring{Tr(T::NsOpen)}, L"›"}}};
+                         {std::wstring{Tr(T::ControllerSeenAs)}, std::wstring{Tr(ControllerStyleText(view.options.style))}}}};
             } else {
                 rows = {{{std::wstring{Tr(T::EmulatorData)}, std::wstring{Tr(panel.status.keys_ready ? T::KeysReady : T::KeysMissing)}},
-                         {std::wstring{Tr(T::ImportFirmware)}, I18n::Format(T::FirmwareFiles, {std::to_wstring(panel.status.firmware_files)})},
-                         {std::wstring{Tr(T::NsOpen)}, L"›"}}};
+                         {std::wstring{Tr(T::ImportFirmware)}, I18n::Format(T::FirmwareFiles, {std::to_wstring(panel.status.firmware_files)})}}};
             }
             for (size_t i = 0; i < rows.size(); ++i)
                 NsRow(left, 356 + static_cast<float>(i) * 78, width, rows[i].first, rows[i].second, false);
             Text(Tr(section == HomeSystem ? T::SystemHint : section == HomeControllers ? T::ControllersHint : T::FileManagerHint),
-                 left, 612, 21, Palette::TextSecondary, width, 70, false, true);
+                 left, 534, 21, Palette::TextSecondary, width, 70, false, true);
         } else {
             const auto count = ConfigurationRowCount(panel);
             const auto first = ConfigurationFirstRow(panel);
@@ -894,7 +914,6 @@ private:
                 else if (i == 3) title = Tr(T::ContentUpdates);
                 else if (i == 4) title = Tr(T::ContentDlc);
                 else if (i == FileRowRestoreFirmware) title = Tr(T::NsFirmwareRestore);
-                else if (i == FileRowOnlineFirmware) title = Tr(T::NsFirmwareOnline);
                 else title = I18n::Format(T::RemoveFolder, {panel.status.sources[i - FileRowSources].name});
                 const auto& firmware = panel.status.firmware;
                 const auto& backup = panel.status.firmware_backup;
@@ -906,8 +925,7 @@ private:
                                                  : I18n::Format(T::FirmwareFiles, {std::to_wstring(panel.status.firmware_files)}))
                     : i == FileRowRestoreFirmware ? (!panel.status.has_backup ? std::wstring{Tr(T::NsFirmwareNoBackupShort)}
                                                      : backup.known ? Widen(backup.display) : std::wstring{L"›"})
-                    : i == FileRowOnlineFirmware ? std::wstring{Tr(T::NsFirmwareOnlineValue)}
-                                                 : std::wstring{L"›"};
+                    : std::wstring{L"›"};
                 NsRow(left, 356 + static_cast<float>(i - first) * 78, width, title, value, i == panel.selected);
             }
             Text(Tr(T::FilesSubtitle), left, 770, 21, Palette::TextSecondary, width, 60, false, true);
@@ -922,7 +940,7 @@ private:
         Text(I18n::Format(T::NsLegalLine, {version_string}), 96, 760, 17, Palette::TextSecondary, 350, 200, false, true);
         if (view.online_page) NsFooter({{L'A', Palette::Accent, T::Change}, {L'B', Ns::Error, T::Back}});
         else if (view.saves && view.saves->page)
-            NsFooter({{L'A', Palette::Accent, view.saves->row == 1 ? T::Change : T::NsConfirm}, {L'B', Ns::Error, T::Back}});
+            NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Back}});
         else NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, panel.busy ? T::Cancel : T::Back}});
     }
 
@@ -934,25 +952,24 @@ private:
         NsBackdrop(false);
         NsHeader(3);
         NsTitle(Tr(T::NsNavControls));
-        if (switch_layout) {
-            // Switch themes: the Xbox controller drawing of the approved pack (V1.1), inside the
-            // callouts (A/B on its right end at 970).
-            if (!sw_controller) sw_controller = LoadAssetBitmap(L"sw/xbox-controller.png");
-            NsImage(sw_controller ? sw_controller.Get() : NsIcon(L"pad"), D2D1::RectF(300, 430, 800, 770), false);
-        } else {
-            NsImage(NsIcon(L"pad"), D2D1::RectF(300, 402, 800, 802), false);
-        }
+        // The Xbox controller drawing of the approved pack (V1.1) in every theme, with what each
+        // button does in the menus around it (19/10/2026: the menus' real shortcuts).
+        if (!sw_controller) sw_controller = LoadAssetBitmap(L"sw/xbox-controller.png");
+        NsImage(sw_controller ? sw_controller.Get() : NsIcon(L"pad"), D2D1::RectF(330, 430, 830, 770), false);
         const auto callout = [&](T text, float x, float y, bool right) {
             const auto label = Tr(text);
-            const float w = MeasureText(label, 26, false) + 4;
+            const float w = MeasureText(label, 23, false) + 4;
             const float lx = right ? x - w : x;
-            Text(label, lx, y, 26, Palette::Accent, w, 40);
-            Round(lx, y + 46, w, 1, 0, 0x496065);
+            Text(label, lx, y, 23, Palette::Accent, w, 36);
+            Round(lx, y + 40, w, 1, 0, 0x496065);
         };
-        callout(T::NsNavHint, 135, 345, false);
-        callout(T::NsDpadHint, 120, 705, false);
-        callout(T::NsConfirmHint, 970, 415, true);
-        callout(T::NsBackHint, 970, 635, true);
+        callout(T::NsNavHint, 96, 318, false);
+        callout(T::NsDpadHint, 96, 820, false);
+        callout(T::NsMenuHint, 96, 890, false);
+        callout(T::NsSearchHint, 1080, 318, true);
+        callout(T::NsOptionsHint, 1080, 388, true);
+        callout(T::NsConfirmHint, 1080, 820, true);
+        callout(T::NsBackHint, 1080, 890, true);
         const float left = 1114, width = 710;
         Text(Tr(T::NsControlsHeading), left, 326, 34, Palette::Text, width, 50, true);
         const unsigned offset = panel.xbox ? 0 : 1;
@@ -978,8 +995,13 @@ private:
                   value, row == view.controller_row, 23, 76);
             y += 76;
         }
+        // Mapear botoes: every Switch button to any Xbox control.
+        NsRow(left, y, width, Tr(T::NsRemapTitle),
+              std::wstring{Tr(IsIdentity(options.remap) ? T::NsRemapDefault : T::NsRemapOwn)} + L"  ›",
+              view.controller_row == 3 + offset, 23, 76);
+        y += 76;
         if (!panel.xbox) {
-            NsRow(left, y, width, Tr(T::SetUpKeyboard), L"›", view.controller_row == 4, 23, 76);
+            NsRow(left, y, width, Tr(T::SetUpKeyboard), L"›", view.controller_row == 5, 23, 76);
             y += 76;
         }
         Text(panel.notice.empty() ? std::wstring{Tr(T::ControllerSubtitle)} : panel.notice, left, y + 24, 23,
@@ -1005,6 +1027,44 @@ private:
         NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Back}});
     }
 
+    // Mapear botoes: each Switch button and the Xbox control that presses it (button_remap.h).
+    void DrawRemapPage(const RemapView& remap) {
+        DesignSpace space(target.Get());
+        NsBackdrop(false);
+        NsHeader(0);
+        NsTitle(Tr(T::NsRemapTitle));
+        NsFill(400, 286, 1120, 696, 12, Palette::Panel, 0.97f);
+        NsStroke(400.5f, 286.5f, 1119, 695, 12, 1, Ns::Line);
+        Text(remap.title, 441, 318, 30, Palette::Text, 840, 46, true);
+        Round(441, 376, 1038, 1, 0, Ns::Line);
+        const size_t count = RemapCount + (remap.game ? 2 : 1);
+        constexpr size_t visible = 10;
+        constexpr float top = 392, row = 52;
+        const size_t first = remap.row < visible ? 0 : remap.row + 1 - visible;
+        for (size_t i = first; i < std::min(count, first + visible); ++i) {
+            const float y = top + static_cast<float>(i - first) * row;
+            std::wstring label, value;
+            if (i < RemapCount) {
+                label = L"Switch " + std::wstring{SwitchButtonName(i)};
+                value = L"‹  " + std::wstring{XboxControlName(remap.remap[i])} + L"  ›";
+            } else if (i == RemapCount) {
+                label = Tr(T::NsRemapReset);
+                value = L"›";
+            } else {
+                label = Tr(T::NsRemapUseGeneral);
+                value = remap.own ? L"›" : std::wstring{Tr(T::NsRemapInUse)};
+            }
+            NsRow(441, y, 1038, label, value, i == remap.row, 24, row);
+        }
+        Text(std::to_wstring(remap.row + 1) + L" / " + std::to_wstring(count) +
+                 (first + visible < count ? L"  ▼" : L"") + (first > 0 ? L"  ▲" : L""),
+             1300, 330, 20, Palette::TextSecondary, 180, 32, false, false, false, true);
+        Text(Tr(remap.game ? T::NsRemapHintGame : T::NsRemapHint), 441, top + visible * row + 8, 19,
+             Palette::TextSecondary, 1038, 60, false, true);
+        if (!remap.notice.empty()) NsToast(remap.notice);
+        NsFooter({{L'↔', Palette::Text, T::Change}, {L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Back}});
+    }
+
     // 07 · Opções do jogo (the list; its pages draw themselves)
     void DrawNsGameOptions(const GameOptionsView& view, const LibraryEntry& game) {
         DesignSpace space(target.Get());
@@ -1013,12 +1073,12 @@ private:
         NsTitle(Tr(T::NsGameOptions));
         NsFill(400, 286, 1120, 696, 12, Palette::Panel, 0.95f);
         NsStroke(400.5f, 286.5f, 1119, 695, 12, 1, Ns::Line);
-        constexpr float row_height = 62; // 8 rows end at 908, above the hint at 922
+        constexpr float row_height = 56; // 9 rows end at 916, above the hint at 922
         Text(game.name, 441, 328, 34, Palette::Text, 1040, 50, true);
         Round(441, 392, 1038, 1, 0, Ns::Line);
         const auto options = GameOptions();
         // The library's rows around Eden's: Iniciar jogo first, then the profile and the favorite.
-        for (size_t i = 0; i < options.size() + 3; ++i) {
+        for (size_t i = 0; i < options.size() + 4; ++i) {
             const float y = 412 + static_cast<float>(i) * row_height;
             std::wstring title, value = L"›";
             if (i == 0) {
@@ -1042,6 +1102,9 @@ private:
             } else if (i == options.size() + 1) {
                 title = Tr(T::NsTuning);
                 value = std::wstring{Tr(GameProfileText(static_cast<GameProfile>(view.profile)))} + L"  ›";
+            } else if (i == options.size() + 2) {
+                title = Tr(T::NsRemapGame);
+                value = std::wstring{Tr(view.own_remap ? T::NsRemapOwn : T::NsRemapDefault)} + L"  ›";
             } else {
                 title = Tr(view.favorite ? T::NsFavoriteRemove : T::NsFavoriteAdd);
                 value = L"☆";
@@ -1136,7 +1199,7 @@ private:
             {T::NsTuningFirmware, std::wstring{Tr(tuning.firmware == FirmwareUse::Use ? T::NsFirmwareUse
                                                   : tuning.firmware == FirmwareUse::Skip ? T::NsFirmwareSkip
                                                                                           : T::NsFirmwareAuto)}},
-            {T::NsAdvSpeedLimit, std::wstring{Tr(tuning.speed_limit ? T::NsOn : T::NsAdvUnlimited)}},
+            {T::NsAdvSpeedLimit, tuning.speed == 0 ? std::wstring{Tr(T::NsSpeedOff)} : std::to_wstring(tuning.speed) + L"%"},
             {T::NsAdvPsoDefer, std::wstring{Tr(tuning.pso_defer ? T::NsPsoDeferOn : T::NsPsoDeferOff)}},
             {T::NsAdvRecordThread, std::wstring{Tr(tuning.record_thread ? T::NsOn : T::NsOff)}},
             {T::NsAdvPresentThread, std::wstring{Tr(tuning.present_thread ? T::NsOn : T::NsOff)}},
@@ -1491,24 +1554,24 @@ private:
             else NsBrand();
         }
         Round(L::PanelX, L::PanelY, L::PanelWidth, L::PanelHeight, 24, Palette::Panel);
-        PageHeader(L::RowX, 99, ConfigurationIcon::Language, Tr(T::SystemTitle), Tr(T::SystemSubtitle));
+        PageHeader(L::RowX, L::HeaderY, ConfigurationIcon::Language, Tr(T::SystemTitle), Tr(T::SystemSubtitle));
         static constexpr std::array<ConfigurationIcon, SystemPage::RowCount> icons{
             ConfigurationIcon::User, ConfigurationIcon::Settings, ConfigurationIcon::Language, ConfigurationIcon::Controller,
-            ConfigurationIcon::Region, ConfigurationIcon::Mods, ConfigurationIcon::Settings, ConfigurationIcon::Archive,
-            ConfigurationIcon::Cache};
+            ConfigurationIcon::Region, ConfigurationIcon::Mods, ConfigurationIcon::Settings, ConfigurationIcon::Settings,
+            ConfigurationIcon::Archive, ConfigurationIcon::Cache};
         for (size_t i = 0; i < SystemPage::RowCount; ++i) {
             const auto row = static_cast<SystemPage::Row>(i);
             const float y = L::RowTop + static_cast<float>(i) * L::RowStride;
             const bool active = i == page.selected;
             RowFrame(L::RowX, y, L::RowWidth, L::RowHeight, active, icons[i]);
-            Text(Tr(SystemRowTitle(row)), L::RowX + 72, y + 2, 19, Palette::Text, 420, 28, true);
-            Text(Tr(SystemRowHint(row)), L::RowX + 72, y + 24, 14, Palette::TextSecondary, 440, 20);
+            Text(Tr(SystemRowTitle(row)), L::RowX + 72, y + 1, 19, Palette::Text, 420, 26, true);
+            Text(Tr(SystemRowHint(row)), L::RowX + 72, y + 22, 14, Palette::TextSecondary, 400, 19);
             const unsigned accent = active ? Palette::Accent : Palette::TextSecondary;
             const float right = L::RowX + L::RowWidth - 28;
             const float middle = y + L::RowHeight / 2;
             const bool choice = row == SystemPage::InterfaceLanguage || row == SystemPage::GameLanguage ||
                                 row == SystemPage::Region || row == SystemPage::AdultMods || row == SystemPage::PerformanceStats ||
-                                row == SystemPage::PulseSessions;
+                                row == SystemPage::PulseSessions || row == SystemPage::Volume;
             if (choice) {
                 // "< value >": arrows say left/right changes it, as in the controller panel.
                 Chevron(L::RowX + 486, middle, accent, true);

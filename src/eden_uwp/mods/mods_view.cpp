@@ -328,7 +328,9 @@ void DrawFiles(UiPainter& paint, const ModsView& view, float x, float y) {
             const bool active = i == page.selected;
             const UiIcon icon = row.kind == FileRow::Kind::Archive ? UiIcon::Archive : UiIcon::Folder;
             paint.RowFrame(x + L::Margin, top, RowWidth, L::RowHeight, active, icon);
-            const unsigned color = row.kind == FileRow::Kind::AddFolder ? Palette::Accent : Palette::Text;
+            const unsigned color = row.kind == FileRow::Kind::AddFolder || row.kind == FileRow::Kind::DownloadFolder
+                                       ? Palette::Accent
+                                       : Palette::Text;
             paint.Text(row.name, x + L::Margin + 68, top + 14, 19, color, RowWidth - 120, 28, active);
             if (row.kind != FileRow::Kind::Archive)
                 paint.Chevron(x + L::Margin + RowWidth - 28, top + L::RowHeight / 2,

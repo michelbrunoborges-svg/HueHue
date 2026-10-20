@@ -204,12 +204,17 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                       Refresh = 64, Panel = 128, Left = 256, Right = 512, AddFolder = 1024,
                       Options = 2048, PreviousTab = 4096, NextTab = 8192, Search = 16384 };
     // NS HUEHUE state: the sections, the library's tabs, search and focus, and the lists kept.
-    constexpr unsigned NxHomeRows = 3;
+    // Inicio (19/10/2026, pedido do Michel): Jogos, Favoritos, Recentes, Configuracoes, Sair do NS.
+    // B does not leave the app: Sair do NS does, asking first for a copy of the saves.
+    constexpr unsigned NxHomeRows = 5;
     bool home = true;
     unsigned home_row = 0;
+    // Sair do NS: 1 asks about the saves copy (A copy and leave, Y leave, B stay), 2 copying then
+    // leaving, 3 leave now.
+    unsigned exit_prompt = 0;
     // NS HUEHUE - Switch layout (Sistema > Layout do menu): the home is a row of game tiles
     // (recent first, then the rest, up to 12, and Todos os jogos) over a row of round buttons.
-    constexpr unsigned SwitchButtons = 6;
+    constexpr unsigned SwitchButtons = 7; // ... Buscar, then Sair do NS
     constexpr size_t SwitchTiles = 12;
     unsigned sw_row = 0;     // 0 the tiles, 1 the buttons
     size_t sw_tile = 0;
@@ -260,7 +265,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     unsigned saves_row = 0;
     SaveBackup::Settings saves = SaveBackup::LoadSettings();
     bool saves_folder = SaveBackup::HasFolder();
-    enum class SavesJob : std::uint8_t { None, Pick, Backup, Replace, Restore, Automatic };
+    enum class SavesJob : std::uint8_t { None, Pick, Backup, Replace, Restore, Automatic, SettingsBackup, SettingsRestore };
     SavesJob saves_job = SavesJob::None;
     unsigned saves_confirm = 0; // pressed once: 2 replace another installation's copy, 3 restore
     auto saves_confirm_until = std::chrono::steady_clock::time_point{};
@@ -294,6 +299,12 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     std::vector<bool> translated; ///< By entry: the game has a translation in the index.
     std::optional<std::string> pending_translation; ///< The entry the mods page downloads once listed.
     bool open_mods_page = false;
+    // NS HUEHUE: Mapear botoes (button_remap.h), for every game (Controles) or one (its options).
+    bool remap_open = false, remap_game = false, remap_own = false;
+    size_t remap_row = 0;
+    ButtonRemap remap_edit = IdentityRemap();
+    std::string remap_path;
+    std::wstring remap_title;
     // NS HUEHUE: the game's Desempenho e graficos page (game_profile.h).
     bool tuning_page = false;
     size_t tuning_row = 0;
@@ -323,6 +334,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     };
     std::wstring filtered_query;
     bool launch_from_options = false;
+    bool options_from_home = false;
+    std::vector<size_t> kept_tiles; // the Switch home's tiles whose covers stay loaded // the Switch home's X: B on the options goes back to the home
     unsigned filtered_tab = 0;
     auto library_notice_until = std::chrono::steady_clock::time_point::max();
     // The game grid is what the player sees: no page, overlay or modal over it.
@@ -523,8 +536,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         case VirtualKey::F1: actions |= Panel; break;
         case VirtualKey::Escape: actions |= Quit; break;
         case VirtualKey::Enter: actions |= Play; break;
-        case VirtualKey::X: actions |= library_top() ? Options : Swap; break;
-        case VirtualKey::Y: actions |= library_top() ? Search : Refresh; break;
+        case VirtualKey::X: actions |= library_top() || (home && switch_home()) ? Options : Swap; break;
+        case VirtualKey::Y: actions |= library_top() || home ? Search : Refresh; break;
         case VirtualKey::R: actions |= Refresh; break;
         case VirtualKey::O: actions |= AddFolder; break;
         case VirtualKey::F2: actions |= Options; break;
@@ -635,9 +648,9 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                         actions |= Play;
                     } else actions |= Quit;
                 } else actions |= Quit;
-            } else if (dx >= 1114 && dx < 1824 && dy >= 396 && dy < 396 + (panel.xbox ? 3 : 5) * 76.0f) {
+            } else if (dx >= 1114 && dx < 1824 && dy >= 396 && dy < 396 + (panel.xbox ? 4 : 6) * 76.0f) {
                 setting_row = static_cast<unsigned>((dy - 396) / 76);
-                if (!panel.xbox && setting_row == 4) {
+                if (!panel.xbox && setting_row == 5) {
                     panel.keyboard.open = true; panel.keyboard.capturing = false; dirty = true;
                 } else actions |= Play;
             } else if (dy < 152 || dy > 996) actions |= Quit;
@@ -834,11 +847,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         if (recents.size() > RecentLimit) recents.resize(RecentLimit);
         SaveList(L"ns_recent.txt", recents);
     };
-    // LB/RB and the home menu: 1 Meus jogos, 2 Configuracoes, 3 Controles (0 is the home screen,
-    // which B returns to; it has no button of its own).
-    auto current_section = [&]() -> unsigned {
-        return settings ? 3 : configuration.open ? 2 : home ? 0 : 1;
-    };
+    // The sections: 1 Jogos, 2 Configuracoes, 3 Controles (0 is the home screen, which B returns to).
     auto go_section = [&](unsigned section) {
         online_page = false;
         saves_page = false;
@@ -854,6 +863,18 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         }
         if (section <= 1) home = section == 0;
         if (section == 1) library_focus = -1;
+        dirty = true;
+    };
+    // Jogos, Favoritos and Recentes of the home: the library on that tab, the cursor on its button.
+    auto open_library = [&](unsigned tab) {
+        go_section(1);
+        library_tab = tab;
+        library_focus = static_cast<int>(tab);
+        metadata_dirty = true;
+    };
+    // Sair do NS: with a saves folder, ask about a last copy first.
+    auto request_exit = [&] {
+        exit_prompt = saves_folder ? 1 : 3;
         dirty = true;
     };
     auto start_saves = [&](SavesJob job, winrt::Windows::Storage::StorageFolder folder) {
@@ -882,6 +903,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     }
                     break;
                 case SavesJob::Restore: done.result = SaveBackup::Restore(saves_progress, stop); break;
+                case SavesJob::SettingsBackup: done.result = SaveBackup::BackupSettings(); break;
+                case SavesJob::SettingsRestore: done.result = SaveBackup::RestoreSettings(); break;
                 default: done.result = SaveBackup::Backup(job == SavesJob::Replace, saves_progress, stop); break;
                 }
             } catch (const winrt::hresult_error& e) {
@@ -897,8 +920,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         saves_worker = std::jthread(std::move(task));
         dirty = true;
     };
-    // The automatic copy: when the app opens and every time a game comes back to the library.
-    if (saves.automatic && saves_folder) start_saves(SavesJob::Automatic, nullptr);
+    // No automatic copy any more (19/10/2026): the copy is made from Saves (USB) or on leaving
+    // through Sair do NS.
     while (true) {
         window.Dispatcher().ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
         const auto now = std::chrono::steady_clock::now();
@@ -1030,15 +1053,17 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     if (!panel.keyboard.open) {
                         actions |= directions;
                         if (hit(GamepadButtons::A)) actions |= Play;
-                        const bool top = library_top();
+                        // The Switch home's tiles take X (Opcoes) and Y (Buscar) as the grid does.
+                        const bool tiles = home && switch_home() && !configuration.open && !settings &&
+                                           !game_options.open && !themes_page;
+                        const bool top = library_top() || tiles;
                         if (hit(GamepadButtons::X)) {
                             if (settings || content_session || missing_content) actions |= Swap;
                             else if (top) actions |= Options; // NS HUEHUE: X Opcoes
-                            else if (!configuration.open) actions |= AddFolder;
+                            else if (!configuration.open && !home) actions |= AddFolder;
                         }
-                        if (hit(GamepadButtons::Y)) actions |= top ? Search : Refresh; // Y Buscar
-                        if (hit(GamepadButtons::Menu)) actions |= top ? Refresh : Options;
-                        if (hit(GamepadButtons::View)) actions |= Panel;
+                        if (hit(GamepadButtons::Y)) actions |= top || home ? Search : Refresh; // Y Buscar
+                        if (hit(GamepadButtons::Menu) && !home) actions |= top ? Refresh : Options;
                         if (hit(GamepadButtons::LeftShoulder)) actions |= PreviousTab;
                         if (hit(GamepadButtons::RightShoulder)) actions |= NextTab;
                     }
@@ -1092,6 +1117,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     if (folder && picker_kind == 0) start_scan(folder);
                     else if (folder && picker_kind == 3 && content_session) content_session->AuthorizeFolder(folder);
                     else if (folder && picker_kind == 4 && mod_session) mod_session->AddFolder(folder);
+                    else if (folder && picker_kind == 40 && mod_session) mod_session->SetDownloadFolder(folder);
                     else if (folder && picker_kind == 5) start_saves(SavesJob::Pick, folder);
                     else if (folder && picker_kind == 6 && !themes_import.valid()) {
                         std::packaged_task<ThemeImportResult(std::stop_token)> task{[folder](std::stop_token stop) {
@@ -1258,6 +1284,24 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 } else {
                     switch (result.outcome) {
                     case O::Done:
+                        if (saves_job == SavesJob::SettingsBackup) {
+                            text = Tr(T::NsConfigSaved);
+                            break;
+                        }
+                        if (saves_job == SavesJob::SettingsRestore) {
+                            // The copy's settings: everything the library holds is read again.
+                            text = Tr(T::NsConfigRestored);
+                            system_page.settings = LoadSystemSettings();
+                            ApplySystemSettings();
+                            options = LoadControllerOptions();
+                            if (panel.xbox) options.controller_id.clear();
+                            favorites = LoadList(L"ns_favorites.txt");
+                            recents = LoadList(L"ns_recent.txt");
+                            online = LoadOnlineSettings();
+                            theme_packs = LoadThemePacks();
+                            metadata_dirty = true;
+                            break;
+                        }
                         text = saves_job == SavesJob::Restore || done.restored
                                    ? I18n::Format(T::NsSavesRestored, {number(result.games), number(result.copied)})
                                : result.copied ? I18n::Format(T::NsSavesDone, {number(result.copied), number(result.games)})
@@ -1267,14 +1311,16 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                         if (saves_job == SavesJob::Pick) {
                             text = I18n::Format(T::NsSavesFolderFound,
                                                 {number(result.games), SaveBackup::FormatTime(done.info.time)});
-                            saves_row = 3;
+                            saves_row = 2; // Restaurar saves da pasta
                         } else {
                             text = I18n::Format(T::NsSavesOtherInstall, {number(result.games)});
                             saves_confirm = 2;
                             saves_confirm_until = now + std::chrono::seconds{10};
                         }
                         break;
-                    case O::NothingToRestore: text = Tr(T::NsSavesNothing); break;
+                    case O::NothingToRestore:
+                        text = Tr(saves_job == SavesJob::SettingsRestore ? T::NsConfigNothing : T::NsSavesNothing);
+                        break;
                     case O::FolderUnavailable: text = Tr(T::NsSavesUnavailable); break;
                     case O::NoFolder: text = Tr(T::NsSavesNoFolder); break;
                     case O::Stopped: break;
@@ -1283,6 +1329,14 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     saves_notice = std::move(text);
                     saves_notice_until = saves_confirm ? std::chrono::steady_clock::time_point::max()
                                                        : now + std::chrono::seconds{12};
+                }
+                if (exit_prompt == 2) {
+                    // Sair do NS: copied, the app closes; a copy that failed keeps it open and says why.
+                    if (result.outcome == O::Done || result.outcome == O::Stopped) return std::nullopt;
+                    exit_prompt = 0;
+                    library_say(saves_notice.empty() ? std::wstring{Tr(T::NsSavesFailedExit)}
+                                                     : saves_notice + L" " + std::wstring{Tr(T::NsSavesFailedExit)},
+                                now + std::chrono::seconds{10});
                 }
                 saves_job = SavesJob::None;
                 dirty = true;
@@ -1301,6 +1355,46 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             themes_notice = !result.error.empty() ? Wide(result.error)
                           : I18n::Format(T::NsThemesImported, {std::to_wstring(result.imported), std::to_wstring(result.skipped)});
             themes_notice_until = now + std::chrono::seconds{8};
+            dirty = true;
+        }
+        if (remap_open && actions) {
+            // Mapear botoes: Up/Down a Switch button, Left/Right (or A) its Xbox control; the
+            // last rows reset it (and, for a game, go back to the saved mapping). Saved at once.
+            const size_t count = RemapCount + (remap_game ? 2 : 1);
+            if (actions & Up) remap_row = (remap_row + count - 1) % count;
+            if (actions & Down) remap_row = (remap_row + 1) % count;
+            bool changed = false;
+            if (actions & (Left | Right | Play)) {
+                if (remap_row < RemapCount) {
+                    remap_edit[remap_row] = StepRemapSource(remap_edit[remap_row], (actions & Left) != 0);
+                    remap_own = true;
+                    changed = true;
+                } else if (actions & Play) {
+                    if (remap_row == RemapCount) {
+                        remap_edit = IdentityRemap();
+                        remap_own = true;
+                    } else {
+                        remap_edit = options.remap;
+                        remap_own = false;
+                    }
+                    changed = true;
+                }
+            }
+            if (changed) {
+                bool saved;
+                if (remap_game) {
+                    auto game_tuning = LoadGameTuning(remap_path);
+                    game_tuning.remap = remap_own ? std::optional<ButtonRemap>{remap_edit} : std::nullopt;
+                    saved = SaveGameTuning(remap_path, game_tuning);
+                } else {
+                    options.remap = remap_edit;
+                    saved = SaveControllerOptions(options);
+                }
+                options_notice = Tr(saved ? T::SettingsSaved : T::SystemSaveFailed);
+                options_notice_until = now + std::chrono::seconds{3};
+            }
+            if (actions & Quit) remap_open = false;
+            actions = 0;
             dirty = true;
         }
         if (themes_page && actions) {
@@ -1391,17 +1485,34 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             }
             actions = 0;
         }
-        // NS HUEHUE: LB/RB walk Meus jogos, Configuracoes and Controles wherever no page or modal
-        // is open (from the home screen too).
-        const bool modal = game_options.open || panel.keyboard.open || panel.expanded || system_page.open ||
-                           configuration.files || configuration.busy || picker || validation.valid() ||
-                           missing_content || online_page || saves_page || search_editor;
-        if (!modal && (actions & (PreviousTab | NextTab))) {
-            const unsigned section = current_section();
-            const unsigned at = section == 0 ? 0 : section - 1; // home behaves as Meus jogos' neighbour
-            go_section(1 + ((actions & NextTab) ? (section == 0 ? 0 : (at + 1) % 3) : (at + 2) % 3));
-            actions = 0;
+        // NS HUEHUE (19/10/2026): LB/RB no longer walk the sections; each screen is entered with A
+        // and left with B. In Jogos they walk the tabs (Todos, Favoritos, Recentes, Traducoes).
+        if (library_top() && (actions & (PreviousTab | NextTab))) {
+            library_tab = (library_tab + ((actions & NextTab) ? 1 : 3)) % 4;
+            if (library_focus >= 0 && library_focus < 4) library_focus = static_cast<int>(library_tab);
+            metadata_dirty = true;
+            actions &= ~(PreviousTab | NextTab);
+            dirty = true;
         }
+        if (exit_prompt == 3) return std::nullopt;
+        if (exit_prompt == 1 && actions) {
+            // Sair do NS: A copies the saves then leaves, Y leaves without a copy, B stays.
+            const unsigned pressed = actions;
+            actions = 0;
+            if (pressed & Play) {
+                exit_prompt = 2;
+                if (!saves_future.valid()) start_saves(SavesJob::Backup, nullptr);
+            } else if (pressed & (Search | Refresh)) {
+                return std::nullopt;
+            } else if (pressed & Quit) {
+                exit_prompt = 0;
+            }
+            dirty = true;
+        }
+        if (exit_prompt == 2) actions = 0; // copying; the result leaves (or stays, on a failure)
+        // Sections are entered from the home only: what is left of LB/RB (pages that do not take
+        // them) does nothing.
+        if (!game_options.open && !search_editor && !(home && switch_home())) actions &= ~(PreviousTab | NextTab);
         if (home && switch_home() && !themes_page && actions && !game_options.open && !settings &&
             !configuration.open && !panel.keyboard.open && !picker && !validation.valid() && !missing_content &&
             !configuration.busy && !search_editor) {
@@ -1409,7 +1520,12 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             const unsigned pressed = actions;
             actions = 0;
             if (!loading) rebuild_tiles();
-            if (pressed & Quit) return std::nullopt;
+            // B does nothing here (Sair do NS is a shortcut); LB/RB walk the games.
+            if (pressed & (PreviousTab | NextTab)) {
+                sw_row = 0;
+                if ((pressed & PreviousTab) && sw_tile > 0) --sw_tile;
+                if ((pressed & NextTab) && sw_tile < sw_tiles.size()) ++sw_tile;
+            }
             const auto open_search = [&] {
                 go_section(1);
                 library_tab = 0;
@@ -1446,6 +1562,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     home = false;
                     library_focus = -1;
                     actions = Options;
+                    options_from_home = true;
                 }
             } else {
                 if (pressed & Left) sw_button = (sw_button + SwitchButtons - 1) % SwitchButtons;
@@ -1463,12 +1580,13 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                         go_section(2);
                         configuration.selected = HomeSaves;
                         saves_page = true;
-                        saves_row = saves_folder ? 2 : 0;
+                        saves_row = saves_folder ? 1 : 0;
                         saves_confirm = 0;
                         break;
                     case 3: go_section(3); break;                             // Controles
                     case 4: go_section(2); break;                             // Configuracoes
-                    default: open_search(); break;                            // Buscar
+                    case 5: open_search(); break;                             // Buscar
+                    default: request_exit(); break;                           // Sair do NS
                     }
                     metadata_dirty = true;
                 }
@@ -1480,22 +1598,38 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             !configuration.busy) {
             const unsigned pressed = actions;
             actions = 0;
-            if (pressed & Quit) return std::nullopt;
             if (pressed & Up) home_row = (home_row + NxHomeRows - 1) % NxHomeRows;
             if (pressed & Down) home_row = (home_row + 1) % NxHomeRows;
-            // Meus jogos, Configuracoes, Controles.
-            if (pressed & Play) go_section(home_row + 1);
+            // Jogos, Favoritos, Recentes, Configuracoes, Sair do NS (B does nothing here).
+            if (pressed & Play) {
+                switch (home_row) {
+                case 0: case 1: case 2: open_library(home_row); break;
+                case 3: go_section(2); break;
+                default: request_exit(); break;
+                }
+            }
             dirty = true;
         }
         // The library's top row: the three tabs and the search box (Up from the first grid row).
         if (library_top() && library_focus >= 0 && actions) {
+            // The tabs change as the cursor reaches them; A (or Down) goes to the games, B home.
             if (actions & Left) library_focus = library_focus > 0 ? library_focus - 1 : 4;
             if (actions & Right) library_focus = (library_focus + 1) % 5;
-            if (actions & (Down | Quit)) library_focus = -1;
+            if ((actions & (Left | Right)) && library_focus < 4 && library_tab != static_cast<unsigned>(library_focus)) {
+                library_tab = static_cast<unsigned>(library_focus);
+                metadata_dirty = true;
+            }
+            if (actions & Quit) { home = true; library_focus = -1; }
+            else if (actions & Down) library_focus = -1;
             if (actions & Play) {
                 if (library_focus < 4) {
                     library_tab = static_cast<unsigned>(library_focus);
                     metadata_dirty = true;
+                    rebuild_shown();
+                    if (!shown.empty()) {
+                        library_focus = -1;
+                        if (position_of[std::min(selected, position_of.size() - 1)] == SIZE_MAX) selected = shown.front();
+                    }
                 } else {
                     search_before = query;
                     search_editor.emplace(query, 32);
@@ -1726,12 +1860,13 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 send(Refresh, Mods::ModsInput::Menu);
                 send(Options, Mods::ModsInput::Start);
                 send(Quit, Mods::ModsInput::Back);
-                if (mod_session && mod_session->TakeFolderRequest() && !picker) {
+                const bool downloads_folder = mod_session && mod_session->TakeDownloadFolderRequest();
+                if (mod_session && (mod_session->TakeFolderRequest() || downloads_folder) && !picker) {
                     try {
                         winrt::Windows::Storage::Pickers::FolderPicker folder_picker;
                         folder_picker.SuggestedStartLocation(winrt::Windows::Storage::Pickers::PickerLocationId::ComputerFolder);
                         folder_picker.FileTypeFilter().Append(L"*");
-                        picker_kind = 4;
+                        picker_kind = downloads_folder ? 40u : 4u;
                         picker = folder_picker.PickSingleFolderAsync();
                     } catch (...) { options_notice = Tr(T::PickerOpenFailed); }
                 }
@@ -1785,7 +1920,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             } else if (actions || open_mods_page) {
                 open_mods_page = false;
                 const auto send = [&](unsigned bit, GameOptionsInput input) {
-                    if (actions & bit) HandleGameOptionsInput(game_options, input, 1, 2);
+                    if (actions & bit) HandleGameOptionsInput(game_options, input, 1, 3);
                 };
                 send(Up, GameOptionsInput::Up);
                 send(Down, GameOptionsInput::Down);
@@ -1805,6 +1940,18 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     tuning = LoadGameTuning(tuned.launch_path);
                     tuning_page = true;
                     tuning_row = 0;
+                } else if (game_options.extra == 2u) {
+                    // NS HUEHUE: Controles do jogo, the game's own button mapping.
+                    game_options.extra.reset();
+                    const auto& game = scan.entries[game_options.game];
+                    const auto own = LoadGameTuning(game.launch_path).remap;
+                    remap_open = true;
+                    remap_game = true;
+                    remap_own = own.has_value();
+                    remap_edit = own.value_or(options.remap);
+                    remap_row = 0;
+                    remap_path = game.launch_path;
+                    remap_title = game.name;
                 } else if (game_options.extra) {
                     // NS HUEHUE: the last row adds the game to the favorites or removes it.
                     game_options.extra.reset();
@@ -1900,6 +2047,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             }
             actions = 0;
             if (std::exchange(launch_from_options, false)) actions = Play;
+            else if (!game_options.open && std::exchange(options_from_home, false)) home = true;
         }
         if (actions & Quit) {
             if (panel.keyboard.open) { panel.keyboard.open = panel.keyboard.capturing = false; dirty = true; actions &= ~Quit; }
@@ -1915,7 +2063,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 dirty = true; actions &= ~Quit;
             }
             else if (!home) { home = true; library_focus = -1; dirty = true; actions &= ~Quit; }
-            else return std::nullopt;
+            else actions &= ~Quit; // the home: Sair do NS leaves, not B
         }
         if (actions & Panel && !configuration.open) { settings = !settings; panel.keyboard.open = panel.keyboard.capturing = false; panel.expanded = false; dirty = true; }
         if (actions & AddFolder && !settings && !picker && !configuration.busy && !validation.valid()) {
@@ -1974,20 +2122,18 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             dirty = true;
         }
         if (configuration.open && saves_page && !settings && !picker && !configuration.busy && actions) {
-            // Saves (USB): Pasta no HD externo, Backup automatico, Fazer backup agora, Restaurar.
+            // Saves (USB): Pasta no HD externo, Fazer backup agora, Restaurar saves, Copiar as
+            // configuracoes, Restaurar as configuracoes (the automatic copy is gone: 19/10/2026).
             const auto say = [&](std::wstring text, std::chrono::seconds for_how_long) {
                 saves_notice = std::move(text);
                 saves_notice_until = now + for_how_long;
             };
-            if (actions & Up) { saves_row = (saves_row + 3) % 4; saves_confirm = 0; }
-            if (actions & Down) { saves_row = (saves_row + 1) % 4; saves_confirm = 0; }
-            const bool pressed = (actions & Play) || (saves_row == 1 && (actions & (Left | Right)));
+            constexpr unsigned SavesRows = 5;
+            if (actions & Up) { saves_row = (saves_row + SavesRows - 1) % SavesRows; saves_confirm = 0; }
+            if (actions & Down) { saves_row = (saves_row + 1) % SavesRows; saves_confirm = 0; }
+            const bool pressed = (actions & Play) != 0;
             if (pressed && saves_future.valid()) {
                 say(std::wstring{Tr(T::NsSavesBusy)}, std::chrono::seconds{3});
-            } else if (pressed && saves_row == 1) {
-                saves.automatic = !saves.automatic;
-                say(std::wstring{Tr(SaveBackup::SaveSettings(saves) ? T::SettingsSaved : T::SystemSaveFailed)},
-                    std::chrono::seconds{3});
             } else if (pressed && saves_row == 0) {
                 picker_kind = 5;
                 try {
@@ -1999,10 +2145,10 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 } catch (...) { say(std::wstring{Tr(T::PickerOpenFailed)}, std::chrono::seconds{4}); }
             } else if (pressed && !saves_folder) {
                 say(std::wstring{Tr(T::NsSavesNoFolder)}, std::chrono::seconds{4});
-            } else if (pressed && saves_row == 2) {
+            } else if (pressed && saves_row == 1) {
                 start_saves(saves_confirm == 2 ? SavesJob::Replace : SavesJob::Backup, nullptr);
                 saves_notice.clear();
-            } else if (pressed && saves_row == 3) {
+            } else if (pressed && saves_row == 2) {
                 if (saves_confirm == 3) {
                     start_saves(SavesJob::Restore, nullptr);
                     saves_notice.clear();
@@ -2010,6 +2156,19 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     saves_confirm = 3;
                     saves_confirm_until = now + std::chrono::seconds{10};
                     saves_notice = Tr(T::NsSavesConfirmRestore);
+                    saves_notice_until = std::chrono::steady_clock::time_point::max();
+                }
+            } else if (pressed && saves_row == 3) {
+                start_saves(SavesJob::SettingsBackup, nullptr);
+                saves_notice.clear();
+            } else if (pressed && saves_row == 4) {
+                if (saves_confirm == 4) {
+                    start_saves(SavesJob::SettingsRestore, nullptr);
+                    saves_notice.clear();
+                } else {
+                    saves_confirm = 4;
+                    saves_confirm_until = now + std::chrono::seconds{10};
+                    saves_notice = Tr(T::NsConfigConfirmRestore);
                     saves_notice_until = std::chrono::steady_clock::time_point::max();
                 }
             }
@@ -2029,7 +2188,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     case HomeOnline: online_page = true; online_row = 0; break;
                     case HomeSaves:
                         saves_page = true;
-                        saves_row = saves_folder ? 2 : 0;
+                        saves_row = saves_folder ? 1 : 0;
                         saves_confirm = 0;
                         break;
                     default:
@@ -2072,9 +2231,6 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                         import_future = task.get_future();
                         import_worker = std::jthread(std::move(task));
                     }
-                }
-                else if (configuration.selected == FileRowOnlineFirmware) {
-                    configuration.notice = Tr(T::NsFirmwareOnlineNone);
                 }
                 else if (configuration.selected >= FileRowSources) {
                     try {
@@ -2200,14 +2356,24 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 }
                 actions &= ~(Swap | Zone);
             } else {
-                // Rows: [device (PC)], controller type, A/B/X/Y, deadzone, [keyboard (PC)].
+                // Rows: [device (PC)], controller type, A/B/X/Y, deadzone, Mapear botoes, [keyboard (PC)].
                 const unsigned offset = panel.xbox ? 0 : 1;
-                const unsigned rows = panel.xbox ? 3 : 5;
+                const unsigned rows = panel.xbox ? 4 : 6;
                 if (actions & Up) setting_row = (setting_row + rows - 1) % rows;
                 if (actions & Down) setting_row = (setting_row + 1) % rows;
                 if (actions & (Up | Down)) dirty = true;
-                if (actions & (Play | Left | Right)) {
-                    if (!panel.xbox && setting_row == 4) {
+                if ((actions & Play) && setting_row == 3 + offset) {
+                    remap_open = true;
+                    remap_game = false;
+                    remap_own = !IsIdentity(options.remap);
+                    remap_edit = options.remap;
+                    remap_row = 0;
+                    remap_title = Tr(T::NsRemapAllGames);
+                    actions &= ~Play;
+                    dirty = true;
+                } else if (actions & (Play | Left | Right)) {
+                    if (setting_row == 3 + offset) {
+                    } else if (!panel.xbox && setting_row == 5) {
                         panel.keyboard.open = true; panel.keyboard.capturing = false; dirty = true;
                     } else if (!panel.xbox && setting_row == 0) {
                         panel.expanded = true;
@@ -2287,8 +2453,9 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                         found->title_loaded |= entry.title_loaded;
                         found->unreadable = entry.unreadable;
                         // The player may have paged on meanwhile: keep icons only inside the window.
-                        if (batch.icons && position_of[index] != SIZE_MAX && position_of[index] >= window_first &&
-                            position_of[index] < page + PageVisible + PageSize)
+                        if (batch.icons && ((position_of[index] != SIZE_MAX && position_of[index] >= window_first &&
+                                             position_of[index] < page + PageVisible + PageSize) ||
+                                            std::find(kept_tiles.begin(), kept_tiles.end(), index) != kept_tiles.end()))
                             found->icon = std::move(entry.icon);
                     }
                     dirty = true;
@@ -2302,6 +2469,17 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         if (query != filtered_query || library_tab != filtered_tab) {
             filtered_query = query; filtered_tab = library_tab; metadata_dirty = true;
         }
+        // The Switch home's tiles are not the grid's page (recent games first): their covers are
+        // kept and read too, or a tile showed the fallback until Recentes read it (19/10/2026).
+        std::vector<size_t> tile_keep;
+        if (home && switch_home() && !loading) {
+            rebuild_tiles();
+            tile_keep = sw_tiles;
+        }
+        if (tile_keep != kept_tiles) { kept_tiles = tile_keep; metadata_dirty = true; }
+        const auto is_tile = [&](size_t index) {
+            return std::find(kept_tiles.begin(), kept_tiles.end(), index) != kept_tiles.end();
+        };
         rebuild_shown();
         const size_t grid_at = selected < position_of.size() && position_of[selected] != SIZE_MAX ? position_of[selected] : 0;
         const size_t page = grid_at / PageVisible * PageVisible;
@@ -2319,7 +2497,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 for (size_t i = 0; i < scan.entries.size(); ++i) {
                     auto& entry = scan.entries[i];
                     const size_t at = position_of[i];
-                    if ((at == SIZE_MAX || at < window_first || at >= window_end) && entry.metadata_loaded) {
+                    if ((at == SIZE_MAX || at < window_first || at >= window_end) && entry.metadata_loaded && !is_tile(i)) {
                         std::vector<unsigned char>{}.swap(entry.icon);
                         entry.metadata_loaded = false;
                     }
@@ -2333,6 +2511,12 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                         requested.push_back(entry);
                     }
                 };
+                // The Switch home's tiles first while it is on screen.
+                for (const size_t index : kept_tiles) {
+                    if (index >= scan.entries.size() || scan.entries[index].metadata_loaded) continue;
+                    scan.entries[index].metadata_loaded = true;
+                    requested.push_back(scan.entries[index]);
+                }
                 want(page, page + PageVisible);
                 want(page + PageVisible, page + PageVisible + PageSize);
                 want(window_first, page);
@@ -2387,7 +2571,10 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     ? static_cast<std::uint8_t>(LoadGameProfile(scan.entries[game_options.game].launch_path)) : std::uint8_t{},
                 tuning_page ? &tuning : nullptr, tuning_row,
                 game_options.game < scan.entries.size() &&
-                    std::find(favorites.begin(), favorites.end(), scan.entries[game_options.game].launch_path) != favorites.end()};
+                    std::find(favorites.begin(), favorites.end(), scan.entries[game_options.game].launch_path) != favorites.end(),
+                game_options.open && game_options.game < scan.entries.size() &&
+                    LoadGameTuning(scan.entries[game_options.game].launch_path).remap.has_value()};
+            const RemapView remap_view{remap_open, remap_game, remap_own, remap_row, remap_edit, remap_title, options_notice};
             if ((home || theme_previewing) && !loading) rebuild_tiles();
             const ThemesView themes_view{themes_page, theme_previewing, themes_card, themes_focus,
                                          active_card(), themes_wallpaper, themes_notice, &theme_packs};
@@ -2408,7 +2595,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                           search_editor ? &*search_editor : nullptr, false, &translated, translations_ready,
                           &online, online_page, online_row, static_cast<unsigned>(edit_target), &saves_view,
                           frame_theme, frame_wallpaper, themes_page ? &themes_view : nullptr, &sw_tiles, sw_row,
-                          sw_tile, sw_button, frame_pack});
+                          sw_tile, sw_button, frame_pack, exit_prompt, remap_open ? &remap_view : nullptr});
             dirty = false;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds{16});

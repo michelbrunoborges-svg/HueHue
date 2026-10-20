@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include "eden_uwp/button_remap.h"
 #include "eden_uwp/controller_style.h"
 #include "eden_uwp/ui_actions.h"
 #include "eden_uwp/localization.h"
@@ -105,8 +106,20 @@ struct GameMenuSettings {
     bool material_capture{};
     /// Quick settings (NS HUEHUE): applied at once to this session, not saved.
     bool speed_limit{true};
-    std::uint8_t volume{100}; ///< Percent, in steps of 10.
+    std::uint8_t volume{100}; ///< Percent, in steps of 10, up to 200.
+    /// Percent of the console's speed, in steps of 10 (10 to 200); 0: no limit.
+    std::uint16_t speed{100};
+    /// Mapear botoes (button_remap.h): the mapping this game uses, and whether it is its own.
+    ButtonRemap remap{IdentityRemap()};
+    bool game_remap{};
 };
+
+/// Speed in percent of the console's (10 to 200, steps of 10); 0 is no limit, below 10%.
+inline std::uint16_t StepSpeed(std::uint16_t speed, bool back) {
+    if (back) return speed <= 10 ? 0 : static_cast<std::uint16_t>(speed - 10);
+    if (speed == 0) return 10;
+    return speed >= 200 ? 200 : static_cast<std::uint16_t>(speed + 10);
+}
 
 /// Library: back to home, keeping a Pulse session when they are on. LibraryWithoutSession: the
 /// player chose to leave without one.
@@ -115,6 +128,7 @@ enum class GameMenuResult : std::uint8_t {
     LibraryWithoutSession,
     CaptureGraphics,
     QuickSettingsChanged, ///< Speed limit or volume: Settings() has the new values.
+    RemapChanged,         ///< This game's button mapping: Settings().remap.
 };
 
 /// One row as drawn: a label, and the value of a setting (changed with left/right) or of a page.
@@ -130,14 +144,14 @@ class GameMenu {
 public:
     enum Item : std::size_t {
         Continue, Cheats, Mods, Style, FaceButtons, Deadzone, FullScreen, ImageUpscaling, PerformanceStats, Library,
-        CaptureGraphics, SpeedLimit, Volume,
+        CaptureGraphics, SpeedLimit, Volume, Remap,
     };
 
     /// `cheats`: the game can have cheats (it has a title id), so the menu offers them.
     explicit GameMenu(GameMenuSettings settings_, bool cheats = false) : settings{settings_} {
         items = {Continue};
         if (cheats) items.push_back(Cheats);
-        items.insert(items.end(), {Style, FaceButtons, Deadzone});
+        items.insert(items.end(), {Style, FaceButtons, Deadzone, Remap});
         if (settings.can_fullscreen) items.push_back(FullScreen);
         // NS HUEHUE: Ampliacao da imagem lives in the game's Desempenho e graficos, saved per game.
         if (settings.offer_upscaling) items.push_back(ImageUpscaling);
@@ -161,7 +175,11 @@ public:
         items.insert(after != items.end() ? after + 1 : items.begin() + 1, Mods);
     }
 
+    /// The Mapear botoes page is open in place of the list.
+    [[nodiscard]] bool RemapOpen() const { return remap_open; }
+
     GameMenuResult Apply(MenuAction action) {
+        if (remap_open) return ApplyRemap(action);
         switch (action) {
         case MenuAction::Toggle:
         case MenuAction::Back:
@@ -187,12 +205,21 @@ public:
 
     [[nodiscard]] std::vector<GameMenuRow> Rows() const {
         std::vector<GameMenuRow> rows;
+        if (remap_open) {
+            // Each Switch button and its Xbox control, then Restaurar padrao and Voltar.
+            for (std::size_t i = 0; i < RemapCount; ++i)
+                rows.push_back({L"Switch " + std::wstring{SwitchButtonName(i)},
+                                std::wstring{XboxControlName(settings.remap[i])}, GameMenuRow::Kind::Choice});
+            rows.push_back({Tr(I18n::Text::NsRemapReset)});
+            rows.push_back({Tr(I18n::Text::Back)});
+            return rows;
+        }
         for (const Item item : items) rows.push_back(Row(item));
         return rows;
     }
 
     /// Row of the cursor, as drawn.
-    [[nodiscard]] std::size_t Selected() const { return selected; }
+    [[nodiscard]] std::size_t Selected() const { return remap_open ? remap_selected : selected; }
     [[nodiscard]] Item SelectedItem() const { return items[selected]; }
     [[nodiscard]] const GameMenuSettings& Settings() const { return settings; }
 
@@ -225,8 +252,12 @@ private:
             return {Tr(Text::Upscaling), Tr(UpscalingText(settings.upscaling)), Choice};
         case PerformanceStats:
             return {Tr(Text::PerformanceStats), Tr(settings.show_performance_stats ? Text::Yes : Text::No), Choice};
+        case Remap:
+            return {Tr(Text::NsRemapGame), Tr(settings.game_remap ? Text::NsRemapOwn : Text::NsRemapDefault),
+                    GameMenuRow::Kind::Page};
         case SpeedLimit:
-            return {Tr(Text::MenuSpeedLimit), Tr(settings.speed_limit ? Text::Yes : Text::No), Choice};
+            return {Tr(Text::MenuSpeedLimit),
+                    settings.speed == 0 ? Tr(Text::NsSpeedOff) : std::to_wstring(settings.speed) + L"%", Choice};
         case Volume:
             return {Tr(Text::MenuVolume), settings.volume == 0 ? Tr(Text::MenuMuted)
                                                                : std::to_wstring(settings.volume) + L"%", Choice};
@@ -250,6 +281,12 @@ private:
         case Cheats:
             return action == MenuAction::Confirm ? GameMenuResult::Cheats : GameMenuResult::None;
         case Mods:
+            return GameMenuResult::None;
+        case Remap:
+            if (action == MenuAction::Confirm) {
+                remap_open = true;
+                remap_selected = 0;
+            }
             return GameMenuResult::None;
         case Library:
             if (action != MenuAction::Confirm) {
@@ -279,12 +316,13 @@ private:
             settings.show_performance_stats = !settings.show_performance_stats;
             return GameMenuResult::PerformanceStatsChanged;
         case SpeedLimit:
-            settings.speed_limit = !settings.speed_limit;
+            settings.speed = StepSpeed(settings.speed, back);
+            settings.speed_limit = settings.speed != 0;
             return GameMenuResult::QuickSettingsChanged;
         case Volume:
-            // Right/A louder, left quieter; A past 100% wraps to mute.
+            // Right/A louder, left quieter, 0 to 200%; A past 200% wraps to mute.
             if (back) settings.volume = settings.volume >= 10 ? static_cast<std::uint8_t>(settings.volume - 10) : 0;
-            else settings.volume = settings.volume >= 100 ? (action == MenuAction::Confirm ? 0 : 100)
+            else settings.volume = settings.volume >= 200 ? (action == MenuAction::Confirm ? 0 : 200)
                                                           : static_cast<std::uint8_t>(settings.volume + 10);
             return GameMenuResult::QuickSettingsChanged;
         case FullScreen:
@@ -294,9 +332,47 @@ private:
         return GameMenuResult::None;
     }
 
+    GameMenuResult ApplyRemap(MenuAction action) {
+        const std::size_t count = RemapCount + 2;
+        switch (action) {
+        case MenuAction::Toggle:
+            return GameMenuResult::Resume;
+        case MenuAction::Back:
+            remap_open = false;
+            return GameMenuResult::None;
+        case MenuAction::Up:
+            remap_selected = (remap_selected + count - 1) % count;
+            return GameMenuResult::None;
+        case MenuAction::Down:
+            remap_selected = (remap_selected + 1) % count;
+            return GameMenuResult::None;
+        case MenuAction::Left:
+        case MenuAction::Right:
+        case MenuAction::Confirm:
+            if (remap_selected < RemapCount) {
+                auto& source = settings.remap[remap_selected];
+                source = StepRemapSource(source, action == MenuAction::Left);
+                settings.game_remap = true;
+                return GameMenuResult::RemapChanged;
+            }
+            if (action != MenuAction::Confirm) return GameMenuResult::None;
+            if (remap_selected == RemapCount) {
+                settings.remap = IdentityRemap();
+                settings.game_remap = true;
+                return GameMenuResult::RemapChanged;
+            }
+            remap_open = false;
+            return GameMenuResult::None;
+        default:
+            return GameMenuResult::None;
+        }
+    }
+
     GameMenuSettings settings;
     std::vector<Item> items;
     std::size_t selected{};
+    bool remap_open{};
+    std::size_t remap_selected{};
     std::size_t cheats_on{};
     std::size_t mods_on{};
     bool keep_session{true};

@@ -30,6 +30,7 @@
 
 #include <winrt/Windows.Storage.h>
 
+#include "eden_uwp/button_remap.h"
 #include "eden_uwp/localization.h"
 #include "eden_uwp/upscaling.h"
 
@@ -90,12 +91,16 @@ struct GameTuning {
     FastmemMode fastmem{FastmemMode::Off};
     bool pso_eviction{true};       ///< Idle pipelines give their PSOs back.
     IdleSpin idle_spin{IdleSpin::Adaptive};
-    bool speed_limit{true};        ///< Off: the game runs as fast as the console can.
+    /// Limite de velocidade: percent of the console's speed, 10 to 200 in steps of 10; 0 is no
+    /// limit (the game runs as fast as the Xbox can).
+    std::uint16_t speed{100};
     JitCache jit_cache{JitCache::Normal};
     /// Shaders pendentes (issue #6 P1-A, experimental): skip the draws whose PSO is still being
     /// built instead of stalling (full-screen passes and compute still wait).
     bool pso_defer{};
     FirmwareUse firmware{FirmwareUse::Auto};
+    /// Controles do jogo: its own button mapping (button_remap.h); nullopt uses the saved one.
+    std::optional<ButtonRemap> remap;
 
     bool operator==(const GameTuning&) const = default;
 
@@ -181,7 +186,11 @@ inline void StepTuning(GameTuning& tuning, TuningRow row, bool back, bool big = 
     }
     case TuningRow::FrameSkip: tuning.frame_skip = static_cast<std::uint8_t>((tuning.frame_skip + (back ? 3 : 1)) % 4); break;
     case TuningRow::Shaders: tuning.shaders = cycle(tuning.shaders, 2); break;
-    case TuningRow::SpeedLimit: tuning.speed_limit = !tuning.speed_limit; break;
+    case TuningRow::SpeedLimit:
+        // Below 10% is off; off goes up to 10%.
+        if (back) tuning.speed = tuning.speed <= 10 ? 0 : static_cast<std::uint16_t>(tuning.speed - 10);
+        else tuning.speed = tuning.speed == 0 ? 10 : std::min<std::uint16_t>(200, static_cast<std::uint16_t>(tuning.speed + 10));
+        break;
     case TuningRow::PsoDefer: tuning.pso_defer = !tuning.pso_defer; break;
     case TuningRow::RecordThread: tuning.record_thread = !tuning.record_thread; break;
     case TuningRow::PresentThread: tuning.present_thread = !tuning.present_thread; break;
@@ -235,8 +244,10 @@ inline std::map<std::string, GameTuning> Load() {
             if (complete) std::copy(std::begin(read), std::end(read), advanced);
         }
         int defer = 0, firmware = 0; // 0.4.2: Shaders pendentes; 0.4.3: Firmware do console
+        std::string remap_text;      // 0.4.4: Controles do jogo ("-": the saved mapping)
         if (!(fields >> defer)) defer = 0;
         else if (!(fields >> firmware)) firmware = 0;
+        else if (!(fields >> remap_text)) remap_text.clear();
         GameTuning tuning;
         tuning.profile = static_cast<GameProfile>(std::clamp(profile, 0, 3));
         tuning.resolution = static_cast<GameResolution>(std::clamp(resolution, 0, static_cast<int>(GameResolutionCount) - 1));
@@ -248,7 +259,9 @@ inline std::map<std::string, GameTuning> Load() {
         tuning.gl_shaders = static_cast<GlShaders>(std::clamp(gl, 0, 1));
         tuning.upscaling = static_cast<TuningUpscaling>(std::clamp(upscaling, 0, static_cast<int>(TuningUpscalingCount) - 1));
         tuning.memory = static_cast<MemoryMode>(std::clamp(memory, 0, 1));
-        tuning.speed_limit = advanced[0] != 0;
+        // Up to 0.4.3 the field was on (1) or off (0); now it is the percent.
+        tuning.speed = advanced[0] == 0 ? 0 : advanced[0] == 1 ? 100
+                     : static_cast<std::uint16_t>(std::clamp(advanced[0] / 10 * 10, 10, 200));
         tuning.record_thread = advanced[1] != 0;
         tuning.present_thread = advanced[2] != 0;
         tuning.astc = static_cast<AstcMode>(std::clamp(advanced[3], 0, 2));
@@ -259,6 +272,7 @@ inline std::map<std::string, GameTuning> Load() {
         tuning.jit_cache = static_cast<JitCache>(std::clamp(advanced[8], 0, 2));
         tuning.pso_defer = defer != 0;
         tuning.firmware = static_cast<FirmwareUse>(std::clamp(firmware, 0, 2));
+        if (!remap_text.empty() && remap_text != "-") tuning.remap = ParseRemap(remap_text);
         all[line.substr(0, tab)] = tuning;
     }
     return all;
@@ -296,11 +310,12 @@ inline bool SaveGameTuning(const std::string& launch_path, const GameTuning& tun
             << static_cast<int>(value.frame_skip) << '\t' << static_cast<int>(value.shaders) << '\t'
             << static_cast<int>(value.renderer) << '\t' << static_cast<int>(value.gl_shaders) << '\t'
             << static_cast<int>(value.upscaling) << '\t' << static_cast<int>(value.memory) << '\t'
-            << int{value.speed_limit} << '\t' << int{value.record_thread} << '\t' << int{value.present_thread}
+            << int{value.speed} << '\t' << int{value.record_thread} << '\t' << int{value.present_thread}
             << '\t' << static_cast<int>(value.astc) << '\t' << int{value.astc_opaque_bc3} << '\t'
             << static_cast<int>(value.fastmem) << '\t' << int{value.pso_eviction} << '\t'
             << static_cast<int>(value.idle_spin) << '\t' << static_cast<int>(value.jit_cache) << '\t'
-            << int{value.pso_defer} << '\t' << static_cast<int>(value.firmware) << '\n';
+            << int{value.pso_defer} << '\t' << static_cast<int>(value.firmware) << '\t'
+            << (value.remap ? SerializeRemap(*value.remap) : std::string{"-"}) << '\n';
     }
     return static_cast<bool>(out);
 }

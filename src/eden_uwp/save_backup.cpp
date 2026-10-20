@@ -4,6 +4,7 @@
 #include "eden_uwp/save_backup.h"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -208,8 +209,11 @@ std::map<std::string, Stamp> ScanLocal() {
             if (!it->is_regular_file(file_ec)) continue;
             const auto name = it->path().filename().wstring();
             if (name.ends_with(L".part") || name.ends_with(L".tmp")) continue;
-            auto relative = std::string{root} + "/" + winrt::to_string(fs::relative(it->path(), base, file_ec).generic_wstring());
-            if (file_ec || !Copied(relative)) continue;
+            // Lexical: fs::relative canonicalizes both paths, which fails on the Xbox's LocalState
+            // (its volume path differs from the one the app is given), and every save was skipped:
+            // the copies held only the manifest (0.3.x to 0.4.3).
+            auto relative = std::string{root} + "/" + winrt::to_string(it->path().lexically_relative(base).generic_wstring());
+            if (!Copied(relative) || relative.find("..") != std::string::npos) continue;
             const auto size = it->file_size(file_ec);
             const auto time = it->last_write_time(file_ec).time_since_epoch().count();
             if (file_ec) continue;
@@ -345,6 +349,7 @@ Result Backup(bool replace_other, Progress& progress, std::stop_token stop) {
             return result;
         }
         const auto local = ScanLocal();
+        LOG_INFO(Frontend, "saves: {} files on this console to compare", local.size());
         std::vector<std::pair<std::string, Stamp>> changed;
         for (const auto& [path, stamp] : local) {
             const auto found = manifest.files.find(path);
@@ -519,6 +524,139 @@ Result Restore(Progress& progress, std::stop_token stop) {
         result.outcome = Outcome::Failed;
         result.error = e.what();
         LOG_ERROR(Frontend, "saves: restore failed: {}", result.error);
+    }
+    return result;
+}
+
+namespace {
+constexpr std::wstring_view ConfigFolderName = L"NS-HUEHUE-config";
+constexpr std::wstring_view ConfigValuesName = L"settings.tsv";
+/// The LocalState files the settings copy carries (not the install id, the session marker nor
+/// the scan cache: those belong to this console).
+constexpr std::array<std::wstring_view, 4> ConfigFiles{L"ns_profiles.tsv", L"ns_favorites.txt", L"ns_recent.txt",
+                                                       L"ns_online.cfg"};
+std::string Escape(std::string_view text) {
+    std::string out;
+    for (const char c : text) {
+        if (c == '\\') out += "\\\\";
+        else if (c == '\t') out += "\\t";
+        else if (c == '\n') out += "\\n";
+        else if (c == '\r') out += "\\r";
+        else out += c;
+    }
+    return out;
+}
+std::string Unescape(std::string_view text) {
+    std::string out;
+    for (size_t i = 0; i < text.size(); ++i) {
+        if (text[i] != '\\' || i + 1 == text.size()) { out += text[i]; continue; }
+        const char next = text[++i];
+        out += next == 't' ? '\t' : next == 'n' ? '\n' : next == 'r' ? '\r' : next;
+    }
+    return out;
+}
+} // namespace
+
+Result BackupSettings() {
+    Result result;
+    if (!HasFolder()) { result.outcome = Outcome::NoFolder; return result; }
+    const auto picked = PickedFolder();
+    if (!picked) { result.outcome = Outcome::FolderUnavailable; return result; }
+    try {
+        const auto root = *ChildFolder(*picked, ConfigFolderName, true);
+        // LocalSettings: every value of a plain type, as "key<TAB>type<TAB>value".
+        std::ostringstream out;
+        out << "#ns-huehue-config 1\n";
+        std::uint32_t values = 0;
+        for (const auto& pair : ApplicationData::Current().LocalSettings().Values()) {
+            const std::string key = winrt::to_string(pair.Key());
+            const auto value = pair.Value();
+            if (key.find('\t') != std::string::npos) continue;
+            if (const auto text = value.try_as<winrt::Windows::Foundation::IReference<winrt::hstring>>())
+                out << key << "\ts\t" << Escape(winrt::to_string(text.Value())) << '\n';
+            else if (const auto flag = value.try_as<winrt::Windows::Foundation::IReference<bool>>())
+                out << key << "\tb\t" << (flag.Value() ? 1 : 0) << '\n';
+            else if (const auto number = value.try_as<winrt::Windows::Foundation::IReference<std::int32_t>>())
+                out << key << "\ti\t" << number.Value() << '\n';
+            else if (const auto wide = value.try_as<winrt::Windows::Foundation::IReference<std::int64_t>>())
+                out << key << "\tl\t" << wide.Value() << '\n';
+            else if (const auto real = value.try_as<winrt::Windows::Foundation::IReference<double>>())
+                out << key << "\td\t" << real.Value() << '\n';
+            else continue;
+            ++values;
+        }
+        WriteText(root, ConfigValuesName, out.str());
+        for (const auto name : ConfigFiles) {
+            const auto path = LocalFolder() / fs::path{std::wstring{name}};
+            if (const auto text = ReadWholeFile(path)) {
+                WriteText(root, name, *text);
+                ++result.copied;
+            }
+        }
+        result.files = values;
+        result.outcome = Outcome::Done;
+        LOG_INFO(Frontend, "settings: copied {} values and {} files", values, result.copied);
+    } catch (const winrt::hresult_error& e) {
+        result.outcome = Outcome::Failed;
+        result.error = winrt::to_string(e.message());
+        LOG_ERROR(Frontend, "settings: copy failed: {}", result.error);
+    } catch (const std::exception& e) {
+        result.outcome = Outcome::Failed;
+        result.error = e.what();
+        LOG_ERROR(Frontend, "settings: copy failed: {}", result.error);
+    }
+    return result;
+}
+
+Result RestoreSettings() {
+    Result result;
+    if (!HasFolder()) { result.outcome = Outcome::NoFolder; return result; }
+    const auto picked = PickedFolder();
+    if (!picked) { result.outcome = Outcome::FolderUnavailable; return result; }
+    try {
+        const auto root = ChildFolder(*picked, ConfigFolderName, false);
+        const auto item = root ? root->TryGetItemAsync(winrt::hstring{ConfigValuesName}).get() : nullptr;
+        const auto file = item ? item.try_as<StorageFile>() : nullptr;
+        if (!file) { result.outcome = Outcome::NothingToRestore; return result; }
+        const auto values = ApplicationData::Current().LocalSettings().Values();
+        std::istringstream in{ReadAll(file)};
+        std::uint32_t restored = 0;
+        for (std::string line; std::getline(in, line);) {
+            if (!line.empty() && line.back() == '\r') line.pop_back();
+            if (line.empty() || line.front() == '#') continue;
+            const auto first = line.find('\t');
+            const auto second = first == std::string::npos ? first : line.find('\t', first + 1);
+            if (second == std::string::npos) continue;
+            const auto key = winrt::to_hstring(line.substr(0, first));
+            const auto type = line.substr(first + 1, second - first - 1);
+            const auto text = line.substr(second + 1);
+            try {
+                if (type == "s") values.Insert(key, winrt::box_value(winrt::to_hstring(Unescape(text))));
+                else if (type == "b") values.Insert(key, winrt::box_value(text == "1"));
+                else if (type == "i") values.Insert(key, winrt::box_value(static_cast<std::int32_t>(std::stol(text))));
+                else if (type == "l") values.Insert(key, winrt::box_value(static_cast<std::int64_t>(std::stoll(text))));
+                else if (type == "d") values.Insert(key, winrt::box_value(std::stod(text)));
+                else continue;
+                ++restored;
+            } catch (...) {}
+        }
+        for (const auto name : ConfigFiles) {
+            const auto copy = root->TryGetItemAsync(winrt::hstring{name}).get();
+            const auto copy_file = copy ? copy.try_as<StorageFile>() : nullptr;
+            if (!copy_file) continue;
+            if (WriteFileAtomically(LocalFolder() / fs::path{std::wstring{name}}, ReadAll(copy_file))) ++result.copied;
+        }
+        result.files = restored;
+        result.outcome = Outcome::Done;
+        LOG_INFO(Frontend, "settings: restored {} values and {} files", restored, result.copied);
+    } catch (const winrt::hresult_error& e) {
+        result.outcome = Outcome::Failed;
+        result.error = winrt::to_string(e.message());
+        LOG_ERROR(Frontend, "settings: restore failed: {}", result.error);
+    } catch (const std::exception& e) {
+        result.outcome = Outcome::Failed;
+        result.error = e.what();
+        LOG_ERROR(Frontend, "settings: restore failed: {}", result.error);
     }
     return result;
 }

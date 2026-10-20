@@ -80,27 +80,6 @@ constexpr std::array BUTTON_NAMES{
     ButtonName{"HOME", VirtualButton::ButtonHome},  ButtonName{"CAPTURE", VirtualButton::ButtonCapture},
 };
 
-/// Xbox buttons by label: Xbox A is Switch A (on the bottom, where the Switch has B), and so on.
-struct GamepadMapping {
-    GamepadButtons xbox;
-    VirtualButton button;
-};
-constexpr std::array GAMEPAD_MAPPINGS{
-    GamepadMapping{GamepadButtons::A, VirtualButton::ButtonA},
-    GamepadMapping{GamepadButtons::B, VirtualButton::ButtonB},
-    GamepadMapping{GamepadButtons::X, VirtualButton::ButtonX},
-    GamepadMapping{GamepadButtons::Y, VirtualButton::ButtonY},
-    GamepadMapping{GamepadButtons::LeftShoulder, VirtualButton::TriggerL},
-    GamepadMapping{GamepadButtons::RightShoulder, VirtualButton::TriggerR},
-    GamepadMapping{GamepadButtons::LeftThumbstick, VirtualButton::StickL},
-    GamepadMapping{GamepadButtons::RightThumbstick, VirtualButton::StickR},
-    GamepadMapping{GamepadButtons::Menu, VirtualButton::ButtonPlus},
-    GamepadMapping{GamepadButtons::View, VirtualButton::ButtonMinus},
-    GamepadMapping{GamepadButtons::DPadUp, VirtualButton::ButtonUp},
-    GamepadMapping{GamepadButtons::DPadDown, VirtualButton::ButtonDown},
-    GamepadMapping{GamepadButtons::DPadLeft, VirtualButton::ButtonLeft},
-    GamepadMapping{GamepadButtons::DPadRight, VirtualButton::ButtonRight},
-};
 
 struct PadState {
     u32 buttons{};
@@ -152,19 +131,28 @@ PadState ReadGamepad(const ControllerDevice& pad, const ControllerOptions& optio
     const auto buttons = MapFaceButtons(reading.Buttons,
         SwapControllerFaceButtons(pad, options.swap_face_buttons));
     PadState state{};
-    for (const GamepadMapping& mapping : GAMEPAD_MAPPINGS) {
-        if ((buttons & mapping.xbox) == mapping.xbox) {
-            state.buttons |= Bit(mapping.button);
-        }
+    // NS HUEHUE free mapping (button_remap.h): the Xbox controls pressed, in RemapButton order
+    // (the triggers past the threshold), then each Switch button from its control.
+    const auto held = [&](GamepadButtons button) { return (buttons & button) == button; };
+    const std::array<bool, RemapCount> sources{
+        held(GamepadButtons::A), held(GamepadButtons::B), held(GamepadButtons::X), held(GamepadButtons::Y),
+        held(GamepadButtons::LeftShoulder), held(GamepadButtons::RightShoulder),
+        reading.LeftTrigger > TRIGGER_THRESHOLD, reading.RightTrigger > TRIGGER_THRESHOLD,
+        held(GamepadButtons::LeftThumbstick), held(GamepadButtons::RightThumbstick),
+        held(GamepadButtons::Menu), held(GamepadButtons::View),
+        held(GamepadButtons::DPadUp), held(GamepadButtons::DPadDown), held(GamepadButtons::DPadLeft),
+        held(GamepadButtons::DPadRight)};
+    static constexpr std::array<VirtualButton, RemapCount> targets{
+        VirtualButton::ButtonA, VirtualButton::ButtonB, VirtualButton::ButtonX, VirtualButton::ButtonY,
+        VirtualButton::TriggerL, VirtualButton::TriggerR, VirtualButton::TriggerZL, VirtualButton::TriggerZR,
+        VirtualButton::StickL, VirtualButton::StickR, VirtualButton::ButtonPlus, VirtualButton::ButtonMinus,
+        VirtualButton::ButtonUp, VirtualButton::ButtonDown, VirtualButton::ButtonLeft, VirtualButton::ButtonRight};
+    for (std::size_t target = 0; target < RemapCount; ++target) {
+        const std::uint8_t source = options.remap[target];
+        if (source < RemapCount && sources[source]) state.buttons |= Bit(targets[target]);
     }
     if (full.home) state.buttons |= Bit(VirtualButton::ButtonHome);
     if (full.capture) state.buttons |= Bit(VirtualButton::ButtonCapture);
-    if (reading.LeftTrigger > TRIGGER_THRESHOLD) {
-        state.buttons |= Bit(VirtualButton::TriggerZL);
-    }
-    if (reading.RightTrigger > TRIGGER_THRESHOLD) {
-        state.buttons |= Bit(VirtualButton::TriggerZR);
-    }
     ApplyDeadzone(reading.LeftThumbstickX, reading.LeftThumbstickY, options.deadzone, state.left_x, state.left_y);
     ApplyDeadzone(reading.RightThumbstickX, reading.RightThumbstickY, options.deadzone, state.right_x,
                   state.right_y);
@@ -186,6 +174,10 @@ ControllerOptions LoadControllerOptions() {
             if (style >= 0 && static_cast<size_t>(style) < ConsoleControllerStyleCount)
                 options.style = static_cast<ConsoleControllerStyle>(style);
         }
+        if (values.HasKey(L"controller_remap_v1")) {
+            const auto text = winrt::to_string(winrt::unbox_value_or<winrt::hstring>(values.Lookup(L"controller_remap_v1"), L""));
+            if (const auto remap = ParseRemap(text)) options.remap = *remap;
+        }
         if (values.HasKey(L"controller_deadzone")) {
             const float zone = static_cast<float>(winrt::unbox_value<double>(values.Lookup(L"controller_deadzone")));
             if (std::isfinite(zone) && zone >= 0.01f && zone <= 0.5f) options.deadzone = zone;
@@ -206,6 +198,7 @@ bool SaveControllerOptions(const ControllerOptions& options) {
         values.Insert(L"controller_device", winrt::box_value(winrt::hstring{options.controller_id}));
         values.Insert(L"controller_deadzone", winrt::box_value(static_cast<double>(options.deadzone)));
         values.Insert(L"controller_style", winrt::box_value(static_cast<int32_t>(options.style)));
+        values.Insert(L"controller_remap_v1", winrt::box_value(winrt::to_hstring(SerializeRemap(options.remap))));
         return true;
     } catch (...) { return false; }
 }
@@ -569,6 +562,11 @@ ControllerOptions GamepadInput::Options() {
     return options;
 }
 
+void GamepadInput::SetSessionRemap(std::optional<ButtonRemap> remap) {
+    std::scoped_lock lock{options_mutex};
+    session_remap = remap;
+}
+
 void GamepadInput::SetOptions(const ControllerOptions& next) {
     bool new_style;
     {
@@ -628,7 +626,11 @@ void GamepadInput::Run(std::stop_token stop) {
     std::array<bool, EXTRA_PLAYERS> extra_connected{};
     while (!stop.stop_requested()) {
         // The gamepad list is cheap to query but changes rarely: look again twice a second.
-        const ControllerOptions current_options = Options();
+        ControllerOptions current_options = Options();
+        {
+            std::scoped_lock lock{options_mutex};
+            if (session_remap) current_options.remap = *session_remap;
+        }
         if (controller_api_ready) {
             try {
                 const bool catalog_changed = controllers.Update(std::chrono::steady_clock::now(),

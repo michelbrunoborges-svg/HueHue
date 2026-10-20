@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "common/common_types.h"
+#include "eden_uwp/button_remap.h"
 #include "eden_uwp/controller_style.h"
 #include "eden_uwp/ui_actions.h"
 #include "eden_uwp/text_entry.h"
@@ -73,6 +74,7 @@ struct ControllerOptions {
     float deadzone{0.12f};
     std::wstring controller_id; // Empty=auto; persistent RawGameController ID otherwise.
     ConsoleControllerStyle style{ConsoleControllerStyle::Auto}; // What the guest sees.
+    ButtonRemap remap{IdentityRemap()}; // NS HUEHUE: the Xbox control of each Switch button.
 };
 ControllerOptions LoadControllerOptions();
 bool SaveControllerOptions(const ControllerOptions& options);
@@ -107,6 +109,8 @@ public:
     [[nodiscard]] u8 MenuPromptMapping() const { return menu_prompt_mapping.load(); }
     /// Applies (and saves) options changed in the menu; a new style reconnects player 1 now.
     void SetOptions(const ControllerOptions& options);
+    /// NS HUEHUE: this game's own button mapping, over the saved one (not saved); nullopt drops it.
+    void SetSessionRemap(std::optional<ButtonRemap> remap);
 
 private:
     void Run(std::stop_token stop);
@@ -122,6 +126,7 @@ private:
     std::vector<InputStep> script;
     std::mutex options_mutex;
     ControllerOptions options;
+    std::optional<ButtonRemap> session_remap; ///< Guarded by options_mutex.
     std::atomic<bool> style_changed{};
     std::atomic<bool> menu_open{};
     std::atomic<u8> menu_prompt_mapping{};

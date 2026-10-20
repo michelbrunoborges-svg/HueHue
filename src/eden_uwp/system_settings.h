@@ -41,6 +41,8 @@ struct SystemSettings {
     /// holds the pack's base, used if the pack is gone.
     std::wstring theme_pack;
     Upscaling upscaling{Upscaling::Bilinear};         ///< Set from the in-game menu.
+    /// NS HUEHUE: the games' volume, percent in steps of 10 (0 mute, up to 200).
+    std::uint8_t volume{100};
 
     bool operator==(const SystemSettings&) const = default;
 };

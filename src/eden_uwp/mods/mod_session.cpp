@@ -128,6 +128,12 @@ void ShowSources(ModsSnapshot& state) {
     state.folder_name.clear();
     state.files.clear();
     state.files.push_back({FileRow::Kind::AddFolder, std::wstring{I18n::Tr(I18n::Text::ModsAddFolder)}, {}, {}});
+    const auto downloads = ModDownloadFolderName();
+    state.files.push_back({FileRow::Kind::DownloadFolder,
+                           I18n::Format(I18n::Text::NsModsDownloadFolder,
+                                        {downloads.empty() ? std::wstring{I18n::Tr(I18n::Text::NsModsDownloadInternal)}
+                                                           : downloads}),
+                           {}, {}});
     state.files.push_back({FileRow::Kind::Folder, std::wstring{I18n::Tr(I18n::Text::ModsInternal)},
                            Utf8(InboxFolder()), {}});
     for (const auto& source : ContentFolderSources())
@@ -328,6 +334,9 @@ void ModSession::Open(std::size_t row) {
     case FileRow::Kind::AddFolder:
         folder_request = true;
         return;
+    case FileRow::Kind::DownloadFolder:
+        download_folder_request = true;
+        return;
     case FileRow::Kind::Folder:
         Browse(file.path, file.name);
         return;
@@ -447,6 +456,13 @@ void ModSession::InstallDownload(FinishedDownload download) {
         state.replace = request.replace;
         state.downloaded = Utf8(download.file);
         state.installed = 0;
+        // NS HUEHUE: a copy of the archive in the folder the player chose (USB), named as the
+        // site names the file; the install below still reads the internal copy.
+        {
+            std::wstring keep = Utf8ToUtf16(request.source.archive);
+            if (keep.empty()) keep = download.file.filename().wstring();
+            CopyToModDownloadFolder(download.file, std::move(keep));
+        }
         const auto forget = [&] {
             std::error_code ec;
             fs::remove(download.file, ec);
@@ -502,6 +518,13 @@ void ModSession::Dismiss() {
 
 void ModSession::Cancel() {
     if (Busy()) worker.request_stop();
+}
+
+void ModSession::SetDownloadFolder(const winrt::Windows::Storage::StorageFolder& folder) {
+    Start(ModJob::Browsing, [folder](ModsSnapshot& state, std::stop_token) {
+        try { SetModDownloadFolder(folder); } catch (...) {}
+        ShowSources(state);
+    });
 }
 
 void ModSession::AddFolder(const winrt::Windows::Storage::StorageFolder& folder) {

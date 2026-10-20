@@ -55,7 +55,8 @@ struct ConfigurationPanel {
 enum ConfigurationHomeRow : size_t { HomeSystem, HomeControllers, HomeFiles, HomeSaves, HomeOnline, HomeRowCount };
 /// Arquivos e USB rows: games folder, keys, firmware, updates, DLC, restore the previous
 /// firmware, online firmware (not configured), then one row per game folder.
-inline constexpr size_t FileRowRestoreFirmware = 5, FileRowOnlineFirmware = 6, FileRowSources = 7;
+/// (19/10/2026: the online firmware row is gone; there is no authorized source.)
+inline constexpr size_t FileRowRestoreFirmware = 5, FileRowSources = 6;
 inline size_t ConfigurationRowCount(const ConfigurationPanel& panel) {
     return panel.files ? FileRowSources + panel.status.sources.size() : HomeRowCount;
 }

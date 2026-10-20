@@ -249,3 +249,39 @@ Os prints do CI rodam num Windows sem GPU, com o mesmo código Direct2D.
   Usar sempre, Não usar (o firmware fica de lado só durante aquele jogo e volta ao fim; se o app
   fechar no meio, volta na próxima abertura).
 - Versão do pacote: **0.4.3.<build>**.
+
+## 0.4.4 (20/10): lista de correções do teste da 0.4.3.40
+
+- **Início (tema padrão):** lista única Jogos, Favoritos, Recentes, Configurações, Sair do NS.
+  Sem o item Controles (está em Configurações e no menu do jogo), B não sai do app, L/R não fazem
+  nada no início; A entra e B volta em cada item.
+- **Sem cabeçalho de abas** (Meus jogos/Configurações/Controles) em todas as telas: só a marca e o
+  usuário. "Meus jogos" passou a "Jogos"; ao entrar, o cursor fica no filtro **Todos**; L/R trocam
+  Todos/Favoritos/Recentes/Traduções. Favoritos e Recentes do início abrem já na aba certa.
+- **Configurações:** sem a linha "Abrir" nas prévias (ficam as duas linhas de informação);
+  "Controles e teclado" → "Controles"; sem "Buscar firmware online".
+- **Saves (USB) — causa do backup que não gravava nada:** a lista dos saves do console usava
+  `std::filesystem::relative`, que no Xbox falha no caminho do LocalState e devolvia vazio; agora
+  é `lexically_relative`. O backup automático saiu: ao escolher **Sair do NS** com pasta de saves,
+  o app pergunta (A backup e sair, Y sair sem backup, B cancelar). O backup manual continua.
+- **Backup e restauração das configurações** (Saves (USB)): grava em `NS-HUEHUE-config` as
+  configurações do app (LocalSettings), os perfis por jogo (`ns_profiles.tsv`), favoritos,
+  recentes e o online; restaurar pede confirmação e recarrega tudo.
+- **Sistema:** legendas sem sobreposição (layout novo) e **Volume** geral de 0 a 200% (passo 10).
+- **Controles:** imagem do controle nova em todos os temas, legendas com todas as funções
+  (navegar, d-pad, menu, buscar, opções, confirmar, voltar), "Por letra/Por posição" →
+  **Modo Xbox / Modo Switch** e **Mapear botões** (cada botão do Switch recebe qualquer controle
+  do Xbox, ou nenhum). Também por jogo, nas opções do X ("Controles do jogo": Próprio/Padrão) e no
+  menu do jogo (Start+Select).
+- **Tema Switch:** capas dos jogos do início não somem mais (os ícones dos cartões ficam
+  guardados e são pedidos primeiro); L/R andam entre os jogos; X abre as opções do jogo e Y a
+  busca; atalho novo **Sair do NS**; B não sai.
+- **Velocidade do jogo** (por jogo e no menu do jogo): 10% a 200% em passos de 10, padrão 100%,
+  abaixo de 10% = Desligado (sem limite). **Volume** do menu do jogo até 200%.
+- **Mods:** linha "Pasta de downloads" na aba Arquivos: cada download terminado é copiado para a
+  pasta escolhida (USB) com o nome do arquivo do site, e a pasta vira uma fonte para reinstalar.
+  O mod instalado continua no armazenamento interno (`load/<id do jogo>`), que é onde o
+  carregador do Eden lê. A instalação foi testada no PC com zips reais nos formatos do GameBanana
+  (pasta com romfs, atmosphere/contents/<id>, pastas soltas do jogo, exefs com .ips) e com os
+  arquivos 7z/RAR/RAR5 de teste do libarchive.
+- Versão do pacote: **0.4.4.<build>**.

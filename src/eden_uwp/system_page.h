@@ -18,7 +18,7 @@
 namespace EdenXbox {
 
 struct SystemPage {
-    enum Row : std::size_t { UserName, Theme, InterfaceLanguage, GameLanguage, Region, AdultMods, PerformanceStats, PulseSessions, ClearCache, RowCount };
+    enum Row : std::size_t { UserName, Theme, InterfaceLanguage, GameLanguage, Region, AdultMods, PerformanceStats, Volume, PulseSessions, ClearCache, RowCount };
 
     bool open{};
     std::size_t selected{};
@@ -96,6 +96,12 @@ inline SystemPageEffect HandleSystemInput(SystemPage& page, SystemInput input) {
     case Row::PerformanceStats:
         settings.show_performance_stats = !settings.show_performance_stats;
         return SystemPageEffect::Changed;
+    case Row::Volume:
+        // 0 (mute) to 200%, in steps of 10; A goes up and wraps to mute.
+        if (back) settings.volume = settings.volume >= 10 ? static_cast<std::uint8_t>(settings.volume - 10) : 0;
+        else settings.volume = settings.volume >= 200 ? (input == SystemInput::Confirm ? 0 : 200)
+                                                      : static_cast<std::uint8_t>(settings.volume + 10);
+        return SystemPageEffect::Changed;
     case Row::PulseSessions:
         settings.pulse_sessions = !settings.pulse_sessions;
         return SystemPageEffect::Changed;
@@ -136,6 +142,7 @@ inline I18n::Text SystemRowTitle(SystemPage::Row row) {
     case SystemPage::PerformanceStats:  return Text::PerformanceStats;
     case SystemPage::AdultMods:         return Text::ModsAdult;
     case SystemPage::PulseSessions:     return Text::PulseSessions;
+    case SystemPage::Volume:            return Text::MenuVolume;
     default:                            return Text::ClearLibraryCache;
     }
 }
@@ -151,6 +158,7 @@ inline I18n::Text SystemRowHint(SystemPage::Row row) {
     case SystemPage::PerformanceStats:  return Text::PerformanceStatsHint;
     case SystemPage::AdultMods:         return Text::ModsAdultHint;
     case SystemPage::PulseSessions:     return Text::PulseSessionsHint;
+    case SystemPage::Volume:            return Text::NsVolumeHint;
     default:                            return Text::ClearLibraryCacheHint;
     }
 }
@@ -184,6 +192,8 @@ inline std::wstring SystemRowValue(const SystemPage& page, SystemPage::Row row) 
         return std::wstring{I18n::Tr(settings.show_adult_mods ? Text::ModsAdultShown : Text::ModsAdultHidden)};
     case SystemPage::PulseSessions:
         return std::wstring{I18n::Tr(settings.pulse_sessions ? Text::Yes : Text::No)};
+    case SystemPage::Volume:
+        return settings.volume == 0 ? std::wstring{I18n::Tr(Text::MenuMuted)} : std::to_wstring(settings.volume) + L"%";
     default:
         return {};
     }
@@ -192,8 +202,10 @@ inline std::wstring SystemRowValue(const SystemPage& page, SystemPage::Row row) 
 /// Geometry shared by the canvas and pointer hit tests (1280x720 layout units).
 struct SystemPageLayout {
     static constexpr float PanelX = 140, PanelY = 72, PanelWidth = 1000, PanelHeight = 612;
-    static constexpr float RowX = 180, RowWidth = 920, RowTop = 160, RowStride = 47, RowHeight = 45;
-    static constexpr float Notice = 594, Footer = 630;
+    // The header (title and subtitle, 88 to 158) above ten rows of 42, 44 apart (168 to 606).
+    static constexpr float HeaderY = 88;
+    static constexpr float RowX = 180, RowWidth = 920, RowTop = 168, RowStride = 44, RowHeight = 42;
+    static constexpr float Notice = 612, Footer = 640;
     /// The name editor's keyboard panel (text_entry_panel.h), centered on the screen.
     static constexpr float EditorX = (1280 - TextEntryPanelLayout::Width) / 2;
     static constexpr float EditorY = (720 - TextEntryPanelLayout::Height) / 2;

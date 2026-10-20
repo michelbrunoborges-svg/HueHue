@@ -40,7 +40,7 @@ struct InstalledMod {
 
 /// A row of the Files tab.
 struct FileRow {
-    enum class Kind : std::uint8_t { AddFolder, Folder, Archive };
+    enum class Kind : std::uint8_t { AddFolder, Folder, Archive, DownloadFolder };
     Kind kind{};
     std::wstring name;
     std::string path;                 ///< The folder, or the archive's first volume.
@@ -118,6 +118,9 @@ public:
     /// The player asked to add a folder: the host shows the folder picker, then calls back.
     [[nodiscard]] bool TakeFolderRequest() { return std::exchange(folder_request, false); }
     void AddFolder(const winrt::Windows::Storage::StorageFolder& folder);
+    /// NS HUEHUE: the player asked to choose where downloads are kept (the same picker).
+    [[nodiscard]] bool TakeDownloadFolderRequest() { return std::exchange(download_folder_request, false); }
+    void SetDownloadFolder(const winrt::Windows::Storage::StorageFolder& folder);
 
     // The store.
     void OpenStore() { store.Open(); }
@@ -162,6 +165,7 @@ private:
     std::future<ModsSnapshot> pending;
     std::jthread worker;
     bool folder_request{};
+    bool download_folder_request{};
     bool changed{};
     bool checked_updates{};
     std::optional<ModError> notice;

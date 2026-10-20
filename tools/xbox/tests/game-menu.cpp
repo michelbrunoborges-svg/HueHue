@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include "eden_uwp/game_menu.h"
 #include "eden_uwp/system_page.h"
+#include "eden_uwp/button_remap.h"
 
 int main() {
     using namespace EdenXbox;
@@ -115,15 +116,15 @@ int main() {
     // PC: full screen sits above the display rows and "back to the library"; the Series menu never
     // shows it.
     GameMenu pc{{ConsoleControllerStyle::Auto, false, 0.12f, true, false}};
-    check(pc.Rows().size() == 10 && pc.Rows()[4].label == L"Pantalla completa" && pc.Rows()[4].value == L"No");
-    for (int i = 0; i < 4; ++i) pc.Apply(MenuAction::Up);
-    check(pc.SelectedItem() == GameMenu::FullScreen && pc.Selected() == 4);
+    check(pc.Rows().size() == 10 && pc.Rows()[5].label == L"Pantalla completa" && pc.Rows()[5].value == L"No");
+    for (int i = 0; i < 5; ++i) pc.Apply(MenuAction::Up);
+    check(pc.SelectedItem() == GameMenu::FullScreen && pc.Selected() == 5);
     check(pc.Apply(MenuAction::Confirm) == GameMenuResult::FullScreen && pc.Settings().fullscreen);
     check(pc.Apply(MenuAction::Right) == GameMenuResult::FullScreen && !pc.Settings().fullscreen);
     for (const auto& row : menu.Rows()) check(row.label != L"Pantalla completa");
     // The same menu follows the interface language.
     I18n::SetUiLanguage(*I18n::FindUiLanguage(L"en"));
-    check(pc.Rows()[0].label == L"Resume" && pc.Rows()[4].label == L"Full screen" && pc.Rows()[4].value == L"No");
+    check(pc.Rows()[0].label == L"Resume" && pc.Rows()[5].label == L"Full screen" && pc.Rows()[5].value == L"No");
     // Both entry points start off and toggle the same persisted setting model.
     SystemPage system_page;
     check(!system_page.settings.show_performance_stats);
@@ -136,9 +137,7 @@ int main() {
           SystemPageLayout::RowHeight < SystemPageLayout::Notice);
     GameMenu stats_menu{{}};
     check(!stats_menu.Settings().show_performance_stats);
-    stats_menu.Apply(MenuAction::Up);
-    stats_menu.Apply(MenuAction::Up);
-    check(stats_menu.SelectedItem() == GameMenu::PerformanceStats);
+    while (stats_menu.SelectedItem() != GameMenu::PerformanceStats) stats_menu.Apply(MenuAction::Up);
     check(stats_menu.Apply(MenuAction::Confirm) == GameMenuResult::PerformanceStatsChanged);
     check(stats_menu.Settings().show_performance_stats);
     auto saved = stats_menu.Settings();
@@ -149,9 +148,10 @@ int main() {
 
     // Image upscaling: above the statistics, a choice that steps both ways and wraps around.
     I18n::SetUiLanguage(*I18n::FindUiLanguage(L"es"));
-    GameMenu scaling_menu{{}};
-    for (int i = 0; i < 3; ++i) scaling_menu.Apply(MenuAction::Up);
-    check(scaling_menu.SelectedItem() == GameMenu::ImageUpscaling);
+    GameMenuSettings scaling_settings{};
+    scaling_settings.offer_upscaling = true;
+    GameMenu scaling_menu{scaling_settings};
+    while (scaling_menu.SelectedItem() != GameMenu::ImageUpscaling) scaling_menu.Apply(MenuAction::Up);
     const auto scaling_row = [&] { return scaling_menu.Rows()[scaling_menu.Selected()]; };
     check(scaling_row().label == L"Escalado de imagen" && scaling_row().value == L"Bilineal");
     check(scaling_row().kind == GameMenuRow::Kind::Choice);
@@ -163,9 +163,10 @@ int main() {
     check(scaling_menu.Apply(MenuAction::Left) == GameMenuResult::UpscalingChanged);
     check(scaling_menu.Settings().upscaling == Upscaling::Bilinear);
     check(scaling_menu.Apply(MenuAction::Left) == GameMenuResult::UpscalingChanged);
-    check(scaling_menu.Settings().upscaling == Upscaling::FsrSoft && scaling_row().value == L"FSR 1 · suave");
+    const auto stepped = scaling_menu.Settings().upscaling;
+    check(stepped == StepUpscaling(Upscaling::Bilinear, true));
     GameMenu scaling_reopened{scaling_menu.Settings()};
-    check(scaling_reopened.Settings().upscaling == Upscaling::FsrSoft);
+    check(scaling_reopened.Settings().upscaling == stepped);
     I18n::SetUiLanguage(*I18n::FindUiLanguage(L"en"));
     GameMenuSettings diagnostic_settings{};
     diagnostic_settings.material_capture = true;
@@ -181,5 +182,34 @@ int main() {
     I18n::SetUiLanguage(*I18n::FindUiLanguage(L"es"));
     check(diagnostic.Rows()[diagnostic.Selected()].label == L"Capturar gráficos y continuar");
     for (const auto& row : normal_rows) check(row.label != L"Capture graphics and resume");
+
+    // NS HUEHUE 0.4.4: speed 10..200 by tens (off below 10), volume up to 200, button mapping.
+    check(StepSpeed(100, false) == 110 && StepSpeed(200, false) == 200 && StepSpeed(10, true) == 0);
+    check(StepSpeed(0, false) == 10 && StepSpeed(0, true) == 0 && StepSpeed(20, true) == 10);
+    {
+        GameMenu quick{GameMenuSettings{}};
+        while (quick.SelectedItem() != GameMenu::Volume) quick.Apply(MenuAction::Down);
+        for (int i = 0; i < 12; ++i) quick.Apply(MenuAction::Right);
+        check(quick.Settings().volume == 200);
+        check(quick.Apply(MenuAction::Confirm) == GameMenuResult::QuickSettingsChanged && quick.Settings().volume == 0);
+        while (quick.SelectedItem() != GameMenu::SpeedLimit) quick.Apply(MenuAction::Up);
+        check(quick.Apply(MenuAction::Right) == GameMenuResult::QuickSettingsChanged && quick.Settings().speed == 110);
+        for (int i = 0; i < 12; ++i) quick.Apply(MenuAction::Left);
+        check(quick.Settings().speed == 0 && !quick.Settings().speed_limit);
+        while (quick.SelectedItem() != GameMenu::Remap) quick.Apply(MenuAction::Up);
+        check(quick.Apply(MenuAction::Confirm) == GameMenuResult::None && quick.RemapOpen());
+        check(quick.Apply(MenuAction::Right) == GameMenuResult::RemapChanged && quick.Settings().remap[0] == 1);
+        check(quick.Settings().game_remap);
+        check(quick.Apply(MenuAction::Back) == GameMenuResult::None && !quick.RemapOpen());
+    }
+    {
+        auto remap = IdentityRemap();
+        check(IsIdentity(remap) && ParseRemap(SerializeRemap(remap)) == remap);
+        remap[3] = RemapNone;
+        remap[0] = 2;
+        check(ParseRemap(SerializeRemap(remap)) == remap && !ParseRemap("1,2,3").has_value());
+        check(StepRemapSource(15, false) == RemapNone && StepRemapSource(RemapNone, false) == 0);
+        check(StepRemapSource(0, true) == RemapNone);
+    }
     std::puts("game menu: controller combo, navigation, settings, upscaling, cheats and opt-in capture PASS");
 }

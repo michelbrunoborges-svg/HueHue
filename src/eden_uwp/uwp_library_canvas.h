@@ -46,6 +46,7 @@ struct GameOptionsView {
     const GameTuning* tuning{}; ///< NS HUEHUE: the Desempenho e graficos page, while open.
     std::size_t tuning_row{};
     bool favorite{}; ///< NS HUEHUE: the game is a favorite (the list's last row adds or removes it).
+    bool own_remap{}; ///< NS HUEHUE: the game has its own button mapping (Controles do jogo).
 };
 /// NS HUEHUE: Configuracoes > Saves (USB), the copy of the saves on an external drive.
 struct SavesView {
@@ -70,6 +71,16 @@ struct ThemesView {
     unsigned wallpaper{};  ///< The candidate ground (0 solid, 1 Aurora).
     std::wstring_view notice;
     const std::vector<ThemePack>* packs{}; ///< The catalog's packs.
+};
+/// NS HUEHUE Mapear botoes (button_remap.h): for every game or for one.
+struct RemapView {
+    bool open{};
+    bool game{};        ///< One game's mapping (its options); else the saved one (Controles).
+    bool own{};         ///< The game has its own mapping.
+    std::size_t row{};  ///< 0-15 the Switch buttons, then Restaurar padrao [, Usar o geral].
+    ButtonRemap remap{IdentityRemap()};
+    std::wstring_view title;
+    std::wstring_view notice;
 };
 /// Everything one frame of the library shows.
 struct LibraryView {
@@ -113,6 +124,8 @@ struct LibraryView {
     std::size_t home_tile{};
     unsigned home_button{};
     const ThemePack* pack{};               ///< The frame's theme is this catalog pack (its colors and art).
+    unsigned exit_prompt{};                ///< Sair do NS: 1 asking about the saves copy, 2 copying.
+    const RemapView* remap{};              ///< Mapear botoes, while open.
 };
 class LibraryCanvas {
 public:

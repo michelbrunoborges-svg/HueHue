@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
+#include <filesystem>
 #include <memory>
 #include <functional>
 #include <stop_token>
@@ -20,6 +21,13 @@ LibraryScan ScanExternalGameFolders(std::stop_token stop);
 FileSys::VirtualFilesystem MakeUwpFilesystem();
 struct StorageBrowserEntry { std::string path; std::wstring name; bool folder{}; std::uint64_t size{}; };
 std::vector<StorageBrowserEntry> ContentFolderSources();
+// NS HUEHUE: where the mods page keeps a copy of each finished download (a USB folder the player
+// picked; empty name when none). The install itself still reads the copy in LocalCache, and the
+// installed mod lives in load/, where the loader reads it.
+void SetModDownloadFolder(const winrt::Windows::Storage::StorageFolder& folder);
+std::wstring ModDownloadFolderName();
+/// Copies `file` there as `name`; false when no folder is set or the copy failed (MTA threads).
+bool CopyToModDownloadFolder(const std::filesystem::path& file, std::wstring name);
 std::vector<StorageBrowserEntry> BrowseStorageFolder(std::string_view path, std::stop_token stop);
 /// The folders in `path`, and the files `keep` accepts (by their UTF-8 name).
 std::vector<StorageBrowserEntry> BrowseStorageFolder(std::string_view path, std::stop_token stop,

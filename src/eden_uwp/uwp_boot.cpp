@@ -427,8 +427,11 @@ struct BootConfig {
     /// Firmware do console = Nao usar (game_profile.h): the installed firmware is set aside for
     /// this game's boot (HideFirmware) and put back when it ends.
     bool hide_firmware{};
+    /// Controles do jogo (game_profile.h): its own button mapping over the saved one.
+    std::optional<ButtonRemap> remap;
     /// NS HUEHUE Avancado: off lets the game run as fast as the console can (Eden's speed limit).
     bool speed_limit{true};
+    u16 speed_percent{100}; ///< With the limit on: percent of the console's speed.
     /// Legacy setting for backends with draw-skipping async shaders. D3D12 always preserves
     /// dependent draws, while preparing DXIL/PSOs on workers regardless of this setting.
     bool async_shaders{true};
@@ -511,9 +514,10 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
               (config.gpu_accuracy == Settings::GpuAccuracy::Low ? "Low" : "High") +
               (config.reactive_flushing ? ", reactive flushing" : ", no reactive flushing"));
     Settings::values.use_speed_limit.SetValue(config.speed_limit);
-    // The in-game menu's volume lasts one game: the next one starts at full volume.
-    Settings::values.volume.SetValue(100);
-    if (!config.speed_limit) WriteDiag("step: speed limit off");
+    // The in-game menu's volume lasts one game: the next one starts at the volume of Sistema.
+    Settings::values.volume.SetValue(LoadSystemSettings().volume);
+    if (config.speed_limit) Settings::values.speed_limit.SetValue(config.speed_percent);
+    WriteDiag(config.speed_limit ? "step: speed " + std::to_string(config.speed_percent) + "%" : std::string{"step: speed limit off"});
     WriteDiag(config.cpu_accuracy == Settings::CpuAccuracy::Accurate
                   ? "step: CPU accuracy Accurate" : "step: CPU accuracy Auto");
     AudioCore::Sink::SetXAudio2ProfileEnabled(config.audio_profile);
@@ -712,6 +716,11 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
 
     // Before Load, so HID starts with player 1 connected and bound to the gamepad engine.
     GamepadInput input{config.input_script};
+    std::optional<ButtonRemap> game_remap = config.remap; // the in-game menu may change it
+    if (config.remap) {
+        input.SetSessionRemap(config.remap);
+        WriteDiag("input: the game's own button mapping " + SerializeRemap(*config.remap));
+    }
     system.HIDCore().ReloadInputDevices();
     // Set only after a failed Load has returned from Core's own synchronous cleanup.
     // Other early Load failures still require the frontend to tear down the kernel.
@@ -1169,9 +1178,15 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                                                    FromSettings(Settings::values.scaling_filter.GetValue(),
                                                                 Settings::values.fsr_sharpening_slider.GetValue()),
                                                    config.material_capture_menu};
+                    menu_settings.remap = game_remap.value_or(options.remap);
+                    menu_settings.game_remap = game_remap.has_value();
                     menu_settings.speed_limit = Settings::values.use_speed_limit.GetValue();
+                    menu_settings.speed = menu_settings.speed_limit
+                                              ? static_cast<std::uint16_t>(std::clamp<unsigned>(
+                                                    Settings::values.speed_limit.GetValue() / 10 * 10, 10, 200))
+                                              : 0;
                     menu_settings.volume = static_cast<std::uint8_t>(
-                        std::min<unsigned>(Settings::values.volume.GetValue(), 100) / 10 * 10);
+                        std::min<unsigned>(Settings::values.volume.GetValue(), 200) / 10 * 10);
                     menu.emplace(menu_settings, program_id != 0);
                     if (game_title.empty()) {
                         std::string title;
@@ -1350,12 +1365,25 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                 if (result == GameMenuResult::FullScreen) {
                     g_fullscreen_request.store(menu->Settings().fullscreen ? 1 : 0);
                 }
+                if (result == GameMenuResult::RemapChanged) {
+                    // This game's mapping, saved with its settings and used from the next poll.
+                    const ButtonRemap remap = menu->Settings().remap;
+                    game_remap = remap;
+                    input.SetSessionRemap(remap);
+                    if (config.play) {
+                        auto tuning = LoadGameTuning(nro_path);
+                        tuning.remap = remap;
+                        if (!SaveGameTuning(nro_path, tuning)) WriteDiag("menu: the game's mapping could not be saved");
+                    }
+                    WriteDiag("menu: the game's button mapping " + SerializeRemap(remap));
+                }
                 if (result == GameMenuResult::QuickSettingsChanged) {
                     // Read live by the frame limiter and the audio sink; this session only.
-                    Settings::values.use_speed_limit.SetValue(menu->Settings().speed_limit);
+                    Settings::values.use_speed_limit.SetValue(menu->Settings().speed != 0);
+                    if (menu->Settings().speed != 0) Settings::values.speed_limit.SetValue(menu->Settings().speed);
                     Settings::values.volume.SetValue(menu->Settings().volume);
-                    WriteDiag("menu: speed limit " + std::string(menu->Settings().speed_limit ? "on" : "off") +
-                              ", volume " + std::to_string(menu->Settings().volume) + "%");
+                    WriteDiag("menu: speed " + std::to_string(menu->Settings().speed) + "% (0: no limit), volume " +
+                              std::to_string(menu->Settings().volume) + "%");
                 }
 
                 if (menu_surface) draw_menu();
@@ -2899,10 +2927,12 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                         }
                         // Avancado (experimental): only what differs from the defaults, so a
                         // diagnostic boot.cfg line still wins over an untouched option.
-                        if (!tuning.speed_limit) config.speed_limit = false;
+                        if (tuning.speed == 0) config.speed_limit = false;
+                        else config.speed_percent = tuning.speed;
                         if (tuning.record_thread) config.async_record = true;
                         if (tuning.pso_defer) config.pso_defer = true;
                         config.hide_firmware = tuning.firmware == EdenXbox::FirmwareUse::Skip;
+                        config.remap = tuning.remap;
                         if (!tuning.present_thread) config.async_present = false;
                         if (tuning.astc == EdenXbox::AstcMode::Cpu) config.astc = EdenXbox::BootConfig::Astc::Cpu;
                         else if (tuning.astc == EdenXbox::AstcMode::Bc3) config.astc = EdenXbox::BootConfig::Astc::Bc3;
@@ -2917,7 +2947,7 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                         }
                         if (tuning.jit_cache == EdenXbox::JitCache::Small) config.jit_cache_mib = 64;
                         else if (tuning.jit_cache == EdenXbox::JitCache::Large) config.jit_cache_mib = 256;
-                        WriteDiag(std::string("tuning: advanced") + (tuning.speed_limit ? "" : " no-speed-limit") +
+                        WriteDiag(std::string("tuning: advanced") + (tuning.speed == 0 ? " no-speed-limit" : " speed=" + std::to_string(tuning.speed)) +
                                   (tuning.record_thread ? " record-thread" : "") +
                                   (tuning.pso_defer ? " pso-defer" : "") +
                                   (tuning.present_thread ? "" : " present-on-gpu-thread") +

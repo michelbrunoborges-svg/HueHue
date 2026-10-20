@@ -436,6 +436,47 @@ std::vector<StorageBrowserEntry> ContentFolderSources() {
     }
     return result;
 }
+namespace {
+constexpr wchar_t ModDownloadsToken[] = L"ns-mods-downloads";
+}
+void SetModDownloadFolder(const StorageFolder& folder) {
+    EnsureStorageApartment();
+    StorageApplicationPermissions::FutureAccessList().AddOrReplace(ModDownloadsToken, folder, folder.Path());
+    // Also a source of the Files tab, so a kept archive can be installed again from there.
+    try { RememberContentFolder(folder); } catch (...) {}
+    LOG_INFO(Frontend, "Mods: downloads are kept in {}", winrt::to_string(folder.Path()));
+}
+std::wstring ModDownloadFolderName() {
+    try {
+        EnsureStorageApartment();
+        for (const auto& entry : StorageApplicationPermissions::FutureAccessList().Entries()) {
+            if (entry.Token != ModDownloadsToken) continue;
+            auto name = std::filesystem::path{std::wstring{entry.Metadata}}.filename().wstring();
+            return name.empty() ? std::wstring{L"USB"} : name;
+        }
+    } catch (...) {}
+    return {};
+}
+bool CopyToModDownloadFolder(const std::filesystem::path& file, std::wstring name) {
+    try {
+        EnsureStorageApartment();
+        auto list = StorageApplicationPermissions::FutureAccessList();
+        if (!list.ContainsItem(ModDownloadsToken)) return false;
+        for (auto& c : name)
+            if (c < 32 || std::wstring_view{L"\\/:*?\"<>|"}.find(c) != std::wstring_view::npos) c = L'_';
+        auto folder = list.GetFolderAsync(ModDownloadsToken).get();
+        auto source = StorageFile::GetFileFromPathAsync(file.wstring()).get();
+        source.CopyAsync(folder, name.empty() ? source.Name() : winrt::hstring{name},
+                         NameCollisionOption::ReplaceExisting).get();
+        LOG_INFO(Frontend, "Mods: kept {} in {}", winrt::to_string(name), winrt::to_string(folder.Path()));
+        return true;
+    } catch (const winrt::hresult_error& e) {
+        LOG_WARNING(Frontend, "Mods: cannot keep the download in the chosen folder: {}", winrt::to_string(e.message()));
+    } catch (...) {
+        LOG_WARNING(Frontend, "Mods: cannot keep the download in the chosen folder");
+    }
+    return false;
+}
 LibraryScan ScanExternalGameFolders(std::stop_token stop) {
     EnsureStorageApartment();
     LibraryScan result;
