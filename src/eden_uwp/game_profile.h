@@ -89,6 +89,9 @@ struct GameTuning {
     IdleSpin idle_spin{IdleSpin::Adaptive};
     bool speed_limit{true};        ///< Off: the game runs as fast as the console can.
     JitCache jit_cache{JitCache::Normal};
+    /// Shaders pendentes (issue #6 P1-A, experimental): skip the draws whose PSO is still being
+    /// built instead of stalling (full-screen passes and compute still wait).
+    bool pso_defer{};
 
     bool operator==(const GameTuning&) const = default;
 
@@ -141,9 +144,9 @@ inline GameProfile NextGameProfile(GameProfile profile) {
 enum class TuningRow : std::uint8_t {
     Profile, Renderer, GlShaderPath, Resolution, Upscaling, Fps, FpsManual, FrameSkip, Shaders, Memory,
     // Avancado (experimental)
-    SpeedLimit, RecordThread, PresentThread, Astc, AstcOpaque, Fastmem, PsoEviction, IdleSpin, JitCache
+    SpeedLimit, PsoDefer, RecordThread, PresentThread, Astc, AstcOpaque, Fastmem, PsoEviction, IdleSpin, JitCache
 };
-inline constexpr std::size_t TuningRowCount = 19;
+inline constexpr std::size_t TuningRowCount = 20;
 /// Rows the page shows at once (it scrolls past them).
 inline constexpr std::size_t TuningRowsVisible = 10;
 
@@ -174,6 +177,7 @@ inline void StepTuning(GameTuning& tuning, TuningRow row, bool back, bool big = 
     case TuningRow::FrameSkip: tuning.frame_skip = static_cast<std::uint8_t>((tuning.frame_skip + (back ? 3 : 1)) % 4); break;
     case TuningRow::Shaders: tuning.shaders = cycle(tuning.shaders, 2); break;
     case TuningRow::SpeedLimit: tuning.speed_limit = !tuning.speed_limit; break;
+    case TuningRow::PsoDefer: tuning.pso_defer = !tuning.pso_defer; break;
     case TuningRow::RecordThread: tuning.record_thread = !tuning.record_thread; break;
     case TuningRow::PresentThread: tuning.present_thread = !tuning.present_thread; break;
     case TuningRow::Astc: tuning.astc = cycle(tuning.astc, 3); break;
@@ -194,7 +198,7 @@ inline std::filesystem::path File() {
     } catch (...) { return {}; }
 }
 /// "path \t profile [\t resolution \t fps \t manual \t skip \t shaders [\t renderer [\t gl
-/// [\t upscaling \t memory [\t speed record present astc opaque fastmem pso spin jit]]]]]"
+/// [\t upscaling \t memory [\t speed record present astc opaque fastmem pso spin jit [\t defer]]]]]]"
 /// (older lines stop earlier: the rest keeps its defaults).
 inline std::map<std::string, GameTuning> Load() {
     std::map<std::string, GameTuning> all;
@@ -225,6 +229,8 @@ inline std::map<std::string, GameTuning> Load() {
             for (int& value : read) complete = complete && static_cast<bool>(fields >> value);
             if (complete) std::copy(std::begin(read), std::end(read), advanced);
         }
+        int defer = 0; // 0.4.2: Shaders pendentes
+        if (!(fields >> defer)) defer = 0;
         GameTuning tuning;
         tuning.profile = static_cast<GameProfile>(std::clamp(profile, 0, 3));
         tuning.resolution = static_cast<GameResolution>(std::clamp(resolution, 0, static_cast<int>(GameResolutionCount) - 1));
@@ -245,6 +251,7 @@ inline std::map<std::string, GameTuning> Load() {
         tuning.pso_eviction = advanced[6] != 0;
         tuning.idle_spin = static_cast<IdleSpin>(std::clamp(advanced[7], 0, 2));
         tuning.jit_cache = static_cast<JitCache>(std::clamp(advanced[8], 0, 2));
+        tuning.pso_defer = defer != 0;
         all[line.substr(0, tab)] = tuning;
     }
     return all;
@@ -285,7 +292,8 @@ inline bool SaveGameTuning(const std::string& launch_path, const GameTuning& tun
             << int{value.speed_limit} << '\t' << int{value.record_thread} << '\t' << int{value.present_thread}
             << '\t' << static_cast<int>(value.astc) << '\t' << int{value.astc_opaque_bc3} << '\t'
             << static_cast<int>(value.fastmem) << '\t' << int{value.pso_eviction} << '\t'
-            << static_cast<int>(value.idle_spin) << '\t' << static_cast<int>(value.jit_cache) << '\n';
+            << static_cast<int>(value.idle_spin) << '\t' << static_cast<int>(value.jit_cache) << '\t'
+            << int{value.pso_defer} << '\n';
     }
     return static_cast<bool>(out);
 }

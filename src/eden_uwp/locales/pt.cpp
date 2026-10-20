@@ -782,5 +782,9 @@ const Catalog PortugueseCatalog = MakeCatalog({
     {Text::MenuSpeedLimit, L"Limitar a velocidade"},
     {Text::MenuVolume, L"Volume"},
     {Text::MenuMuted, L"Sem som"},
+    {Text::NsAdvPsoDefer, L"Shaders pendentes"},
+    {Text::NsPsoDeferOff, L"Esperar (correto)"},
+    {Text::NsPsoDeferOn, L"Não esperar (experimental)"},
+    {Text::NsHintPsoDefer, L"Avançado (experimental). Não esperar: o que usa um shader ainda em preparo não é desenhado até ele ficar pronto (pode piscar ou sumir por um instante), em troca de menos travadas. Telas inteiras e cálculos continuam esperando."},
 });
 } // namespace EdenXbox::I18n

@@ -137,7 +137,11 @@ void RasterizerD3D12::Draw(bool is_indexed, u32 instance_count) {
     }
 
     hunt.PipelineStart();
-    GraphicsPipeline* const pipeline = pipeline_cache.CurrentGraphicsPipeline();
+    // The vertex count lets a deferring pipeline cache tell full-screen passes from the rest.
+    const auto& counted = maxwell3d->draw_manager.draw_state;
+    const u32 vertices = std::max<u32>(1, is_indexed ? counted.index_buffer.count
+                                                     : counted.vertex_buffer.count);
+    GraphicsPipeline* const pipeline = pipeline_cache.CurrentGraphicsPipeline(vertices);
     hunt.PipelineEnd();
     if (!pipeline) {
         hunt.Outcome(Hunt::Outcome::NoPipeline);

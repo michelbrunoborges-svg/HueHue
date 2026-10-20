@@ -310,6 +310,9 @@ Shader::RuntimeInfo MakeRuntimeInfo(std::span<const Shader::IR::Program> program
 /// Pipeline workers. Capped: each one holds a recompiler and a translator's worth of memory, and
 /// the console's game partition has 5 GB in total.
 std::atomic<u32> pipeline_worker_limit{0};
+/// SetPipelineDeferral: off, or the vertex count up to which draws still wait.
+std::atomic<bool> pipeline_deferral{false};
+std::atomic<u32> pipeline_critical_vertices{6};
 
 size_t GetTotalPipelineWorkers() {
     const size_t threads = std::max<size_t>(std::thread::hardware_concurrency(), 2) - 1;
@@ -593,10 +596,14 @@ void PipelineCache::LogPipelineStats(std::string_view when) const {
                             ms(summary.p99), ms(summary.max), ms(summary.total));
     }
     LOG_INFO(Render,
-             "D3D12 pipeline stages ({}, ms): {} inline builds, {} prewarmed, {} of them drawn{}",
+             "D3D12 pipeline stages ({}, ms): {} inline builds, {} prewarmed, {} of them drawn, "
+             "deferral {} ({} draws skipped while building, {} full-screen waits){}",
              when, stats.inline_builds.load(std::memory_order_relaxed),
              stats.prewarm_queued.load(std::memory_order_relaxed),
-             stats.prewarm_hits.load(std::memory_order_relaxed), line);
+             stats.prewarm_hits.load(std::memory_order_relaxed),
+             pipeline_deferral.load(std::memory_order_relaxed) ? "on" : "off",
+             stats.deferred_draws.load(std::memory_order_relaxed),
+             stats.critical_waits.load(std::memory_order_relaxed), line);
 }
 
 void PipelineCache::SaveHotPipelines() {
@@ -626,7 +633,8 @@ void PipelineCache::SaveHotPipelines() {
     });
 }
 
-GraphicsPipeline* PipelineCache::CurrentGraphicsPipeline() {
+GraphicsPipeline* PipelineCache::CurrentGraphicsPipeline(u32 vertices) {
+    draw_vertices = vertices;
     if (VideoCommon::GPUThread::HasExceptionReported())
         return nullptr;
     if (!RefreshStages(graphics_key.unique_hashes)) {
@@ -872,6 +880,16 @@ GraphicsPipeline* PipelineCache::BuiltPipeline(GraphicsPipeline* pipeline) {
     // like any build, but WaitBuilt below claims it unless a worker already started it.
     if (pipeline->Wake(workers)) {
         ++pipelines_woken;
+    }
+    if (pipeline_deferral.load(std::memory_order_relaxed)) {
+        // NS HUEHUE deferral (experimental, per game): the build stays queued for the workers and
+        // this draw is skipped; full-screen passes (few vertices) and unknown counts still wait,
+        // since skipping them leaves a whole frame or target wrong.
+        if (draw_vertices > pipeline_critical_vertices.load(std::memory_order_relaxed)) {
+            GetPipelineStats().deferred_draws.fetch_add(1, std::memory_order_relaxed);
+            return nullptr;
+        }
+        GetPipelineStats().critical_waits.fetch_add(1, std::memory_order_relaxed);
     }
     const PipelineStage cause = pipeline->WasEvicted() ? PipelineStage::WaitEvicted
                                 : pipeline->FromDisk() ? PipelineStage::WaitDormant
@@ -1199,6 +1217,11 @@ std::unique_ptr<ComputePipeline> PipelineCache::CreateComputePipeline(
 
 void SetPipelineWorkerLimit(u32 workers) {
     pipeline_worker_limit.store(workers, std::memory_order_relaxed);
+}
+
+void SetPipelineDeferral(bool defer, u32 critical_vertices) {
+    pipeline_critical_vertices.store(critical_vertices, std::memory_order_relaxed);
+    pipeline_deferral.store(defer, std::memory_order_relaxed);
 }
 
 } // namespace D3D12

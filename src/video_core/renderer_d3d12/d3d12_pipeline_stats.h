@@ -125,6 +125,10 @@ struct PipelineStats {
     std::atomic<std::uint64_t> inline_builds{};  ///< Builds the waiting GPU thread ran itself.
     std::atomic<std::uint64_t> prewarm_queued{}; ///< Dormant PSOs built ahead in the background.
     std::atomic<std::uint64_t> prewarm_hits{};   ///< Of those, drawn later this session.
+    /// NS HUEHUE deferral (SetPipelineDeferral): draws skipped while their PSO was being built,
+    /// and draws that waited anyway because they are full-screen passes.
+    std::atomic<std::uint64_t> deferred_draws{};
+    std::atomic<std::uint64_t> critical_waits{};
 
     void Record(PipelineStage stage, std::uint64_t us) noexcept {
         stages[static_cast<std::size_t>(stage)].Record(us);
@@ -140,6 +144,8 @@ struct PipelineStats {
         inline_builds.store(0, std::memory_order_relaxed);
         prewarm_queued.store(0, std::memory_order_relaxed);
         prewarm_hits.store(0, std::memory_order_relaxed);
+        deferred_draws.store(0, std::memory_order_relaxed);
+        critical_waits.store(0, std::memory_order_relaxed);
     }
 };
 

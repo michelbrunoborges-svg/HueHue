@@ -781,5 +781,9 @@ const Catalog EnglishCatalog = MakeCatalog({
     {Text::MenuSpeedLimit, L"Limit the speed"},
     {Text::MenuVolume, L"Volume"},
     {Text::MenuMuted, L"Muted"},
+    {Text::NsAdvPsoDefer, L"Pending shaders"},
+    {Text::NsPsoDeferOff, L"Wait (accurate)"},
+    {Text::NsPsoDeferOn, L"Don't wait (experimental)"},
+    {Text::NsHintPsoDefer, L"Advanced (experimental). Don't wait: what uses a shader still being built is not drawn until it is ready (it may flicker or vanish for a moment), for fewer stutters. Full-screen passes and compute still wait."},
 });
 } // namespace EdenXbox::I18n

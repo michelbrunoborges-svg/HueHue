@@ -132,6 +132,7 @@ void SetGeometryDroppedShader(u64 unique_hash);
 void SetFrameDiagnostics(bool enabled);
 void SetPresentPacing(u32 max_fps, u32 skip);  // NS HUEHUE (renderer_d3d12.h)
 void SetPipelineWorkerLimit(u32 workers);       // NS HUEHUE (d3d12_pipeline_cache.cpp)
+void SetPipelineDeferral(bool defer, u32 critical_vertices); // NS HUEHUE (d3d12_pipeline_cache.cpp)
 void SetMemoryReserve(u64 bytes);               // NS HUEHUE (renderer_d3d12.cpp)
 void SetPsoCostProbe(bool enabled);      // d3d12_graphics_pipeline.h
 std::string DescribePsoCost();            // likewise
@@ -359,6 +360,9 @@ struct BootConfig {
     /// Make the D3D12 command list calls on a thread of their own, so the GPU thread only records
     /// them ("async_record=1"). Off by default until it has been played through on the console.
     bool async_record{};
+    /// Shaders pendentes (game_profile.h, "pso_defer=1"): draws whose PSO is still building are
+    /// skipped instead of stalling; full-screen passes (up to 6 vertices) and compute still wait.
+    bool pso_defer{};
     bool upload_copy{}; ///< Experimental short uniform copies; default off.
     bool draw_sampler_reuse{}; ///< Experimental gather-local TSC resolution; default off.
     /// Host timing waits sleep on a high-resolution timer and wait only its lateness on the CPU
@@ -470,6 +474,8 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
         Settings::values.use_docked_mode.SetValue(Settings::ConsoleMode::Docked);
     D3D12::SetPresentPacing(config.max_fps, config.frame_skip);
     D3D12::SetPipelineWorkerLimit(config.pipeline_workers);
+    D3D12::SetPipelineDeferral(config.pso_defer, 6);
+    if (config.pso_defer) WriteDiag("step: pending shaders deferred (draws skipped while their PSO builds)");
     D3D12::SetMemoryReserve(u64{config.memory_reserve_mib} << 20);
     if (config.null_audio) {
         Settings::values.sink_id = Settings::AudioEngine::Null;
@@ -2619,6 +2625,9 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                             config.async_present = line.back() == '1';
                             WriteDiag(std::string("boot.cfg: presentation thread ") +
                                       (config.async_present ? "on" : "off"));
+                        } else if (line == "pso_defer=0" || line == "pso_defer=1") {
+                            config.pso_defer = line.back() == '1';
+                            WriteDiag("boot.cfg: " + line);
                         } else if (line == "async_record=0" || line == "async_record=1") {
                             config.async_record = line.back() == '1';
                             WriteDiag(std::string("boot.cfg: command list recording thread ") +
@@ -2854,6 +2863,7 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                         // diagnostic boot.cfg line still wins over an untouched option.
                         if (!tuning.speed_limit) config.speed_limit = false;
                         if (tuning.record_thread) config.async_record = true;
+                        if (tuning.pso_defer) config.pso_defer = true;
                         if (!tuning.present_thread) config.async_present = false;
                         if (tuning.astc == EdenXbox::AstcMode::Cpu) config.astc = EdenXbox::BootConfig::Astc::Cpu;
                         else if (tuning.astc == EdenXbox::AstcMode::Bc3) config.astc = EdenXbox::BootConfig::Astc::Bc3;
@@ -2870,6 +2880,7 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                         else if (tuning.jit_cache == EdenXbox::JitCache::Large) config.jit_cache_mib = 256;
                         WriteDiag(std::string("tuning: advanced") + (tuning.speed_limit ? "" : " no-speed-limit") +
                                   (tuning.record_thread ? " record-thread" : "") +
+                                  (tuning.pso_defer ? " pso-defer" : "") +
                                   (tuning.present_thread ? "" : " present-on-gpu-thread") +
                                   " astc=" + std::to_string(static_cast<int>(tuning.astc)) +
                                   (tuning.astc_opaque_bc3 ? " opaque-bc3" : "") +

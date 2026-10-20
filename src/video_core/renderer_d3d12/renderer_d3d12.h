@@ -45,6 +45,12 @@ void SetMemoryReserve(u64 bytes);
 void SetPresentPacing(u32 max_fps, u32 skip);
 /// NS HUEHUE: the pipeline builder threads (0: the default, up to 4). Read when the renderer starts.
 void SetPipelineWorkerLimit(u32 workers);
+/// NS HUEHUE (issue #6, P1-A), experimental: with `defer` on, a draw whose exact PSO is still
+/// being built is skipped (and counted) instead of stalling the GPU thread; the build goes on in
+/// the background and the next draws use it. Draws of at most `critical_vertices` vertices (the
+/// full-screen passes) and every compute dispatch still wait. Off (the default) never skips guest
+/// work. Any thread, before a game.
+void SetPipelineDeferral(bool defer, u32 critical_vertices);
 
 /// Traces the draws of the next `count` presented frames (and writes their render targets), even
 /// in a session played by hand. Any thread.

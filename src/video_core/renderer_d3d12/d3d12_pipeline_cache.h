@@ -125,8 +125,10 @@ public:
     /// app's headroom allows, a bounded slice of them a frame, and saves the hot set now and then.
     void TickResidency(const CacheMemorySnapshot& snapshot, Scheduler& scheduler);
 
-    /// The ready pipeline of the current Maxwell state, or null if shader preparation failed.
-    [[nodiscard]] GraphicsPipeline* CurrentGraphicsPipeline();
+    /// The ready pipeline of the current Maxwell state, or null if shader preparation failed (or,
+    /// with deferral on and `vertices` above the critical count, while its PSO is still building).
+    /// `vertices` 0: unknown (indirect draws), always waits.
+    [[nodiscard]] GraphicsPipeline* CurrentGraphicsPipeline(u32 vertices = 0);
 
     [[nodiscard]] ComputePipeline* CurrentComputePipeline();
 
@@ -135,6 +137,9 @@ public:
 
 private:
     [[nodiscard]] GraphicsPipeline* CurrentGraphicsPipelineSlowPath();
+
+    /// The current draw's vertex count, for BuiltPipeline's deferral (0: unknown).
+    u32 draw_vertices{};
 
     /// Records the draw (residency, hot set), wakes a dormant pipeline, and returns it once its PSO
     /// is built. Valid guest draws always wait for their exact pipeline.
