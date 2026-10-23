@@ -43,6 +43,8 @@ struct SystemSettings {
     Upscaling upscaling{Upscaling::Bilinear};         ///< Set from the in-game menu.
     /// NS HUEHUE: the games' volume, percent in steps of 10 (0 mute, up to 200).
     std::uint8_t volume{100};
+    /// NS HUEHUE 0.4.5: Modo aviao, the games see no network (Eden's airplane_mode).
+    bool airplane{};
 
     bool operator==(const SystemSettings&) const = default;
 };

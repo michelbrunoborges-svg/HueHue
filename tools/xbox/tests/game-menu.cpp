@@ -74,7 +74,7 @@ int main() {
     // Menu model, in Spanish.
     I18n::SetUiLanguage(*I18n::FindUiLanguage(L"es"));
     GameMenu menu{{ConsoleControllerStyle::Auto, false, 0.12f}};
-    check(menu.Rows().size() == 9 && menu.SelectedItem() == GameMenu::Continue);
+    check(menu.Rows().size() == 12 && menu.SelectedItem() == GameMenu::Continue);
     check(menu.Apply(MenuAction::Confirm) == GameMenuResult::Resume);
     check(menu.Apply(MenuAction::Back) == GameMenuResult::Resume);
     check(menu.Apply(MenuAction::Toggle) == GameMenuResult::Resume);
@@ -105,7 +105,7 @@ int main() {
     // A game with a title id offers its cheats, second, with how many are on.
     GameMenu with_cheats{{ConsoleControllerStyle::Auto, false, 0.12f}, true};
     with_cheats.SetCheatsOn(3);
-    check(with_cheats.Rows().size() == 10);
+    check(with_cheats.Rows().size() == 13);
     check(with_cheats.Rows()[1].kind == GameMenuRow::Kind::Page && with_cheats.Rows()[1].value == L"3 activos");
     check(with_cheats.Apply(MenuAction::Down) == GameMenuResult::None && with_cheats.SelectedItem() == GameMenu::Cheats);
     check(with_cheats.Apply(MenuAction::Right) == GameMenuResult::None);
@@ -116,8 +116,8 @@ int main() {
     // PC: full screen sits above the display rows and "back to the library"; the Series menu never
     // shows it.
     GameMenu pc{{ConsoleControllerStyle::Auto, false, 0.12f, true, false}};
-    check(pc.Rows().size() == 10 && pc.Rows()[5].label == L"Pantalla completa" && pc.Rows()[5].value == L"No");
-    for (int i = 0; i < 5; ++i) pc.Apply(MenuAction::Up);
+    check(pc.Rows().size() == 13 && pc.Rows()[5].label == L"Pantalla completa" && pc.Rows()[5].value == L"No");
+    while (pc.SelectedItem() != GameMenu::FullScreen) pc.Apply(MenuAction::Up);
     check(pc.SelectedItem() == GameMenu::FullScreen && pc.Selected() == 5);
     check(pc.Apply(MenuAction::Confirm) == GameMenuResult::FullScreen && pc.Settings().fullscreen);
     check(pc.Apply(MenuAction::Right) == GameMenuResult::FullScreen && !pc.Settings().fullscreen);
@@ -201,6 +201,23 @@ int main() {
         check(quick.Apply(MenuAction::Right) == GameMenuResult::RemapChanged && quick.Settings().remap[0] == 1);
         check(quick.Settings().game_remap);
         check(quick.Apply(MenuAction::Back) == GameMenuResult::None && !quick.RemapOpen());
+        // 0.4.5: Shaders pendentes, the passes that wait and Silenciar, live.
+        while (quick.SelectedItem() != GameMenu::PsoDefer) quick.Apply(MenuAction::Down);
+        check(quick.Apply(MenuAction::Confirm) == GameMenuResult::QuickSettingsChanged && quick.Settings().pso_defer);
+        quick.Apply(MenuAction::Confirm);
+        check(!quick.Settings().pso_defer);
+        quick.Apply(MenuAction::Down);
+        check(quick.SelectedItem() == GameMenu::CriticalVertices);
+        check(quick.Apply(MenuAction::Right) == GameMenuResult::QuickSettingsChanged &&
+              quick.Settings().critical_vertices == 12 && quick.Settings().pso_defer);
+        quick.Apply(MenuAction::Left);
+        quick.Apply(MenuAction::Left);
+        quick.Apply(MenuAction::Left);
+        check(quick.Settings().critical_vertices == 0);
+        quick.Apply(MenuAction::Left);
+        check(quick.Settings().critical_vertices == 48);
+        while (quick.SelectedItem() != GameMenu::Mute) quick.Apply(MenuAction::Down);
+        check(quick.Apply(MenuAction::Confirm) == GameMenuResult::QuickSettingsChanged && quick.Settings().muted);
     }
     {
         auto remap = IdentityRemap();

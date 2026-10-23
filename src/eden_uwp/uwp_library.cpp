@@ -3,6 +3,7 @@
 #include "eden_uwp/uwp_library.h"
 #include "eden_uwp/stick_navigation.h"
 #include "eden_uwp/save_backup.h"
+#include "eden_uwp/shader_backup.h"
 #include "eden_uwp/theme.h"
 #include "eden_uwp/theme_catalog.h"
 #include "eden_uwp/controller_catalog.h"
@@ -265,7 +266,12 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     unsigned saves_row = 0;
     SaveBackup::Settings saves = SaveBackup::LoadSettings();
     bool saves_folder = SaveBackup::HasFolder();
-    enum class SavesJob : std::uint8_t { None, Pick, Backup, Replace, Restore, Automatic, SettingsBackup, SettingsRestore };
+    enum class SavesJob : std::uint8_t { None, Pick, Backup, Replace, Restore, Automatic, SettingsBackup, SettingsRestore,
+                                         ShadersPick, ShadersBackup, ShadersRestore };
+    // 0.4.5: the shader caches' folder on the drive (shader_backup.h), on the same page.
+    bool shaders_folder = ShaderBackup::HasFolder();
+    std::wstring shaders_path = ShaderBackup::FolderPath();
+    bool shaders_sync = ShaderBackup::AutoSync();
     SavesJob saves_job = SavesJob::None;
     unsigned saves_confirm = 0; // pressed once: 2 replace another installation's copy, 3 restore
     auto saves_confirm_until = std::chrono::steady_clock::time_point{};
@@ -276,6 +282,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
         SaveBackup::Result result;
         SaveBackup::FolderInfo info;
         bool restored{}; ///< Pick: the folder's saves were brought in.
+        ShaderBackup::Result shaders;
     };
     SaveBackup::Progress saves_progress;
     std::future<SavesDone> saves_future;
@@ -903,6 +910,28 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     }
                     break;
                 case SavesJob::Restore: done.result = SaveBackup::Restore(saves_progress, stop); break;
+                case SavesJob::ShadersPick: {
+                    // Both ways at once: the drive's larger caches come in, this console's go out.
+                    ShaderBackup::RememberFolder(folder);
+                    auto in = ShaderBackup::Restore(std::nullopt, stop);
+                    auto out = ShaderBackup::Backup(std::nullopt, stop);
+                    done.shaders = out;
+                    if (in.outcome == ShaderBackup::Outcome::Done) {
+                        done.shaders.files += in.files;
+                        done.shaders.bytes += in.bytes;
+                        done.shaders.games = std::max(done.shaders.games, in.games);
+                    }
+                    done.result.outcome = SaveBackup::Outcome::Done;
+                    break;
+                }
+                case SavesJob::ShadersBackup:
+                    done.shaders = ShaderBackup::Backup(std::nullopt, stop);
+                    done.result.outcome = SaveBackup::Outcome::Done;
+                    break;
+                case SavesJob::ShadersRestore:
+                    done.shaders = ShaderBackup::Restore(std::nullopt, stop);
+                    done.result.outcome = SaveBackup::Outcome::Done;
+                    break;
                 case SavesJob::SettingsBackup: done.result = SaveBackup::BackupSettings(); break;
                 case SavesJob::SettingsRestore: done.result = SaveBackup::RestoreSettings(); break;
                 default: done.result = SaveBackup::Backup(job == SavesJob::Replace, saves_progress, stop); break;
@@ -1119,6 +1148,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     else if (folder && picker_kind == 4 && mod_session) mod_session->AddFolder(folder);
                     else if (folder && picker_kind == 40 && mod_session) mod_session->SetDownloadFolder(folder);
                     else if (folder && picker_kind == 5) start_saves(SavesJob::Pick, folder);
+                    else if (folder && picker_kind == 7) start_saves(SavesJob::ShadersPick, folder);
                     else if (folder && picker_kind == 6 && !themes_import.valid()) {
                         std::packaged_task<ThemeImportResult(std::stop_token)> task{[folder](std::stop_token stop) {
                             winrt::init_apartment(winrt::apartment_type::multi_threaded);
@@ -1274,7 +1304,28 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 const auto& result = done.result;
                 const auto number = [](std::uint32_t n) { return std::to_wstring(n); };
                 std::wstring text;
-                if (saves_job == SavesJob::Automatic) {
+                if (saves_job == SavesJob::ShadersPick || saves_job == SavesJob::ShadersBackup ||
+                    saves_job == SavesJob::ShadersRestore) {
+                    using SO = ShaderBackup::Outcome;
+                    const auto& shaders_result = done.shaders;
+                    shaders_folder = ShaderBackup::HasFolder();
+                    shaders_path = ShaderBackup::FolderPath();
+                    switch (shaders_result.outcome) {
+                    case SO::Done:
+                        text = shaders_result.files
+                                   ? I18n::Format(T::NsShadersDone, {number(shaders_result.games), number(shaders_result.files),
+                                                                     std::to_wstring((shaders_result.bytes + (1u << 19)) >> 20)})
+                                   : std::wstring{Tr(T::NsShadersUpToDate)};
+                        break;
+                    case SO::NothingToRestore: text = Tr(T::NsShadersNothing); break;
+                    case SO::FolderUnavailable: text = Tr(T::NsSavesUnavailable); break;
+                    case SO::NoFolder: text = Tr(T::NsShadersNoFolder); break;
+                    case SO::Stopped: break;
+                    case SO::Failed: text = I18n::Format(T::NsSavesFailed, {Wide(shaders_result.error)}); break;
+                    }
+                    saves_notice = std::move(text);
+                    saves_notice_until = now + std::chrono::seconds{12};
+                } else if (saves_job == SavesJob::Automatic) {
                     // Said in the library (only what needs the player: nothing when nothing changed).
                     if (result.outcome == O::Done && result.copied) text = I18n::Format(T::NsSavesAutoDone, {number(result.copied)});
                     else if (result.outcome == O::OtherInstall) text = Tr(T::NsSavesAutoOther);
@@ -2128,12 +2179,33 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 saves_notice = std::move(text);
                 saves_notice_until = now + for_how_long;
             };
-            constexpr unsigned SavesRows = 5;
+            // 0.4.5: then Pasta dos shaders, Copiar shaders, Trazer shaders, Sincronizar ao jogar.
+            constexpr unsigned SavesRows = 9;
             if (actions & Up) { saves_row = (saves_row + SavesRows - 1) % SavesRows; saves_confirm = 0; }
             if (actions & Down) { saves_row = (saves_row + 1) % SavesRows; saves_confirm = 0; }
             const bool pressed = (actions & Play) != 0;
             if (pressed && saves_future.valid()) {
                 say(std::wstring{Tr(T::NsSavesBusy)}, std::chrono::seconds{3});
+            } else if ((pressed || (actions & (Left | Right))) && saves_row == 8) {
+                shaders_sync = !shaders_sync;
+                ShaderBackup::SetAutoSync(shaders_sync);
+                say(std::wstring{Tr(T::SettingsSaved)}, std::chrono::seconds{3});
+            } else if (pressed && saves_row == 5) {
+                picker_kind = 7;
+                try {
+                    winrt::Windows::Storage::Pickers::FolderPicker folder_picker;
+                    folder_picker.SuggestedStartLocation(winrt::Windows::Storage::Pickers::PickerLocationId::ComputerFolder);
+                    folder_picker.FileTypeFilter().Append(L"*");
+                    picker = folder_picker.PickSingleFolderAsync();
+                    say(std::wstring{Tr(T::NsSavesPickHint)}, std::chrono::seconds{8});
+                } catch (...) { say(std::wstring{Tr(T::PickerOpenFailed)}, std::chrono::seconds{4}); }
+            } else if (pressed && (saves_row == 6 || saves_row == 7)) {
+                if (!shaders_folder) say(std::wstring{Tr(T::NsShadersNoFolder)}, std::chrono::seconds{4});
+                else {
+                    start_saves(saves_row == 6 ? SavesJob::ShadersBackup : SavesJob::ShadersRestore, nullptr);
+                    saves_notice = Tr(T::NsShadersCopying);
+                    saves_notice_until = std::chrono::steady_clock::time_point::max();
+                }
             } else if (pressed && saves_row == 0) {
                 picker_kind = 5;
                 try {
@@ -2585,10 +2657,13 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             const unsigned frame_theme = frame_pack ? static_cast<unsigned>(frame_pack->base) : std::min(frame_card, 2U);
             const unsigned frame_wallpaper = themes_page ? themes_wallpaper : system_page.settings.wallpaper;
             rebuild_shown();
+            const bool shader_job = saves_job == SavesJob::ShadersPick || saves_job == SavesJob::ShadersBackup ||
+                                    saves_job == SavesJob::ShadersRestore;
             const SavesView saves_view{saves_page, saves_row, saves_folder, saves.folder, saves.automatic,
-                                       saves.last_time, saves.last_games, saves_future.valid(),
+                                       saves.last_time, saves.last_games, saves_future.valid() && !shader_job,
                                        saves_job == SavesJob::Restore, saves_progress.done.load(),
-                                       saves_progress.total.load(), saves_notice};
+                                       saves_progress.total.load(), saves_notice, shaders_folder, shaders_path,
+                                       shaders_sync};
             canvas->Draw({scan, selected, loading, settings, setting_row, options, notice, panel,
                           configuration, system_page, options_view, missing_content, home, home_row,
                           false, library_tab, library_focus, &shown, &favorites, query,

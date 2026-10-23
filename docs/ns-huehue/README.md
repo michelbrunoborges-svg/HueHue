@@ -285,3 +285,41 @@ Os prints do CI rodam num Windows sem GPU, com o mesmo código Direct2D.
   (pasta com romfs, atmosphere/contents/<id>, pastas soltas do jogo, exefs com .ips) e com os
   arquivos 7z/RAR/RAR5 de teste do libarchive.
 - Versão do pacote: **0.4.4.<build>**.
+
+## 0.4.5 (23/10): o que o Eden 0.3.9 tem e o NS HUEHUE não tinha
+
+Mapa das telas "Definições da consola" e "Definições rápidas" do Eden 0.3.9 (MNKE) contra o
+nosso, item a item. Só entrou o que tem efeito real no nosso core; nada foi duplicado.
+
+| Eden 0.3.9 | NS HUEHUE |
+|---|---|
+| Tema, Idioma, Região, Volume, Velocidade, Contador de fotogramas | já existiam (Sistema; Velocidade por jogo e no menu) |
+| Modo da consola (TV/portátil) | já existia por jogo: Resolução TV / Portátil |
+| **Modo de avião** | **novo** em Sistema (`airplane_mode`) |
+| Filtro de ampliação | já existia: Ampliação da imagem |
+| Texturas ASTC guardadas como / Descodificar ASTC na GPU | já existiam: Texturas ASTC e ASTC sem transparência |
+| Resolução 1x/2x, Suavização (SMAA/FXAA), MSAA, Maior textura, Resolução de saída | não entram: o nosso D3D12 não tem escala de resolução nem esses filtros (são do renderizador próprio deles); seriam botões sem efeito |
+| Shaders assíncronos / Modo assíncrono | já existiam: Shaders pendentes (Esperar / Não esperar) |
+| **Passagens que esperam (vértices)** | **novo** por jogo e no menu do jogo (`SetPipelineDeferral`) |
+| Threads de compilação de shaders | já existia: Shaders 4 / 6 núcleos |
+| Reutilizar shaders traduzidos | o nosso já faz sempre (cache de shaders ligados) |
+| Emular tesselação / grelha | o nosso usa a tesselação da própria GPU |
+| **Emulação assíncrona da GPU** | **novo** por jogo |
+| Gravar comandos num thread | já existia: Comandos da GPU em outra thread |
+| Apresentação sem bloqueio | equivalente: Apresentar quadros em outra thread |
+| Tabelas de descritores no thread, Emulação na própria fila, os 10 itens de Correções para a consola, e 7 de Memória | não entram: correções e caminhos internos do renderizador deles, sem código equivalente no nosso |
+| Esperar pelos dados da GPU nas barreiras | **novo**: Leitura da GPU pela CPU (`use_reactive_flushing`) e **Precisão da GPU** |
+| Memória inativa do jogo para o SSD | parecido com o nosso Memória do jogo no SSD (fastmem) |
+| — | **novos** sem par no 0.3.9: Precisão da CPU (com Insegura), Filtro anisotrópico, Proporção da imagem, Vídeos do jogo (NVDEC) |
+| Silenciar (menu rápido) | **novo** no menu do jogo |
+| Painel de FPS | **refeito** com as mesmas linhas: FPS / ms, RAM usada / limite, GPU, JIT, EMU, Outro, carga da GPU, carga da CPU, núcleos (e o pico de quadro), no canto superior esquerdo |
+
+- **Cache de shaders no HD externo** (`shader_backup.*`, Configurações > Saves e shaders (USB)):
+  pasta própria, Copiar shaders para o HD, Trazer shaders do HD e Sincronizar ao jogar (ligado:
+  antes de abrir o jogo traz o cache dele do HD se for maior; ao fechar leva o que cresceu). Em
+  `<pasta>/NS-HUEHUE-shaders/<id do jogo>/` (d3d12.bin, d3d12_hot.bin, opengl.bin). O maior vence
+  nos dois sentidos. O nosso cache guarda os shaders do jogo e refaz os PSOs ao abrir (o Series
+  não aceita blobs de PSO prontos: `GetCachedBlob` derruba o device).
+- **Temas:** os 15 temas com personagens e marcas de terceiros (e o logo do Xbox) continuam fora
+  do appx e do repositório públicos; vão como pacote para Importar temas (USB).
+- Versão do pacote: **0.4.5.<build>**.

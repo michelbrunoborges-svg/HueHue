@@ -83,6 +83,7 @@
 #include "video_core/rasterizer_interface.h"
 #include "video_core/renderer_base.h"
 #include "video_core/renderer_d3d12/d3d12_menu_image.h"
+#include "video_core/renderer_d3d12/d3d12_overlay_stats.h"
 
 #include "eden_uwp/online_settings.h"
 #include "network/network.h"
@@ -113,6 +114,7 @@
 #include "eden_uwp/localization.h"
 #include "eden_uwp/uwp_software_keyboard.h"
 #include "eden_uwp/uwp_system_settings.h"
+#include "eden_uwp/shader_backup.h"
 #include "video_core/performance_overlay.h"
 #include "eden_uwp/utf8.h"
 
@@ -188,6 +190,12 @@ void ApplyProcessMemoryLimit(u32 limit_mib); // likewise
 std::string LargestAllocations();       // likewise
 std::string HeapReport();               // likewise
 bool QueryAppMemory(u64& used, u64& limit);  // likewise
+/// NS HUEHUE 0.4.5: the running game's frame counter for the performance overlay (null between
+/// games, and before Load makes it).
+std::atomic<const Core::PerfStats*> g_overlay_perf{};
+/// The title id of the game RunHeadlessBoot ran last (0 before one loads), for the shader copy.
+std::atomic<u64> g_last_program_id{};
+D3D12::OverlayStats QueryOverlayStats();     // likewise
 /// A game's learned JIT prewarm step (EdenXbox::PrewarmBudget), 0 when none is stored.
 std::int32_t LoadPrewarmStep(u64 program_id);  // likewise
 void SavePrewarmStep(u64 program_id, std::int32_t step);  // likewise
@@ -429,6 +437,13 @@ struct BootConfig {
     bool hide_firmware{};
     /// Controles do jogo (game_profile.h): its own button mapping over the saved one.
     std::optional<ButtonRemap> remap;
+    // NS HUEHUE 0.4.5 (Desempenho e graficos): sampler filtering, picture shape, the GPU on its own
+    // thread, the pending-shader passes that still wait and how the game's videos are decoded.
+    Settings::AnisotropyMode anisotropy{Settings::AnisotropyMode::Automatic};
+    Settings::AspectRatio aspect{Settings::AspectRatio::R16_9};
+    bool async_gpu{true};
+    u32 critical_vertices{6};
+    Settings::NvdecEmulation nvdec{Settings::NvdecEmulation::Gpu};
     /// NS HUEHUE Avancado: off lets the game run as fast as the console can (Eden's speed limit).
     bool speed_limit{true};
     u16 speed_percent{100}; ///< With the limit on: percent of the console's speed.
@@ -482,7 +497,7 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
         Settings::values.use_docked_mode.SetValue(Settings::ConsoleMode::Docked);
     D3D12::SetPresentPacing(config.max_fps, config.frame_skip);
     D3D12::SetPipelineWorkerLimit(config.pipeline_workers);
-    D3D12::SetPipelineDeferral(config.pso_defer, 6);
+    D3D12::SetPipelineDeferral(config.pso_defer, config.critical_vertices);
     if (config.pso_defer) WriteDiag("step: pending shaders deferred (draws skipped while their PSO builds)");
     D3D12::SetMemoryReserve(u64{config.memory_reserve_mib} << 20);
     if (config.null_audio) {
@@ -510,6 +525,16 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
     WriteDiag(std::string("step: library applets ") + (config.lle_applets ? "Eden defaults (LLE)" : "all HLE"));
     Settings::values.gpu_accuracy.SetValue(config.gpu_accuracy);
     Settings::values.use_reactive_flushing.SetValue(config.reactive_flushing);
+    // 0.4.5: read when the GPU, the samplers and the window's layout are made (after this point).
+    Settings::values.max_anisotropy.SetValue(config.anisotropy);
+    Settings::values.aspect_ratio.SetValue(config.aspect);
+    Settings::values.use_asynchronous_gpu_emulation.SetValue(config.async_gpu);
+    Settings::values.nvdec_emulation.SetValue(config.nvdec);
+    Settings::values.audio_muted.SetValue(false); // Silenciar in the menu lasts one game
+    WriteDiag("step: anisotropy " + std::to_string(static_cast<int>(config.anisotropy)) + ", aspect " +
+              std::to_string(static_cast<int>(config.aspect)) + (config.async_gpu ? ", async GPU" : ", sync GPU") +
+              ", videos " + std::to_string(static_cast<int>(config.nvdec)) + ", pending-shader passes <= " +
+              std::to_string(config.critical_vertices) + " vertices");
     WriteDiag(std::string("step: GPU accuracy ") +
               (config.gpu_accuracy == Settings::GpuAccuracy::Low ? "Low" : "High") +
               (config.reactive_flushing ? ", reactive flushing" : ", no reactive flushing"));
@@ -518,8 +543,9 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
     Settings::values.volume.SetValue(LoadSystemSettings().volume);
     if (config.speed_limit) Settings::values.speed_limit.SetValue(config.speed_percent);
     WriteDiag(config.speed_limit ? "step: speed " + std::to_string(config.speed_percent) + "%" : std::string{"step: speed limit off"});
-    WriteDiag(config.cpu_accuracy == Settings::CpuAccuracy::Accurate
-                  ? "step: CPU accuracy Accurate" : "step: CPU accuracy Auto");
+    WriteDiag(config.cpu_accuracy == Settings::CpuAccuracy::Accurate ? "step: CPU accuracy Accurate"
+              : config.cpu_accuracy == Settings::CpuAccuracy::Unsafe ? "step: CPU accuracy Unsafe"
+                                                                      : "step: CPU accuracy Auto");
     AudioCore::Sink::SetXAudio2ProfileEnabled(config.audio_profile);
     Core::CpuProfile::SetEnabled(config.cpu_profile);
     // Read when Core::System builds the kernel's cores.
@@ -561,6 +587,7 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
     g_test_memory_limit = u64{config.memory_limit_mib} << 20;
     Core::SetJitCodeCacheSize(config.jit_cache_mib << 20);
     D3D12::SetAppMemoryQuery(QueryAppMemory);
+    D3D12::SetOverlayStatsQuery(QueryOverlayStats);
     D3D12::SetBcArrayDecode(!config.bc_arrays_native);
     // RGBA8 ASTC made loading frames upload 150-260 MiB at once and the console run out of memory
     // (0.2.50): textures become BC3 (a quarter of the memory), 2D arrays too unless
@@ -717,6 +744,9 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
     // Before Load, so HID starts with player 1 connected and bound to the gamepad engine.
     GamepadInput input{config.input_script};
     std::optional<ButtonRemap> game_remap = config.remap; // the in-game menu may change it
+    // Shaders pendentes and the passes that wait, as the in-game menu leaves them (live, this game).
+    bool session_pso_defer = config.pso_defer;
+    u32 session_critical_vertices = config.critical_vertices;
     if (config.remap) {
         input.SetSessionRemap(config.remap);
         WriteDiag("input: the game's own button mapping " + SerializeRemap(*config.remap));
@@ -729,6 +759,7 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
     // thread, so it goes before anything is torn down.
     std::optional<PulseScreen> pulse_screen;
     const auto shutdown = [&] {
+        g_overlay_perf.store(nullptr, std::memory_order_release); // Core frees it below
         pulse_screen.reset();
         Common::SamplingProfiler::Stop(); // writes the window in progress, if it runs
         if (config.gpu_failure_probe) WriteDiag("GPU recovery shutdown: input.Stop");
@@ -877,6 +908,8 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
         return 2;
     }
     ApplyGameLanguage(system);
+    g_overlay_perf.store(&std::as_const(system).GetPerfStats(), std::memory_order_release);
+    struct ForgetPerf { ~ForgetPerf() { g_overlay_perf.store(nullptr, std::memory_order_release); } } forget_perf;
     if (config.bug_tracker) {
         std::string title;
         void(system.GetAppLoader().ReadTitle(title));
@@ -908,6 +941,17 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
         system.GetCpuManager().OnGpuReady();
     }
 
+    // NS HUEHUE 0.4.5: Sincronizar shaders ao jogar (shader_backup.h): a larger copy of this
+    // game's cache on the external drive comes in before the cache is read.
+    g_last_program_id.store(system.GetApplicationProcessProgramID());
+    if (Settings::values.use_disk_shader_cache.GetValue() && ShaderBackup::HasFolder() && ShaderBackup::AutoSync() &&
+        system.GetApplicationProcessProgramID() != 0) {
+        const auto pulled = ShaderBackup::Restore(system.GetApplicationProcessProgramID());
+        WriteDiag("step: shader cache from the drive: " +
+                  (pulled.outcome == ShaderBackup::Outcome::Done
+                       ? std::to_string(pulled.files) + " files, " + std::to_string(pulled.bytes >> 20) + " MiB"
+                       : "outcome " + std::to_string(static_cast<int>(pulled.outcome)) + " " + pulled.error));
+    }
     if (Settings::values.use_disk_shader_cache.GetValue()) {
         // As yuzu_cmd: build the pipelines earlier sessions saved (LocalState/eden/shader/<title>/
         // d3d12.bin) before the guest runs, so they do not stutter in; the ones the game meets
@@ -1187,6 +1231,9 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                                               : 0;
                     menu_settings.volume = static_cast<std::uint8_t>(
                         std::min<unsigned>(Settings::values.volume.GetValue(), 200) / 10 * 10);
+                    menu_settings.pso_defer = session_pso_defer;
+                    menu_settings.critical_vertices = static_cast<std::uint8_t>(std::min<u32>(session_critical_vertices, 48));
+                    menu_settings.muted = Settings::values.audio_muted.GetValue();
                     menu.emplace(menu_settings, program_id != 0);
                     if (game_title.empty()) {
                         std::string title;
@@ -1382,8 +1429,16 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                     Settings::values.use_speed_limit.SetValue(menu->Settings().speed != 0);
                     if (menu->Settings().speed != 0) Settings::values.speed_limit.SetValue(menu->Settings().speed);
                     Settings::values.volume.SetValue(menu->Settings().volume);
+                    Settings::values.audio_muted.SetValue(menu->Settings().muted);
+                    // The pipeline cache reads both on every draw: the change applies at once.
+                    session_pso_defer = menu->Settings().pso_defer;
+                    session_critical_vertices = menu->Settings().critical_vertices;
+                    D3D12::SetPipelineDeferral(session_pso_defer, session_critical_vertices);
                     WriteDiag("menu: speed " + std::to_string(menu->Settings().speed) + "% (0: no limit), volume " +
-                              std::to_string(menu->Settings().volume) + "%");
+                              std::to_string(menu->Settings().volume) + "%" + (menu->Settings().muted ? " muted" : "") +
+                              (session_pso_defer ? ", pending shaders skipped, passes <= " +
+                                                       std::to_string(session_critical_vertices) + " vertices wait"
+                                                 : ", pending shaders waited for"));
                 }
 
                 if (menu_surface) draw_menu();
@@ -1904,6 +1959,18 @@ bool QueryAppMemory(u64& used, u64& limit) {
     } catch (...) {
         return false;
     }
+}
+
+D3D12::OverlayStats QueryOverlayStats() {
+    D3D12::OverlayStats stats;
+    stats.memory_valid = QueryAppMemory(stats.app_used, stats.app_limit);
+    stats.jit_bytes = Dynarmic::CommittedCodeBytes();
+    stats.emu_bytes = Common::EmulatedDramCommittedBytes().value_or(0);
+    if (const auto* perf = g_overlay_perf.load(std::memory_order_acquire)) {
+        stats.game_frames = perf->TotalGameFrames();
+        stats.frames_valid = true;
+    }
+    return stats;
 }
 
 // Last-chance writer for the crash handlers: no WinRT, no lock (the faulting thread may hold it),
@@ -2925,6 +2992,39 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                             WriteDiag("tuning: upscaling " + EdenXbox::I18n::ToUtf8(
                                                                  EdenXbox::I18n::Tr(EdenXbox::UpscalingText(*upscaling))));
                         }
+                        // 0.4.5: the accuracy switches the player set win over the profile's.
+                        switch (tuning.gpu_accuracy) {
+                        case EdenXbox::TuningGpuAccuracy::Low: config.gpu_accuracy = Settings::GpuAccuracy::Low; break;
+                        case EdenXbox::TuningGpuAccuracy::High: config.gpu_accuracy = Settings::GpuAccuracy::High; break;
+                        case EdenXbox::TuningGpuAccuracy::Profile: break;
+                        }
+                        switch (tuning.cpu_accuracy) {
+                        case EdenXbox::TuningCpuAccuracy::Auto: config.cpu_accuracy = Settings::CpuAccuracy::Auto; break;
+                        case EdenXbox::TuningCpuAccuracy::Accurate: config.cpu_accuracy = Settings::CpuAccuracy::Accurate; break;
+                        case EdenXbox::TuningCpuAccuracy::Unsafe: config.cpu_accuracy = Settings::CpuAccuracy::Unsafe; break;
+                        case EdenXbox::TuningCpuAccuracy::Profile: break;
+                        }
+                        if (tuning.reactive_flushing != EdenXbox::TuningSwitch::Profile)
+                            config.reactive_flushing = tuning.reactive_flushing == EdenXbox::TuningSwitch::On;
+                        switch (tuning.anisotropy) {
+                        case EdenXbox::Anisotropy::X2: config.anisotropy = Settings::AnisotropyMode::X2; break;
+                        case EdenXbox::Anisotropy::X4: config.anisotropy = Settings::AnisotropyMode::X4; break;
+                        case EdenXbox::Anisotropy::X8: config.anisotropy = Settings::AnisotropyMode::X8; break;
+                        case EdenXbox::Anisotropy::X16: config.anisotropy = Settings::AnisotropyMode::X16; break;
+                        case EdenXbox::Anisotropy::Game: break;
+                        }
+                        switch (tuning.aspect) {
+                        case EdenXbox::AspectRatio::R4_3: config.aspect = Settings::AspectRatio::R4_3; break;
+                        case EdenXbox::AspectRatio::R21_9: config.aspect = Settings::AspectRatio::R21_9; break;
+                        case EdenXbox::AspectRatio::R16_10: config.aspect = Settings::AspectRatio::R16_10; break;
+                        case EdenXbox::AspectRatio::Stretch: config.aspect = Settings::AspectRatio::Stretch; break;
+                        case EdenXbox::AspectRatio::R16_9: break;
+                        }
+                        config.async_gpu = tuning.async_gpu;
+                        config.critical_vertices = tuning.critical_vertices;
+                        config.nvdec = tuning.video == EdenXbox::VideoDecode::Cpu ? Settings::NvdecEmulation::Cpu
+                                     : tuning.video == EdenXbox::VideoDecode::Off ? Settings::NvdecEmulation::Off
+                                                                                  : Settings::NvdecEmulation::Gpu;
                         // Avancado (experimental): only what differs from the defaults, so a
                         // diagnostic boot.cfg line still wins over an untouched option.
                         if (tuning.speed == 0) config.speed_limit = false;
@@ -2999,6 +3099,17 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                     }
                     boot_status.store(rc);
                     WriteDiag("RunHeadlessBoot returned " + std::to_string(rc) + " | " + MemoryReport());
+                    // Sincronizar shaders ao jogar: what the cache gained goes to the drive (the
+                    // renderer wrote it out as it closed).
+                    if (const u64 title = g_last_program_id.exchange(0);
+                        library_game && title != 0 && EdenXbox::ShaderBackup::HasFolder() &&
+                        EdenXbox::ShaderBackup::AutoSync()) {
+                        const auto pushed = EdenXbox::ShaderBackup::Backup(title);
+                        WriteDiag("shader cache to the drive: " +
+                                  (pushed.outcome == EdenXbox::ShaderBackup::Outcome::Done
+                                       ? std::to_string(pushed.files) + " files, " + std::to_string(pushed.bytes >> 20) + " MiB"
+                                       : "outcome " + std::to_string(static_cast<int>(pushed.outcome)) + " " + pushed.error));
+                    }
                     if (rc == 2 && library_game && with_firmware && EdenXbox::FallBackToNoFirmware(nro_path)) {
                         switched_firmware.store(true);
                         WriteDiag("compat: the game failed to load with the firmware; it opens without it next time");

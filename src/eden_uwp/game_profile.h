@@ -32,6 +32,7 @@
 
 #include "eden_uwp/button_remap.h"
 #include "eden_uwp/localization.h"
+#include "eden_uwp/tuning_steps.h"
 #include "eden_uwp/upscaling.h"
 
 namespace EdenXbox {
@@ -70,6 +71,16 @@ enum class JitCache : std::uint8_t { Normal, Small, Large };
 /// Firmware do console: Auto uses the installed one and, when the game closes with it in its
 /// first minute, sets it to Skip (game_compat.h); Use always; Skip runs it as without firmware.
 enum class FirmwareUse : std::uint8_t { Auto, Use, Skip };
+/// 0.4.5 (the Eden 0.3.9 screens of 23/10/2026, what our core honours): the texture filtering the
+/// sampler adds (Game: as the game asks), the picture's shape, and the engine's own accuracy
+/// switches, each "Profile" leaving the profile's choice.
+enum class Anisotropy : std::uint8_t { Game, X2, X4, X8, X16 };
+enum class AspectRatio : std::uint8_t { R16_9, R4_3, R21_9, R16_10, Stretch };
+enum class TuningGpuAccuracy : std::uint8_t { Profile, Low, High };
+enum class TuningCpuAccuracy : std::uint8_t { Profile, Auto, Accurate, Unsafe };
+enum class TuningSwitch : std::uint8_t { Profile, On, Off };
+/// The game's videos (NVDEC): on the GPU (Eden's default), on the CPU or not decoded at all.
+enum class VideoDecode : std::uint8_t { Gpu, Cpu, Off };
 
 struct GameTuning {
     /// Desempenho by default (the player asked, 19/10/2026): quality is the player's choice per game.
@@ -101,6 +112,15 @@ struct GameTuning {
     FirmwareUse firmware{FirmwareUse::Auto};
     /// Controles do jogo: its own button mapping (button_remap.h); nullopt uses the saved one.
     std::optional<ButtonRemap> remap;
+    // 0.4.5.
+    Anisotropy anisotropy{Anisotropy::Game};
+    AspectRatio aspect{AspectRatio::R16_9};
+    TuningGpuAccuracy gpu_accuracy{TuningGpuAccuracy::Profile};
+    TuningCpuAccuracy cpu_accuracy{TuningCpuAccuracy::Profile};
+    TuningSwitch reactive_flushing{TuningSwitch::Profile};
+    bool async_gpu{true};          ///< GPU emulated on a thread of its own (Eden's default).
+    std::uint8_t critical_vertices{6};
+    VideoDecode video{VideoDecode::Gpu};
 
     bool operator==(const GameTuning&) const = default;
 
@@ -151,11 +171,13 @@ inline GameProfile NextGameProfile(GameProfile profile) {
 
 /// The rows of the Desempenho e graficos page, in order.
 enum class TuningRow : std::uint8_t {
-    Profile, Renderer, GlShaderPath, Resolution, Upscaling, Fps, FpsManual, FrameSkip, Shaders, Memory, Firmware,
+    Profile, Renderer, GlShaderPath, Resolution, Upscaling, Anisotropy, AspectRatio, Fps, FpsManual, FrameSkip,
+    Shaders, Memory, Firmware,
     // Avancado (experimental)
-    SpeedLimit, PsoDefer, RecordThread, PresentThread, Astc, AstcOpaque, Fastmem, PsoEviction, IdleSpin, JitCache
+    SpeedLimit, PsoDefer, CriticalVertices, RecordThread, PresentThread, AsyncGpu, GpuAccuracy, CpuAccuracy,
+    ReactiveFlushing, Astc, AstcOpaque, VideoDecode, Fastmem, PsoEviction, IdleSpin, JitCache
 };
-inline constexpr std::size_t TuningRowCount = 21;
+inline constexpr std::size_t TuningRowCount = 29;
 /// Rows the page shows at once (it scrolls past them).
 inline constexpr std::size_t TuningRowsVisible = 10;
 
@@ -200,6 +222,17 @@ inline void StepTuning(GameTuning& tuning, TuningRow row, bool back, bool big = 
     case TuningRow::PsoEviction: tuning.pso_eviction = !tuning.pso_eviction; break;
     case TuningRow::IdleSpin: tuning.idle_spin = cycle(tuning.idle_spin, 3); break;
     case TuningRow::JitCache: tuning.jit_cache = cycle(tuning.jit_cache, 3); break;
+    case TuningRow::Anisotropy: tuning.anisotropy = cycle(tuning.anisotropy, 5); break;
+    case TuningRow::AspectRatio: tuning.aspect = cycle(tuning.aspect, 5); break;
+    case TuningRow::GpuAccuracy: tuning.gpu_accuracy = cycle(tuning.gpu_accuracy, 3); break;
+    case TuningRow::CpuAccuracy: tuning.cpu_accuracy = cycle(tuning.cpu_accuracy, 4); break;
+    case TuningRow::ReactiveFlushing: tuning.reactive_flushing = cycle(tuning.reactive_flushing, 3); break;
+    case TuningRow::AsyncGpu: tuning.async_gpu = !tuning.async_gpu; break;
+    case TuningRow::VideoDecode: tuning.video = cycle(tuning.video, 3); break;
+    case TuningRow::CriticalVertices:
+        tuning.critical_vertices = StepCriticalVertices(tuning.critical_vertices, back);
+        tuning.pso_defer = true; // only means something there
+        break;
     }
 }
 
@@ -212,7 +245,8 @@ inline std::filesystem::path File() {
     } catch (...) { return {}; }
 }
 /// "path \t profile [\t resolution \t fps \t manual \t skip \t shaders [\t renderer [\t gl
-/// [\t upscaling \t memory [\t speed record present astc opaque fastmem pso spin jit [\t defer [\t firmware]]]]]]]"
+/// [\t upscaling \t memory [\t speed record present astc opaque fastmem pso spin jit [\t defer [\t firmware
+/// [\t remap [\t anisotropy aspect gpu cpu reactive async-gpu critical video]]]]]]]]]"
 /// (older lines stop earlier: the rest keeps its defaults).
 inline std::map<std::string, GameTuning> Load() {
     std::map<std::string, GameTuning> all;
@@ -245,9 +279,17 @@ inline std::map<std::string, GameTuning> Load() {
         }
         int defer = 0, firmware = 0; // 0.4.2: Shaders pendentes; 0.4.3: Firmware do console
         std::string remap_text;      // 0.4.4: Controles do jogo ("-": the saved mapping)
+        // 0.4.5: anisotropy aspect gpu cpu reactive async-gpu critical-vertices video
+        int added[8] = {0, 0, 0, 0, 0, 1, 6, 0};
         if (!(fields >> defer)) defer = 0;
         else if (!(fields >> firmware)) firmware = 0;
         else if (!(fields >> remap_text)) remap_text.clear();
+        else {
+            int read[8];
+            bool complete = true;
+            for (int& value : read) complete = complete && static_cast<bool>(fields >> value);
+            if (complete) std::copy(std::begin(read), std::end(read), added);
+        }
         GameTuning tuning;
         tuning.profile = static_cast<GameProfile>(std::clamp(profile, 0, 3));
         tuning.resolution = static_cast<GameResolution>(std::clamp(resolution, 0, static_cast<int>(GameResolutionCount) - 1));
@@ -273,6 +315,14 @@ inline std::map<std::string, GameTuning> Load() {
         tuning.pso_defer = defer != 0;
         tuning.firmware = static_cast<FirmwareUse>(std::clamp(firmware, 0, 2));
         if (!remap_text.empty() && remap_text != "-") tuning.remap = ParseRemap(remap_text);
+        tuning.anisotropy = static_cast<Anisotropy>(std::clamp(added[0], 0, 4));
+        tuning.aspect = static_cast<AspectRatio>(std::clamp(added[1], 0, 4));
+        tuning.gpu_accuracy = static_cast<TuningGpuAccuracy>(std::clamp(added[2], 0, 2));
+        tuning.cpu_accuracy = static_cast<TuningCpuAccuracy>(std::clamp(added[3], 0, 3));
+        tuning.reactive_flushing = static_cast<TuningSwitch>(std::clamp(added[4], 0, 2));
+        tuning.async_gpu = added[5] != 0;
+        tuning.critical_vertices = static_cast<std::uint8_t>(std::clamp(added[6], 0, 48));
+        tuning.video = static_cast<VideoDecode>(std::clamp(added[7], 0, 2));
         all[line.substr(0, tab)] = tuning;
     }
     return all;
@@ -315,7 +365,11 @@ inline bool SaveGameTuning(const std::string& launch_path, const GameTuning& tun
             << static_cast<int>(value.fastmem) << '\t' << int{value.pso_eviction} << '\t'
             << static_cast<int>(value.idle_spin) << '\t' << static_cast<int>(value.jit_cache) << '\t'
             << int{value.pso_defer} << '\t' << static_cast<int>(value.firmware) << '\t'
-            << (value.remap ? SerializeRemap(*value.remap) : std::string{"-"}) << '\n';
+            << (value.remap ? SerializeRemap(*value.remap) : std::string{"-"}) << '\t'
+            << static_cast<int>(value.anisotropy) << '\t' << static_cast<int>(value.aspect) << '\t'
+            << static_cast<int>(value.gpu_accuracy) << '\t' << static_cast<int>(value.cpu_accuracy) << '\t'
+            << static_cast<int>(value.reactive_flushing) << '\t' << int{value.async_gpu} << '\t'
+            << int{value.critical_vertices} << '\t' << static_cast<int>(value.video) << '\n';
     }
     return static_cast<bool>(out);
 }

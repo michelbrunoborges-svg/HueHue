@@ -18,7 +18,7 @@
 namespace EdenXbox {
 
 struct SystemPage {
-    enum Row : std::size_t { UserName, Theme, InterfaceLanguage, GameLanguage, Region, AdultMods, PerformanceStats, Volume, PulseSessions, ClearCache, RowCount };
+    enum Row : std::size_t { UserName, Theme, InterfaceLanguage, GameLanguage, Region, Airplane, AdultMods, PerformanceStats, Volume, PulseSessions, ClearCache, RowCount };
 
     bool open{};
     std::size_t selected{};
@@ -90,6 +90,9 @@ inline SystemPageEffect HandleSystemInput(SystemPage& page, SystemInput input) {
     case Row::Region:
         settings.region = StepChoice(settings.region, SelectableRegions(), back);
         return SystemPageEffect::Changed;
+    case Row::Airplane:
+        settings.airplane = !settings.airplane;
+        return SystemPageEffect::Changed;
     case Row::AdultMods:
         settings.show_adult_mods = !settings.show_adult_mods;
         return SystemPageEffect::Changed;
@@ -139,6 +142,7 @@ inline I18n::Text SystemRowTitle(SystemPage::Row row) {
     case SystemPage::InterfaceLanguage: return Text::InterfaceLanguage;
     case SystemPage::GameLanguage:      return Text::GameLanguage;
     case SystemPage::Region:            return Text::ConsoleRegion;
+    case SystemPage::Airplane:          return Text::SystemAirplane;
     case SystemPage::PerformanceStats:  return Text::PerformanceStats;
     case SystemPage::AdultMods:         return Text::ModsAdult;
     case SystemPage::PulseSessions:     return Text::PulseSessions;
@@ -155,6 +159,7 @@ inline I18n::Text SystemRowHint(SystemPage::Row row) {
     case SystemPage::InterfaceLanguage: return Text::InterfaceLanguageHint;
     case SystemPage::GameLanguage:      return Text::GameLanguageHint;
     case SystemPage::Region:            return Text::ConsoleRegionHint;
+    case SystemPage::Airplane:          return Text::SystemAirplaneHint;
     case SystemPage::PerformanceStats:  return Text::PerformanceStatsHint;
     case SystemPage::AdultMods:         return Text::ModsAdultHint;
     case SystemPage::PulseSessions:     return Text::PulseSessionsHint;
@@ -188,6 +193,8 @@ inline std::wstring SystemRowValue(const SystemPage& page, SystemPage::Row row) 
         return automatic(I18n::Tr(RegionText(RegionForLocale(page.locale))));
     case SystemPage::PerformanceStats:
         return std::wstring{I18n::Tr(settings.show_performance_stats ? Text::Yes : Text::No)};
+    case SystemPage::Airplane:
+        return std::wstring{I18n::Tr(settings.airplane ? Text::NsOn : Text::NsOff)};
     case SystemPage::AdultMods:
         return std::wstring{I18n::Tr(settings.show_adult_mods ? Text::ModsAdultShown : Text::ModsAdultHidden)};
     case SystemPage::PulseSessions:
@@ -202,9 +209,9 @@ inline std::wstring SystemRowValue(const SystemPage& page, SystemPage::Row row) 
 /// Geometry shared by the canvas and pointer hit tests (1280x720 layout units).
 struct SystemPageLayout {
     static constexpr float PanelX = 140, PanelY = 72, PanelWidth = 1000, PanelHeight = 612;
-    // The header (title and subtitle, 88 to 158) above ten rows of 42, 44 apart (168 to 606).
+    // The header (title and subtitle, 88 to 158) above eleven rows of 38, 40 apart (164 to 602).
     static constexpr float HeaderY = 88;
-    static constexpr float RowX = 180, RowWidth = 920, RowTop = 168, RowStride = 44, RowHeight = 42;
+    static constexpr float RowX = 180, RowWidth = 920, RowTop = 164, RowStride = 40, RowHeight = 38;
     static constexpr float Notice = 612, Footer = 640;
     /// The name editor's keyboard panel (text_entry_panel.h), centered on the screen.
     static constexpr float EditorX = (1280 - TextEntryPanelLayout::Width) / 2;

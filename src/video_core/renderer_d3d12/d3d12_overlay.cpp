@@ -11,6 +11,9 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
+#include <thread>
+#include <cmath>
 
 #include <fmt/format.h>
 
@@ -115,7 +118,17 @@ constexpr std::array<float, 4> OVERLAY_DIM{0.25f, 0.25f, 0.28f, 1.0f};
 constexpr std::array<float, 4> OVERLAY_ACCENT{1.0f, 0.72f, 0.2f, 1.0f};
 constexpr std::array<float, 4> OVERLAY_TEXT{0.82f, 0.82f, 0.84f, 1.0f};
 
+std::atomic<OverlayStatsQuery> overlay_stats_query{nullptr};
+
+std::string Mib(u64 bytes) {
+    return fmt::format("{} MIB", (bytes + (1ULL << 19)) >> 20);
+}
+
 } // Anonymous namespace
+
+void SetOverlayStatsQuery(OverlayStatsQuery query) {
+    overlay_stats_query.store(query, std::memory_order_release);
+}
 
 void ShowLoadProgress(VideoCore::RendererBase& renderer, size_t done, size_t total) {
     // No RTTI in this build: the configured backend says which renderer this is.
@@ -143,44 +156,73 @@ void RendererD3D12::DrawPerformanceOverlay(CommandStream* cmd,
         const u64 cpu_ticks = ticks(kernel) + ticks(user);
         const u64 gpu_us = VideoCore::Perf::counters[
             static_cast<size_t>(VideoCore::Perf::Counter::GpuBusyUs)].load(std::memory_order_relaxed);
-        // Reuse the HUD refresh and cached text. At most one lightweight OS query per second,
-        // including failures; hiding the HUD resets this state and performs no queries.
+        // NS HUEHUE 0.4.5: the lines of the Eden 0.3.9 overlay (FPS and frame time, RAM against the
+        // limit, GPU, JIT, emulated DRAM, the rest, GPU and CPU load, cores in use). The memory
+        // lines are sampled once a second; hiding the HUD resets this state and queries nothing.
+        const OverlayStatsQuery stats_query = overlay_stats_query.load(std::memory_order_acquire);
+        const OverlayStats stats = stats_query ? stats_query() : OverlayStats{};
         if (first || now - hud.memory_sample_time >= std::chrono::seconds{1}) {
-            hud.memory_line = FormatOverlayResidentMemory(QueryOverlayResidentMemory());
+            u64 gpu_bytes = 0;
+            try {
+                gpu_bytes = device.QueryVideoMemory().CurrentUsage;
+            } catch (...) {}
+            if (stats.memory_valid) {
+                const u64 known = gpu_bytes + stats.jit_bytes + stats.emu_bytes;
+                hud.memory_lines = {fmt::format("RAM {} / {} MIB", (stats.app_used + (1ULL << 19)) >> 20,
+                                                stats.app_limit >> 20),
+                                    "GPU " + Mib(gpu_bytes), "JIT " + Mib(stats.jit_bytes),
+                                    "EMU " + Mib(stats.emu_bytes),
+                                    "OUTRO " + Mib(stats.app_used > known ? stats.app_used - known : 0)};
+            } else {
+                hud.memory_lines = {FormatOverlayResidentMemory(QueryOverlayResidentMemory()),
+                                    "GPU " + Mib(gpu_bytes), "JIT --", "EMU --", "OUTRO --"};
+            }
             hud.memory_sample_time = now;
         }
-        std::array<std::string, 5> lines{
-            "FPS --", "FRAME -- MS MAX --", "CPU --", "GPUQ --", hud.memory_line};
+        const unsigned host_cores = std::max(1U, std::thread::hardware_concurrency());
+        std::vector<std::string> lines{"-- FPS / -- MS"};
+        lines.insert(lines.end(), hud.memory_lines.begin(), hud.memory_lines.end());
+        lines.insert(lines.end(), {"CARGA DA GPU --", "CARGA DA CPU --", fmt::format("NUCLEOS -- / {}", host_cores),
+                                   "PICO -- MS"});
         if (!first && hud.frames != 0) {
             const double frames = static_cast<double>(hud.frames);
-            lines[0] = fmt::format("FPS {:.1f}", frames * 1000.0 / elapsed_ms);
-            lines[1] = fmt::format("FRAME {:.1f} MS MAX {:.1f}", hud.last_frame_ms, hud.max_frame_ms);
-            // Process CPU includes all threads; show equivalent cores rather than an ambiguous %.
-            if (cpu_valid && hud.cpu_valid && cpu_ticks >= hud.cpu_ticks) {
-                const double cpu_ms = static_cast<double>(cpu_ticks - hud.cpu_ticks) / 10000.0;
-                lines[2] = fmt::format("CPU {:.2f} CORES {:.1f} MS/F", cpu_ms / elapsed_ms,
-                                       cpu_ms / frames);
-            }
+            const double shown_fps = frames * 1000.0 / elapsed_ms;
+            // The game's own frames when the frontend counts them: with an FPS limit or frame
+            // skip the screen shows fewer, which the line adds.
+            double fps = shown_fps;
+            if (stats.frames_valid && hud.game_frames_valid && stats.game_frames >= hud.game_frames)
+                fps = static_cast<double>(stats.game_frames - hud.game_frames) * 1000.0 / elapsed_ms;
+            lines[0] = fps > 0.5 ? fmt::format("{:.0f} FPS / {:.1f} MS", fps, 1000.0 / fps) : "0 FPS / -- MS";
+            if (std::abs(fps - shown_fps) >= 2.0) lines[0] += fmt::format(" TELA {:.0f}", shown_fps);
             if (scheduler.HasGpuTimestamps()) {
                 const double gpu_ms = static_cast<double>(gpu_us - hud.gpu_us) / 1000.0;
-                // Completed direct-queue time, delayed by frames in flight; not whole-GPU utilization.
-                lines[3] = fmt::format("GPUQ {:.0f}% {:.1f} MS/F", gpu_ms * 100.0 / elapsed_ms,
-                                       gpu_ms / frames);
+                // Completed direct-queue time, delayed by frames in flight.
+                lines[6] = fmt::format("CARGA DA GPU {:.0f}%", std::min(100.0, gpu_ms * 100.0 / elapsed_ms));
             }
+            // Process CPU over all threads: the share of the console's cores, and how many cores
+            // that makes.
+            if (cpu_valid && hud.cpu_valid && cpu_ticks >= hud.cpu_ticks) {
+                const double cores = static_cast<double>(cpu_ticks - hud.cpu_ticks) / 10000.0 / elapsed_ms;
+                lines[7] = fmt::format("CARGA DA CPU {:.0f}%", std::min(100.0, cores * 100.0 / host_cores));
+                lines[8] = fmt::format("NUCLEOS {:.1f} / {}", cores, host_cores);
+            }
+            lines[9] = fmt::format("PICO {:.1f} MS", hud.max_frame_ms);
         }
+        hud.game_frames = stats.game_frames;
+        hud.game_frames_valid = stats.frames_valid;
         const LONG cell = std::max<LONG>(2, static_cast<LONG>(swapchain.Height()) / 360);
         const LONG pad = 3 * cell;
-        const LONG right = static_cast<LONG>(swapchain.Width()) - 8 * cell;
+        const LONG left = 8 * cell; // top left, as in the Eden 0.3.9 overlay
         const LONG top = 8 * cell;
         size_t chars = 0;
         for (const auto& line : lines) {
             chars = std::max(chars, line.size());
         }
-        const LONG left = right - TextWidth(chars, cell) - 2 * pad;
+        const LONG right = left + TextWidth(chars, cell) + 2 * pad;
         hud.panel = {left, top, right,
                      top + 2 * pad + static_cast<LONG>(lines.size()) * 7 * cell - 2 * cell};
         hud.text.clear();
-        hud.text.reserve(1536);
+        hud.text.reserve(3072);
         for (size_t row = 0; row < lines.size(); ++row) {
             AppendText(hud.text, lines[row], left + pad,
                        top + pad + static_cast<LONG>(row) * 7 * cell, cell);

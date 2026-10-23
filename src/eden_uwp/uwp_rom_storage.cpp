@@ -450,7 +450,7 @@ std::wstring ModDownloadFolderName() {
     try {
         EnsureStorageApartment();
         for (const auto& entry : StorageApplicationPermissions::FutureAccessList().Entries()) {
-            if (entry.Token != ModDownloadsToken) continue;
+            if (std::wstring_view{entry.Token} != ModDownloadsToken) continue;
             auto name = std::filesystem::path{std::wstring{entry.Metadata}}.filename().wstring();
             return name.empty() ? std::wstring{L"USB"} : name;
         }

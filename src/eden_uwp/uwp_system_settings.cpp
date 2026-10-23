@@ -24,6 +24,7 @@ constexpr auto ThemeKeyName = L"system_theme_id";
 constexpr auto WallpaperKeyName = L"system_wallpaper_id";
 constexpr auto UpscalingKey = L"system_upscaling";
 constexpr auto VolumeKey = L"system_volume";
+constexpr auto AirplaneKey = L"system_airplane";
 
 /// Saved as the enum's value, or -1 for "follow the system". A value that is not a selectable
 /// option (an older or newer build's) also falls back to the system.
@@ -70,6 +71,7 @@ SystemSettings LoadSystemSettings() {
         }
         if (values.HasKey(VolumeKey))
             settings.volume = static_cast<std::uint8_t>(std::clamp(winrt::unbox_value_or<int32_t>(values.Lookup(VolumeKey), 100), 0, 200));
+        if (values.HasKey(AirplaneKey)) settings.airplane = winrt::unbox_value_or<bool>(values.Lookup(AirplaneKey), false);
         if (values.HasKey(UpscalingKey))
             settings.upscaling = UpscalingFromValue(winrt::unbox_value<int32_t>(values.Lookup(UpscalingKey)))
                                      .value_or(Upscaling::Bilinear);
@@ -93,6 +95,7 @@ bool SaveSystemSettings(const SystemSettings& settings) {
         values.Insert(WallpaperKeyName, winrt::box_value(winrt::hstring{WallpaperKey(settings.wallpaper ? WallpaperId::Aurora : WallpaperId::Solid)}));
         values.Insert(UpscalingKey, winrt::box_value(static_cast<int32_t>(settings.upscaling)));
         values.Insert(VolumeKey, winrt::box_value(static_cast<int32_t>(settings.volume)));
+        values.Insert(AirplaneKey, winrt::box_value(settings.airplane));
         return true;
     } catch (...) { return false; }
 }
@@ -120,6 +123,7 @@ ResolvedSystem ApplySystemSettings() {
     Settings::values.language_index = resolved.game_language;
     Settings::values.region_index = resolved.region;
     Settings::values.volume.SetValue(settings.volume);
+    Settings::values.airplane_mode.SetValue(settings.airplane);
     LOG_INFO(Frontend, "System: Windows language {}, region {}; interface {}, game language {}, region {}",
              locale.languages.empty() ? std::string{"(none)"} : I18n::ToUtf8(locale.languages.front()),
              locale.region.empty() ? std::string{"(none)"} : I18n::ToUtf8(locale.region),

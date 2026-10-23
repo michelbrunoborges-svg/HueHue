@@ -60,6 +60,10 @@ struct SavesView {
     bool busy{}, restoring{};
     std::uint32_t done{}, total{};
     std::wstring_view notice;
+    // 0.4.5: the shader caches (shader_backup.h).
+    bool shaders_folder{};
+    std::wstring shaders_path;
+    bool shaders_sync{};
 };
 /// NS HUEHUE Configuracoes > Sistema > Temas (theme.h): the cards, the buttons and the preview.
 struct ThemesView {

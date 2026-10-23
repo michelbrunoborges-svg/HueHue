@@ -89,7 +89,7 @@ jobs:
       - name: Versao do pacote (cada build instala por cima da anterior)
         shell: pwsh
         run: |
-          $v = "0.4.4.${{ github.run_number }}"
+          $v = "0.4.5.${{ github.run_number }}"
           $m = "dist\uwp\AppxManifest.xml"
           # So o Version do <Identity> (MinVersion/MaxVersionTested ficam como estao).
           $xml = Get-Content $m -Raw

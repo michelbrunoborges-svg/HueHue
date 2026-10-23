@@ -19,6 +19,7 @@
 #include "video_core/renderer_d3d12/d3d12_descriptor_heap.h"
 #include "video_core/renderer_d3d12/d3d12_buffer_cache.h"
 #include "video_core/renderer_d3d12/d3d12_device.h"
+#include "video_core/renderer_d3d12/d3d12_overlay_stats.h"
 #include "video_core/renderer_d3d12/d3d12_menu_image.h"
 #include "video_core/renderer_d3d12/d3d12_present_fsr.h"
 #include "video_core/renderer_d3d12/d3d12_scheduler.h"
@@ -255,10 +256,12 @@ private:
     struct PerformanceOverlay {
         std::chrono::steady_clock::time_point sample_time{};
         std::chrono::steady_clock::time_point memory_sample_time{};
-        std::string memory_line;
         u64 cpu_ticks{};
         u64 gpu_us{};
         u32 frames{};
+        u64 game_frames{};
+        bool game_frames_valid{};
+        std::array<std::string, 5> memory_lines; ///< RAM, GPU, JIT, EMU, OUTRO, sampled each second
         bool cpu_valid{};
         double last_frame_ms{};
         double max_frame_ms{};

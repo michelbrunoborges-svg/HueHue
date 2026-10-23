@@ -76,6 +76,10 @@ Key "{DOWN}"
 Shot "44-saves-usb"
 Key "{ENTER}"
 Shot "44b-saves-usb-pagina"
+for ($i = 0; $i -lt 5; $i++) { Key "{DOWN}" }
+Shot "44c-shaders-usb"
+for ($i = 0; $i -lt 3; $i++) { Key "{DOWN}" }
+Shot "44d-shaders-sincronizar"
 Key "{ESC}"
 Key "{DOWN}"
 Shot "45-online"
@@ -85,7 +89,9 @@ Key "{UP}"
 Key "{UP}"
 Key "{ENTER}"
 Shot "11b-sistema"
-for ($i = 0; $i -lt 9; $i++) { Key "{DOWN}" }
+for ($i = 0; $i -lt 5; $i++) { Key "{DOWN}" }
+Shot "11e-sistema-modo-aviao"
+for ($i = 0; $i -lt 3; $i++) { Key "{DOWN}" }
 Shot "11c-sistema-volume"
 Key "{RIGHT}"
 Shot "11d-sistema-volume-110"
@@ -126,8 +132,12 @@ Key "{DOWN}"
 Key "{RIGHT}"
 Shot "08b-renderizador-opengl"
 Key "{LEFT}"
-for ($i = 0; $i -lt 11; $i++) { Key "{DOWN}" }
+for ($i = 0; $i -lt 4; $i++) { Key "{DOWN}" }
+Shot "08d-filtro-e-proporcao"
+for ($i = 0; $i -lt 9; $i++) { Key "{DOWN}" }
 Shot "08c-desempenho-avancado"
+for ($i = 0; $i -lt 6; $i++) { Key "{DOWN}" }
+Shot "08e-precisao-gpu-cpu"
 Key "{ESC}"
 Key "{DOWN}"
 Key "{ENTER}"

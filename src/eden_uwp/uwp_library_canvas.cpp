@@ -864,7 +864,7 @@ private:
         } else if (!panel.files && section == HomeSaves && view.saves) {
             // Saves (USB): the folder on the external drive, the automatic copy, copy now, restore.
             const auto& saves = *view.saves;
-            const std::array<std::pair<T, std::wstring>, 5> rows{{
+            const std::array<std::pair<T, std::wstring>, 9> rows{{
                 {T::NsSavesFolder, !saves.has_folder ? std::wstring{Tr(T::NsSavesPick)}
                                    : saves.folder.empty() ? std::wstring{Tr(T::UsbFolder)} : saves.folder},
                 {T::NsSavesBackupNow, saves.last_time
@@ -873,19 +873,27 @@ private:
                                           : std::wstring{Tr(T::NsSavesNever)}},
                 {T::NsSavesRestore, L"›"},
                 {T::NsConfigBackup, L"›"},
-                {T::NsConfigRestore, L"›"}}};
+                {T::NsConfigRestore, L"›"},
+                {T::NsShadersFolder, !saves.shaders_folder ? std::wstring{Tr(T::NsSavesPick)}
+                                     : saves.shaders_path.empty() ? std::wstring{Tr(T::UsbFolder)} : saves.shaders_path},
+                {T::NsShadersBackup, L"›"},
+                {T::NsShadersRestore, L"›"},
+                {T::NsShadersSync, L"‹  " + std::wstring{Tr(saves.shaders_sync ? T::NsOn : T::NsOff)} + L"  ›"}}};
+            // Nine rows of 56 (356 to 860), then the hint, the progress and the notice.
             for (size_t i = 0; i < rows.size(); ++i)
-                NsRow(left, 356 + static_cast<float>(i) * 70, width, Tr(rows[i].first), rows[i].second,
-                      saves.page && i == saves.row, 26, 70);
-            static constexpr std::array<T, 5> hints{T::NsSavesHintFolder, T::NsSavesHintBackup, T::NsSavesHintRestore,
-                                                    T::NsConfigHintBackup, T::NsConfigHintRestore};
-            Text(Tr(saves.page ? hints[std::min<size_t>(saves.row, 4)] : T::NsSavesOverview), left, 718, 21,
-                 Palette::TextSecondary, width, 120, false, true);
+                NsRow(left, 356 + static_cast<float>(i) * 56, width, Tr(rows[i].first), rows[i].second,
+                      saves.page && i == saves.row, 24, 56);
+            static constexpr std::array<T, 9> hints{T::NsSavesHintFolder, T::NsSavesHintBackup, T::NsSavesHintRestore,
+                                                    T::NsConfigHintBackup, T::NsConfigHintRestore, T::NsShadersHintFolder,
+                                                    T::NsShadersHintBackup, T::NsShadersHintRestore, T::NsShadersHintSync};
+            Text(Tr(saves.page ? hints[std::min<size_t>(saves.row, 8)] : T::NsSavesOverview), left, 872, 20,
+                 Palette::TextSecondary, width, 56, false, true);
+            // (The overview fits in two lines too.)
             if (saves.busy)
                 Text(I18n::Format(saves.restoring ? T::NsSavesRestoring : T::NsSavesCopying,
                                   {std::to_wstring(saves.done), std::to_wstring(saves.total)}),
-                     left, 846, 24, Palette::Accent, width, 40);
-            if (!saves.notice.empty()) Text(saves.notice, left, 892, 23, Palette::Warning, width, 96, false, true);
+                     left, 930, 22, Palette::Accent, width, 34);
+            if (!saves.notice.empty()) Text(saves.notice, left, saves.busy ? 964 : 932, 21, Palette::Warning, width, 60, false, true);
         } else if (!panel.files) {
             // A preview of the section (its two main values); A on the section opens it.
             std::array<std::pair<std::wstring, std::wstring>, 2> rows;
@@ -1189,6 +1197,13 @@ private:
                                                                                     : T::NsGlShadersGlsl)}},
             {T::NsTuningResolution, std::wstring{Tr(resolution_text())}},
             {T::Upscaling, std::wstring{Tr(upscaling ? UpscalingText(*upscaling) : T::NsUpscalingAuto)}},
+            {T::NsTuningAnisotropy, tuning.anisotropy == Anisotropy::Game ? std::wstring{Tr(T::NsAnisoGame)}
+                                    : std::to_wstring(2u << (static_cast<unsigned>(tuning.anisotropy) - 1)) + L"x"},
+            {T::NsTuningAspect, tuning.aspect == AspectRatio::R4_3 ? std::wstring{L"4:3"}
+                                : tuning.aspect == AspectRatio::R21_9 ? std::wstring{L"21:9"}
+                                : tuning.aspect == AspectRatio::R16_10 ? std::wstring{L"16:10"}
+                                : tuning.aspect == AspectRatio::Stretch ? std::wstring{Tr(T::NsAspectStretch)}
+                                                                        : std::wstring{Tr(T::NsAspectDefault)}},
             {T::NsTuningFps, fps_text()},
             {T::NsTuningFpsManual, tuning.fps_manual == 0 ? std::wstring{Tr(T::NsFpsNoLimit)}
                                                           : I18n::Format(T::NsFpsValue, {std::to_wstring(tuning.fps_manual)})},
@@ -1201,11 +1216,27 @@ private:
                                                                                           : T::NsFirmwareAuto)}},
             {T::NsAdvSpeedLimit, tuning.speed == 0 ? std::wstring{Tr(T::NsSpeedOff)} : std::to_wstring(tuning.speed) + L"%"},
             {T::NsAdvPsoDefer, std::wstring{Tr(tuning.pso_defer ? T::NsPsoDeferOn : T::NsPsoDeferOff)}},
+            {T::NsAdvCriticalVertices, tuning.critical_vertices == 0 ? std::wstring{Tr(T::NsCriticalOff)}
+                                       : I18n::Format(tuning.critical_vertices == 6 ? T::NsCriticalDefault : T::NsCriticalValue,
+                                                      {std::to_wstring(tuning.critical_vertices)})},
             {T::NsAdvRecordThread, std::wstring{Tr(tuning.record_thread ? T::NsOn : T::NsOff)}},
             {T::NsAdvPresentThread, std::wstring{Tr(tuning.present_thread ? T::NsOn : T::NsOff)}},
+            {T::NsAdvAsyncGpu, std::wstring{Tr(tuning.async_gpu ? T::NsOn : T::NsOff)}},
+            {T::NsAdvGpuAccuracy, std::wstring{Tr(tuning.gpu_accuracy == TuningGpuAccuracy::Low ? T::NsAccuracyLow
+                                                  : tuning.gpu_accuracy == TuningGpuAccuracy::High ? T::NsAccuracyHigh
+                                                                                                   : T::NsFromProfile)}},
+            {T::NsAdvCpuAccuracy, std::wstring{Tr(tuning.cpu_accuracy == TuningCpuAccuracy::Auto ? T::NsCpuAuto
+                                                  : tuning.cpu_accuracy == TuningCpuAccuracy::Accurate ? T::NsCpuAccurate
+                                                  : tuning.cpu_accuracy == TuningCpuAccuracy::Unsafe ? T::NsCpuUnsafe
+                                                                                                     : T::NsFromProfile)}},
+            {T::NsAdvReactive, std::wstring{Tr(tuning.reactive_flushing == TuningSwitch::On ? T::NsOn
+                                               : tuning.reactive_flushing == TuningSwitch::Off ? T::NsOff
+                                                                                              : T::NsFromProfile)}},
             {T::NsAdvAstc, std::wstring{Tr(tuning.astc == AstcMode::Cpu ? T::NsAstcCpu
                                            : tuning.astc == AstcMode::Bc3 ? T::NsAstcBc3 : T::NsAstcGpu)}},
             {T::NsAdvAstcOpaque, std::wstring{Tr(tuning.astc_opaque_bc3 ? T::NsAstcOpaqueBc3 : T::NsAstcOpaqueBc1)}},
+            {T::NsAdvVideo, std::wstring{Tr(tuning.video == VideoDecode::Cpu ? T::NsVideoCpu
+                                            : tuning.video == VideoDecode::Off ? T::NsOff : T::NsVideoGpu)}},
             {T::NsAdvFastmem, std::wstring{Tr(tuning.fastmem == FastmemMode::Hybrid ? T::NsFastmemHybrid
                                               : tuning.fastmem == FastmemMode::Full ? T::NsFastmemFull : T::NsOff)}},
             {T::NsAdvPsoEviction, std::wstring{Tr(tuning.pso_eviction ? T::NsOn : T::NsOff)}},
@@ -1221,7 +1252,8 @@ private:
         for (size_t i = first; i < std::min(rows.size(), first + TuningRowsVisible); ++i) {
             const bool muted = (i == static_cast<size_t>(TuningRow::FpsManual) && tuning.fps != FpsLimit::Manual) ||
                                (i == static_cast<size_t>(TuningRow::GlShaderPath) && tuning.renderer != GameRenderer::OpenGL) ||
-                               (i == static_cast<size_t>(TuningRow::AstcOpaque) && tuning.astc != AstcMode::Gpu);
+                               (i == static_cast<size_t>(TuningRow::AstcOpaque) && tuning.astc != AstcMode::Gpu) ||
+                               (i == static_cast<size_t>(TuningRow::CriticalVertices) && !tuning.pso_defer);
             const float y = top + static_cast<float>(i - first) * row;
             std::wstring label{Tr(rows[i].first)};
             if (i >= advanced) label = L"⚙ " + label;
@@ -1234,9 +1266,11 @@ private:
              1300, 330, 20, Palette::TextSecondary, 180, 32, false, false, false, true);
         static constexpr std::array<T, TuningRowCount> hints{
             T::NsHintProfile, T::NsHintRenderer, T::NsHintGlShaders, T::NsHintResolution, T::NsHintUpscaling,
+            T::NsHintAnisotropy, T::NsHintAspect,
             T::NsHintFps, T::NsHintFpsManual, T::NsHintSkip, T::NsHintShaders, T::NsHintMemory, T::NsHintFirmware,
-            T::NsHintSpeedLimit, T::NsHintPsoDefer, T::NsHintRecordThread, T::NsHintPresentThread, T::NsHintAstc, T::NsHintAstcOpaque,
-            T::NsHintFastmem, T::NsHintPsoEviction, T::NsHintIdleSpin, T::NsHintJit};
+            T::NsHintSpeedLimit, T::NsHintPsoDefer, T::NsHintCriticalVertices, T::NsHintRecordThread, T::NsHintPresentThread,
+            T::NsHintAsyncGpu, T::NsHintGpuAccuracy, T::NsHintCpuAccuracy, T::NsHintReactive, T::NsHintAstc, T::NsHintAstcOpaque,
+            T::NsHintVideo, T::NsHintFastmem, T::NsHintPsoEviction, T::NsHintIdleSpin, T::NsHintJit};
         Text(Tr(hints[std::min(selected, hints.size() - 1)]), 441, top + static_cast<float>(TuningRowsVisible) * row + 8, 19,
              Palette::TextSecondary, 1038, 60, false, true);
         if (!notice.empty()) NsToast(notice);
@@ -1557,21 +1591,21 @@ private:
         PageHeader(L::RowX, L::HeaderY, ConfigurationIcon::Language, Tr(T::SystemTitle), Tr(T::SystemSubtitle));
         static constexpr std::array<ConfigurationIcon, SystemPage::RowCount> icons{
             ConfigurationIcon::User, ConfigurationIcon::Settings, ConfigurationIcon::Language, ConfigurationIcon::Controller,
-            ConfigurationIcon::Region, ConfigurationIcon::Mods, ConfigurationIcon::Settings, ConfigurationIcon::Settings,
-            ConfigurationIcon::Archive, ConfigurationIcon::Cache};
+            ConfigurationIcon::Region, ConfigurationIcon::Region, ConfigurationIcon::Mods, ConfigurationIcon::Settings,
+            ConfigurationIcon::Settings, ConfigurationIcon::Archive, ConfigurationIcon::Cache};
         for (size_t i = 0; i < SystemPage::RowCount; ++i) {
             const auto row = static_cast<SystemPage::Row>(i);
             const float y = L::RowTop + static_cast<float>(i) * L::RowStride;
             const bool active = i == page.selected;
             RowFrame(L::RowX, y, L::RowWidth, L::RowHeight, active, icons[i]);
             Text(Tr(SystemRowTitle(row)), L::RowX + 72, y + 1, 19, Palette::Text, 420, 26, true);
-            Text(Tr(SystemRowHint(row)), L::RowX + 72, y + 22, 14, Palette::TextSecondary, 400, 19);
+            Text(Tr(SystemRowHint(row)), L::RowX + 72, y + 20, 13, Palette::TextSecondary, 400, 18);
             const unsigned accent = active ? Palette::Accent : Palette::TextSecondary;
             const float right = L::RowX + L::RowWidth - 28;
             const float middle = y + L::RowHeight / 2;
             const bool choice = row == SystemPage::InterfaceLanguage || row == SystemPage::GameLanguage ||
                                 row == SystemPage::Region || row == SystemPage::AdultMods || row == SystemPage::PerformanceStats ||
-                                row == SystemPage::PulseSessions || row == SystemPage::Volume;
+                                row == SystemPage::PulseSessions || row == SystemPage::Volume || row == SystemPage::Airplane;
             if (choice) {
                 // "< value >": arrows say left/right changes it, as in the controller panel.
                 Chevron(L::RowX + 486, middle, accent, true);

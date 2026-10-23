@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include "eden_uwp/button_remap.h"
+#include "eden_uwp/tuning_steps.h"
 #include "eden_uwp/controller_style.h"
 #include "eden_uwp/ui_actions.h"
 #include "eden_uwp/localization.h"
@@ -112,6 +113,11 @@ struct GameMenuSettings {
     /// Mapear botoes (button_remap.h): the mapping this game uses, and whether it is its own.
     ButtonRemap remap{IdentityRemap()};
     bool game_remap{};
+    /// 0.4.5 quick settings, live and for this session: Shaders pendentes, the passes that still
+    /// wait (tuning_steps.h) and Silenciar (the volume is kept).
+    bool pso_defer{};
+    std::uint8_t critical_vertices{6};
+    bool muted{};
 };
 
 /// Speed in percent of the console's (10 to 200, steps of 10); 0 is no limit, below 10%.
@@ -144,7 +150,7 @@ class GameMenu {
 public:
     enum Item : std::size_t {
         Continue, Cheats, Mods, Style, FaceButtons, Deadzone, FullScreen, ImageUpscaling, PerformanceStats, Library,
-        CaptureGraphics, SpeedLimit, Volume, Remap,
+        CaptureGraphics, SpeedLimit, Volume, Remap, PsoDefer, CriticalVertices, Mute,
     };
 
     /// `cheats`: the game can have cheats (it has a title id), so the menu offers them.
@@ -157,7 +163,7 @@ public:
         if (settings.offer_upscaling) items.push_back(ImageUpscaling);
         items.push_back(PerformanceStats);
         // Quick settings, as the player knows them from other builds: speed and sound.
-        items.insert(items.end(), {SpeedLimit, Volume});
+        items.insert(items.end(), {SpeedLimit, PsoDefer, CriticalVertices, Volume, Mute});
         if (settings.material_capture) items.push_back(CaptureGraphics);
         items.push_back(Library);
     }
@@ -263,6 +269,17 @@ private:
                                                                : std::to_wstring(settings.volume) + L"%", Choice};
         case FullScreen:
             return {Tr(Text::MenuFullScreen), Tr(settings.fullscreen ? Text::Yes : Text::No), Choice};
+        case PsoDefer:
+            return {Tr(Text::MenuPsoDefer), Tr(settings.pso_defer ? Text::NsPsoDeferOn : Text::NsPsoDeferOff), Choice};
+        case CriticalVertices:
+            return {Tr(Text::NsAdvCriticalVertices),
+                    settings.critical_vertices == 0
+                        ? Tr(Text::NsCriticalOff)
+                        : I18n::Format(settings.critical_vertices == 6 ? Text::NsCriticalDefault : Text::NsCriticalValue,
+                                       {std::to_wstring(settings.critical_vertices)}),
+                    Choice};
+        case Mute:
+            return {Tr(Text::MenuMute), Tr(settings.muted ? Text::Yes : Text::No), Choice};
         case Library:
             if (!settings.pulse_sessions) return {Tr(Text::MenuBackToHome)};
             return {Tr(Text::MenuBackToHome), Tr(keep_session ? Text::MenuKeepSession : Text::MenuSkipSession),
@@ -328,6 +345,16 @@ private:
         case FullScreen:
             settings.fullscreen = !settings.fullscreen;
             return GameMenuResult::FullScreen;
+        case PsoDefer:
+            settings.pso_defer = !settings.pso_defer;
+            return GameMenuResult::QuickSettingsChanged;
+        case CriticalVertices:
+            settings.critical_vertices = StepCriticalVertices(settings.critical_vertices, back);
+            settings.pso_defer = true; // only means something there
+            return GameMenuResult::QuickSettingsChanged;
+        case Mute:
+            settings.muted = !settings.muted;
+            return GameMenuResult::QuickSettingsChanged;
         }
         return GameMenuResult::None;
     }
