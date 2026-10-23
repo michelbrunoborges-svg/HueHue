@@ -1,0 +1,228 @@
+exe      : D:\a\HueHue\HueHue\build-uwp\bin\eden-uwp.exe
+shaders  : D:\a\HueHue\HueHue\..\mesa-build\build-uwp\src\microsoft\spirv_to_dxil\spirv_to_dxil.dll
+signing  : C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\dxil.dll
+opengl   : libgallium_wgl.dll
+opengl   : libglapi.dll
+opengl   : opengl32.dll
+opengl   : z-1.dll
+boot.cfg : jit_prewarm=1
+boot.cfg : library=1
+boot.cfg : play=1
+Microsoft (R) MakeAppx Tool
+
+Copyright (C) 2013 Microsoft.  All rights reserved.
+
+
+
+The path (/p) parameter is: "\\?\D:\a\HueHue\HueHue\build-uwp\package\huehue-switch.appx"
+
+The content directory (/d) parameter is: "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout"
+
+Enumerating files from directory "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout"
+
+Packing 96 file(s) in "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout" (content directory) to "\\?\D:\a\HueHue\HueHue\build-uwp\package\huehue-switch.appx" (output file name).
+
+Memory limit defaulting to 8587180032 bytes.
+
+Using "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\AppxManifest.xml" as the manifest for the package.
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\dxil.dll" as a payload file.  Its path in the package will be "dxil.dll".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\LICENSE.txt" as a payload file.  Its path in the package will be "LICENSE.txt".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\EdenLogo.png" as a payload file.  Its path in the package will be "Assets\EdenLogo.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\InputPrompts\keyboard_enter.png" as a payload file.  Its path in the package will be "Assets\InputPrompts\keyboard_enter.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\InputPrompts\keyboard_escape.png" as a payload file.  Its path in the package will be "Assets\InputPrompts\keyboard_escape.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\InputPrompts\keyboard_f1.png" as a payload file.  Its path in the package will be "Assets\InputPrompts\keyboard_f1.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\InputPrompts\keyboard_f2.png" as a payload file.  Its path in the package will be "Assets\InputPrompts\keyboard_f2.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\InputPrompts\keyboard_o.png" as a payload file.  Its path in the package will be "Assets\InputPrompts\keyboard_o.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\InputPrompts\keyboard_q.png" as a payload file.  Its path in the package will be "Assets\InputPrompts\keyboard_q.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\InputPrompts\keyboard_r.png" as a payload file.  Its path in the package will be "Assets\InputPrompts\keyboard_r.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\InputPrompts\License.txt" as a payload file.  Its path in the package will be "Assets\InputPrompts\License.txt".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\InputPrompts\README.md" as a payload file.  Its path in the package will be "Assets\InputPrompts\README.md".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\InputPrompts\xbox_a.png" as a payload file.  Its path in the package will be "Assets\InputPrompts\xbox_a.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\InputPrompts\xbox_b.png" as a payload file.  Its path in the package will be "Assets\InputPrompts\xbox_b.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\InputPrompts\xbox_dpad.png" as a payload file.  Its path in the package will be "Assets\InputPrompts\xbox_dpad.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\InputPrompts\xbox_menu.png" as a payload file.  Its path in the package will be "Assets\InputPrompts\xbox_menu.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\InputPrompts\xbox_view.png" as a payload file.  Its path in the package will be "Assets\InputPrompts\xbox_view.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\app-icon.png" as a payload file.  Its path in the package will be "Assets\ns\app-icon.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\cover-fallback.png" as a payload file.  Its path in the package will be "Assets\ns\cover-fallback.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\graffiti-background.jpg" as a payload file.  Its path in the package will be "Assets\ns\graffiti-background.jpg".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-audio-dark.png" as a payload file.  Its path in the package will be "Assets\ns\icon-audio-dark.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-audio.png" as a payload file.  Its path in the package will be "Assets\ns\icon-audio.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-check-dark.png" as a payload file.  Its path in the package will be "Assets\ns\icon-check-dark.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-check.png" as a payload file.  Its path in the package will be "Assets\ns\icon-check.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-close-dark.png" as a payload file.  Its path in the package will be "Assets\ns\icon-close-dark.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-close.png" as a payload file.  Its path in the package will be "Assets\ns\icon-close.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-cloud-dark.png" as a payload file.  Its path in the package will be "Assets\ns\icon-cloud-dark.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\InputPrompts\keyboard_arrows.png" as a payload file.  Its path in the package will be "Assets\InputPrompts\keyboard_arrows.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-folder-dark.png" as a payload file.  Its path in the package will be "Assets\ns\icon-folder-dark.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-folder.png" as a payload file.  Its path in the package will be "Assets\ns\icon-folder.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-games-dark.png" as a payload file.  Its path in the package will be "Assets\ns\icon-games-dark.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-games.png" as a payload file.  Its path in the package will be "Assets\ns\icon-games.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-info-dark.png" as a payload file.  Its path in the package will be "Assets\ns\icon-info-dark.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-info.png" as a payload file.  Its path in the package will be "Assets\ns\icon-info.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-network-dark.png" as a payload file.  Its path in the package will be "Assets\ns\icon-network-dark.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-network.png" as a payload file.  Its path in the package will be "Assets\ns\icon-network.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-pad-dark.png" as a payload file.  Its path in the package will be "Assets\ns\icon-pad-dark.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-pad.png" as a payload file.  Its path in the package will be "Assets\ns\icon-pad.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-play-dark.png" as a payload file.  Its path in the package will be "Assets\ns\icon-play-dark.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-play.png" as a payload file.  Its path in the package will be "Assets\ns\icon-play.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-refresh-dark.png" as a payload file.  Its path in the package will be "Assets\ns\icon-refresh-dark.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-refresh.png" as a payload file.  Its path in the package will be "Assets\ns\icon-refresh.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-search-dark.png" as a payload file.  Its path in the package will be "Assets\ns\icon-search-dark.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-search.png" as a payload file.  Its path in the package will be "Assets\ns\icon-search.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-settings-dark.png" as a payload file.  Its path in the package will be "Assets\ns\icon-settings-dark.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-settings.png" as a payload file.  Its path in the package will be "Assets\ns\icon-settings.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-star-dark.png" as a payload file.  Its path in the package will be "Assets\ns\icon-star-dark.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-star.png" as a payload file.  Its path in the package will be "Assets\ns\icon-star.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-usb-dark.png" as a payload file.  Its path in the package will be "Assets\ns\icon-usb-dark.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-usb.png" as a payload file.  Its path in the package will be "Assets\ns\icon-usb.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-user-dark.png" as a payload file.  Its path in the package will be "Assets\ns\icon-user-dark.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-user.png" as a payload file.  Its path in the package will be "Assets\ns\icon-user.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\HueHueLogo.png" as a payload file.  Its path in the package will be "Assets\HueHueLogo.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\icon-cloud.png" as a payload file.  Its path in the package will be "Assets\ns\icon-cloud.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\Wide310x150Logo.png" as a payload file.  Its path in the package will be "Assets\Wide310x150Logo.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\SplashScreen.png" as a payload file.  Its path in the package will be "Assets\SplashScreen.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\Square150x150Logo.png" as a payload file.  Its path in the package will be "Assets\Square150x150Logo.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\Square310x310Logo.png" as a payload file.  Its path in the package will be "Assets\Square310x310Logo.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\Square44x44Logo.png" as a payload file.  Its path in the package will be "Assets\Square44x44Logo.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\Square71x71Logo.png" as a payload file.  Its path in the package will be "Assets\Square71x71Logo.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\StoreLogo.png" as a payload file.  Its path in the package will be "Assets\StoreLogo.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\pattern.png" as a payload file.  Its path in the package will be "Assets\ns\pattern.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\logo.png" as a payload file.  Its path in the package will be "Assets\ns\logo.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\ns\mascot.png" as a payload file.  Its path in the package will be "Assets\ns\mascot.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\icon-audio.png" as a payload file.  Its path in the package will be "Assets\sw\icon-audio.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\icon-check.png" as a payload file.  Its path in the package will be "Assets\sw\icon-check.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\icon-close.png" as a payload file.  Its path in the package will be "Assets\sw\icon-close.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\icon-cloud.png" as a payload file.  Its path in the package will be "Assets\sw\icon-cloud.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\icon-folder.png" as a payload file.  Its path in the package will be "Assets\sw\icon-folder.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\icon-games.png" as a payload file.  Its path in the package will be "Assets\sw\icon-games.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\icon-info.png" as a payload file.  Its path in the package will be "Assets\sw\icon-info.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\icon-network.png" as a payload file.  Its path in the package will be "Assets\sw\icon-network.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\huehue-preview.png" as a payload file.  Its path in the package will be "Assets\sw\huehue-preview.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\icon-play.png" as a payload file.  Its path in the package will be "Assets\sw\icon-play.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\icon-refresh.png" as a payload file.  Its path in the package will be "Assets\sw\icon-refresh.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\icon-search.png" as a payload file.  Its path in the package will be "Assets\sw\icon-search.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\icon-settings.png" as a payload file.  Its path in the package will be "Assets\sw\icon-settings.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\icon-star.png" as a payload file.  Its path in the package will be "Assets\sw\icon-star.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\icon-usb.png" as a payload file.  Its path in the package will be "Assets\sw\icon-usb.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\icon-user.png" as a payload file.  Its path in the package will be "Assets\sw\icon-user.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\xbox-controller.png" as a payload file.  Its path in the package will be "Assets\sw\xbox-controller.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\cover-fallback.png" as a payload file.  Its path in the package will be "Assets\sw\cover-fallback.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\icon-pad.png" as a payload file.  Its path in the package will be "Assets\sw\icon-pad.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\sw\aurora-wallpaper.png" as a payload file.  Its path in the package will be "Assets\sw\aurora-wallpaper.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\themes\ns-huehue\theme.json" as a payload file.  Its path in the package will be "Assets\themes\ns-huehue\theme.json".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\themes\ns-huehue\thumbnail.png" as a payload file.  Its path in the package will be "Assets\themes\ns-huehue\thumbnail.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Assets\themes\ns-huehue\wallpaper.png" as a payload file.  Its path in the package will be "Assets\themes\ns-huehue\wallpaper.png".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\spirv_to_dxil.dll" as a payload file.  Its path in the package will be "spirv_to_dxil.dll".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\eden-uwp.exe" as a payload file.  Its path in the package will be "eden-uwp.exe".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\libgallium_wgl.dll" as a payload file.  Its path in the package will be "libgallium_wgl.dll".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\libglapi.dll" as a payload file.  Its path in the package will be "libglapi.dll".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\opengl32.dll" as a payload file.  Its path in the package will be "opengl32.dll".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\z-1.dll" as a payload file.  Its path in the package will be "z-1.dll".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\Mesa-LICENSE.rst" as a payload file.  Its path in the package will be "Mesa-LICENSE.rst".
+
+Processing "\\?\D:\a\HueHue\HueHue\build-uwp\package\layout\boot.cfg" as a payload file.  Its path in the package will be "boot.cfg".
+
+Package creation succeeded.
+
+Done Adding Additional Store
+Successfully signed: D:\a\HueHue\HueHue\build-uwp\package\huehue-switch.appx
+
+
+package  : D:\a\HueHue\HueHue\build-uwp\package\huehue-switch.appx
+cert     : D:\a\HueHue\HueHue\build-uwp\package\huehue-switch.cer
+framework: D:\a\HueHue\HueHue\build-uwp\package\Microsoft.VCLibs.x64.14.00.appx  (upload as a dependency package)
+Next: Device Portal https://<xbox-ip>:11443 -> Add -> upload all of the above -> set the app to Game mode.
