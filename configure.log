@@ -1,0 +1,177 @@
+VS: C:\Program Files\Microsoft Visual Studio\2022\Enterprise
+**********************************************************************
+** Visual Studio 2022 Developer Command Prompt v17.14.42
+** Copyright (c) 2025 Microsoft Corporation
+**********************************************************************
+[vcvarsall.bat] Environment initialized for: 'x64'
+Store CRT: OK  (app_plat=UWP)
+  cmake.exe: ok
+  ninja.exe: ok
+  cl.exe: ok
+  perl.exe: ok
+  nasm.exe: ok
+  glslangValidator.exe: ok
+
+Preset CMake variables:
+
+  CMAKE_BUILD_TYPE="Release"
+  CMAKE_SYSTEM_NAME="WindowsStore"
+  CMAKE_SYSTEM_VERSION="10.0"
+  DYNARMIC_ENABLE_NO_EXECUTE_SUPPORT="ON"
+  DYNARMIC_UWP_APPCONTAINER="ON"
+  ENABLE_CUBEB="OFF"
+  ENABLE_LIBUSB="OFF"
+  ENABLE_OPENGL="ON"
+  ENABLE_QT="OFF"
+  ENABLE_QT_TRANSLATION="OFF"
+  ENABLE_WEB_SERVICE="OFF"
+  USE_DISCORD_PRESENCE="OFF"
+  YUZU_CMD="OFF"
+  YUZU_ROOM="OFF"
+  YUZU_ROOM_STANDALONE="OFF"
+  YUZU_TESTS="OFF"
+
+-- [DetectArchitecture] Target architecture: x86_64
+-- Copying pre-commit hook
+-- Could NOT find RenderDoc (missing: RenderDoc_INCLUDE_DIR) 
+-- [CPMUtil] Using bundled package OpenSSL@openssl-3.6.2
+patching file include/openssl/cert.h
+-- [CPMUtil] Using bundled package openssl-cmake@3.6.2
+patching file CMakeLists.txt
+patching file cmake/FetchOpenSSL.cmake
+patching file cmake/GetCPM.cmake
+patching file CMakeLists.txt
+patching file cmake/ConfigureOpenSSL.cmake
+patching file cmake/ConfigureOpenSSL.cmake
+patching file CMakeLists.txt
+-- [openssl-cmake] Curruent configure options : -UWP;no-shared;no-tests;threads
+-- [openssl-cmake] Found previous configure results. Don't perform configuration
+-- [openssl-cmake] OPENSSL_FOUND            : ON
+-- [openssl-cmake] OPENSSL_INCLUDE_DIR      : D:/a/HueHue/HueHue/.cache/cpm/openssl/openssl-3.6.2/include;D:/a/HueHue/HueHue/build-uwp/_deps/openssl-build/include
+-- [openssl-cmake] OPENSSL_CRYPTO_LIBRARY   : D:/a/HueHue/HueHue/build-uwp/_deps/openssl-build/libcrypto.lib
+-- [openssl-cmake] OPENSSL_CRYPTO_LIBRARIES : D:/a/HueHue/HueHue/build-uwp/_deps/openssl-build/libcrypto.lib
+-- [openssl-cmake] OPENSSL_SSL_LIBRARY      : D:/a/HueHue/HueHue/build-uwp/_deps/openssl-build/libssl.lib
+-- [openssl-cmake] OPENSSL_SSL_LIBRARIES    : D:/a/HueHue/HueHue/build-uwp/_deps/openssl-build/libssl.lib
+-- [openssl-cmake] OPENSSL_LIBRARIES        : D:/a/HueHue/HueHue/build-uwp/_deps/openssl-build/libcrypto.lib;D:/a/HueHue/HueHue/build-uwp/_deps/openssl-build/libssl.lib
+-- [openssl-cmake] OPENSSL_VERSION          : 3.6.2
+-- [openssl-cmake] OPENSSL_APPLINK_SOURCE   : D:/a/HueHue/HueHue/.cache/cpm/openssl/openssl-3.6.2/ms/applink.c
+-- Fetching needed dependencies with CPM
+-- [CPMUtil] Using bundled package Boost@1.92.0
+-- Boost: static libraries, shared runtime, MPI OFF, Python OFF, testing OFF
+-- Boost: libraries included: algorithm;icl;pool;container;heap;asio;headers;process;filesystem;crc;variant
+-- Boost.Context: architecture x86_64, binary format pe, ABI ms, assembler masm, suffix .asm, implementation fcontext
+-- [CPMUtil] Using bundled package fmt@12.1.0
+-- {fmt} version: 12.1.0
+-- Build type: Release
+-- [CPMUtil] Using bundled package lz4@ebb370ca83
+CMake Deprecation Warning at .cache/cpm/lz4/ebb370ca83/build/cmake/CMakeLists.txt:11 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+
+-- Creating build script for LZ4 version: 1.10.0
+-- [CPMUtil] Using bundled package zstd@b8d6101fba
+-- ZSTD VERSION: 1.5.8
+-- CMAKE_INSTALL_PREFIX: C:/Program Files (x86)/yuzu
+-- CMAKE_INSTALL_LIBDIR: lib
+-- ZSTD_LEGACY_SUPPORT enabled
+-- Multi-threading support enabled
+-- [CPMUtil] Using bundled package nlohmann_json@v3.12.0
+-- Using the multi-header code from D:/a/HueHue/HueHue/.cache/cpm/nlohmann_json/v3.12.0/include/
+-- [CPMUtil] Using bundled package ZLIB@v1.3.2
+-- [CPMUtil] Using bundled package Opus@a3f0ec02b3
+patching file cmake/OpusConfig.cmake
+Hunk #1 succeeded at 82 with fuzz 2 (offset 11 lines).
+patching file CMakeLists.txt
+-- Found Git: C:/Program Files/Git/bin/git.exe (found version "2.56.0.windows.3")
+CMake Warning at .cache/cpm/opus/a3f0ec02b3/cmake/OpusPackageVersion.cmake:61 (message):
+  Could not get package version.
+Call Stack (most recent call first):
+  .cache/cpm/opus/a3f0ec02b3/CMakeLists.txt:5 (get_package_version)
+
+
+-- Opus project version: 0
+-- Performing Test VLA_SUPPORTED -- failed to compile
+-- Check CPU arch: CMAKE_GENERATOR_PLATFORM= CMAKE_SYSTEM_PROCESSOR=
+-- The following features have been enabled:
+
+ * OPUS_ENABLE_FLOAT_API, compile with the floating point API (for machines with float library).
+ * OPUS_HARDENING, run-time checks that are cheap and safe for use in production.
+ * OPUS_USE_ALLOCA, use alloca for stack arrays (on non-C99 compilers).
+ * OPUS_STACK_PROTECTOR, use stack protection.
+
+-- The following OPTIONAL packages have been found:
+
+ * Git
+
+-- The following REQUIRED packages have been found:
+
+ * Threads
+
+-- The following features have been disabled:
+
+ * OPUS_BUILD_SHARED_LIBRARY, build shared library.
+ * OPUS_BUILD_TESTING, build tests.
+ * OPUS_CUSTOM_MODES, enable non-Opus modes, e.g. 44.1 kHz & 2^n frames.
+ * OPUS_BUILD_PROGRAMS, build programs.
+ * OPUS_DISABLE_INTRINSICS, disable all intrinsics optimizations.
+ * OPUS_FIXED_POINT, compile as fixed-point (for machines without a fast enough FPU).
+ * OPUS_FLOAT_APPROX, enable floating point approximations (Ensure your platform supports IEEE 754 before enabling).
+ * OPUS_ASSERTIONS, additional software error checking.
+ * OPUS_FUZZING, causes the encoder to make random decisions (do not use in production).
+ * OPUS_CHECK_ASM, enable bit-exactness checks between optimized and c implementations.
+ * OPUS_DNN_FLOAT_DEBUG, Run DNN computations as float for debugging purposes.
+ * OPUS_INSTALL, Install Opus targets
+ * OPUS_INSTALL_PKG_CONFIG_MODULE, install pkg-config module.
+ * OPUS_INSTALL_CMAKE_CONFIG_MODULE, install CMake package config module.
+ * OPUS_DRED, enable DRED.
+ * OPUS_OSCE, enable OSCE.
+ * OPUS_STATIC_RUNTIME, build with static runtime library.
+ * OPUS_FIXED_POINT_DEBUG, debug fixed-point implementation.
+ * OPUS_VAR_ARRAYS, use variable length arrays for stack arrays.
+ * OPUS_NONTHREADSAFE_PSEUDOSTACK, use a non threadsafe pseudostack when neither variable length arrays or alloca is supported.
+ * OPUS_FAST_MATH, enable fast math (unsupported and discouraged use, as code is not well tested with this build option).
+
+-- The following OPTIONAL packages have not been found:
+
+ * RenderDoc
+
+-- Platform Libraries: winmm;iphlpapi;ws2_32;wlanapi
+-- [CPMUtil] Using bundled package xbyak@v7.40.1
+-- [CPMUtil] Using bundled package enet@v1.3.18
+-- [CPMUtil] Using bundled package zbic@11b08f2712264bbed731545085cbd9702096ceb7
+-- [CPMUtil] Using bundled package httplib@v0.46.0
+patching file httplib.h
+Hunk #1 succeeded at 227 (offset 24 lines).
+Hunk #2 succeeded at 5761 (offset 1230 lines).
+Hunk #3 succeeded at 20423 (offset 6458 lines).
+-- [CPMUtil] Using bundled package VulkanHeaders@v1.4.345
+-- [CPMUtil] Using bundled package VulkanUtilityLibraries@v1.4.345
+-- [CPMUtil] Using bundled package frozen@61dce5ae18
+-- [CPMUtil] Using bundled package SimpleIni@v4.25
+-- Using bundled SDL3
+-- [CPMUtil] Using bundled package SDL3@3.4.14-1788231389-147a8ee32d
+-- [CPMUtil] Using bundled package SPIRV-Headers@vulkan-sdk-1.4.341.0
+-- [CPMUtil] Using bundled package sirit@v1.0.5
+-- [CPMUtil] Using bundled package xz@v5.8.4
+-- Failed to find Gettext libintl (missing: Intl_LIBRARY Intl_INCLUDE_DIR) 
+-- Could NOT find Gettext (missing: GETTEXT_MSGMERGE_EXECUTABLE GETTEXT_MSGFMT_EXECUTABLE) 
+-- [CPMUtil] Using bundled package libarchive@v3.8.9
+-- [CPMUtil] Using bundled package VulkanMemoryAllocator@v3.3.0
+patching file include/vk_mem_alloc.h
+-- [CPMUtil] Using bundled package FFmpeg@9.0.2-1790726865-946fcce07b
+-- FFmpeg Libraries: FFmpeg::FFmpeg
+-- Downloading time zone data...
+-- [CPMUtil] Using bundled package nx_tzdb@230326
+-- [CPMUtil] Using bundled package gamemode@ce6fe122f3
+-- Could NOT find libusb (missing: LIBUSB_LINK_LIBRARIES) (found version "")
+-- [GetSCMRev] Git commit: 7e4af76b204a71eb4e064fdd82ec6392a57efb4a
+-- [GetSCMRev] Git tag: opengl-mesa
+-- [GetSCMRev] Git refspec: opengl-mesa
+-- Configuring done (32.6s)
+-- Generating done (1.7s)
+-- Build files have been written to: D:/a/HueHue/HueHue/build-uwp
