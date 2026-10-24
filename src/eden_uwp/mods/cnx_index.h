@@ -15,8 +15,13 @@
 
 namespace EdenXbox::Mods::Cnx {
 
+/// NS HUEHUE 0.4.8: the newest index (v220: 153 translations, v204 had 128).
 inline constexpr std::string_view IndexUrl =
-    "https://raw.githubusercontent.com/gamemoddesignbr/nx-links/master/nx-links-v204.json";
+    "https://raw.githubusercontent.com/gamemoddesignbr/nx-links/master/nx-links-v220.json";
+
+/// The link as it can be downloaded today: the AMSNX GitHub releases the index names moved to
+/// Codeberg (codeberg.org/costelabr), with the same tags and file names.
+std::string MirrorUrl(std::string_view url);
 
 enum class Kind : std::uint8_t { Translation, Modification };
 

@@ -860,7 +860,7 @@ private:
             // Creditos (0.4.6): only the projects whose code or data is in NS HUEHUE, with what each
             // one is responsible for and where it lives.
             struct Credit { const wchar_t* name; T role; const wchar_t* link; };
-            static constexpr std::array<Credit, 12> credits{{
+            static constexpr std::array<Credit, 13> credits{{
                 {L"Eden", T::NsCreditEden, L"git.eden-emu.dev/eden-emu/eden"},
                 {L"Jadyx (eden-xbox)", T::NsCreditJadyx, L"github.com/JulianDr14/eden-xbox"},
                 {L"eden-xbox", T::NsCreditJuan, L"github.com/juanresendiz813/eden-xbox"},
@@ -872,15 +872,16 @@ private:
                 {L"AMD FidelityFX FSR", T::NsCreditFsr, L"github.com/GPUOpen-Effects/FidelityFX-FSR"},
                 {L"nx-cheats-db", T::NsCreditCheats, L"github.com/sthetix/nx-cheats-db"},
                 {L"nx-links (CNX)", T::NsCreditCnx, L"github.com/gamemoddesignbr/nx-links"},
+                {L"Traducoes-BR-NX", T::NsCreditCnxFiles, L"codeberg.org/costelabr/Traducoes-BR-NX"},
                 {L"GameBanana", T::NsCreditGameBanana, L"gamebanana.com"}}};
             for (size_t i = 0; i < credits.size(); ++i) {
-                const float y = 356 + static_cast<float>(i) * 46;
-                Round(left, y, width, 42, 6, Ns::NavSelected);
-                Text(credits[i].name, left + 20, y + 5, 23, Palette::Text, 290, 34, true);
-                Text(Tr(credits[i].role), left + 320, y + 8, 19, Palette::TextSecondary, 520, 30);
-                Text(credits[i].link, left + 850, y + 8, 19, Palette::Accent, width - 870, 30);
+                const float y = 356 + static_cast<float>(i) * 43;
+                Round(left, y, width, 40, 6, Ns::NavSelected);
+                Text(credits[i].name, left + 20, y + 4, 22, Palette::Text, 290, 32, true);
+                Text(Tr(credits[i].role), left + 320, y + 7, 19, Palette::TextSecondary, 520, 28);
+                Text(credits[i].link, left + 850, y + 7, 19, Palette::Accent, width - 870, 28);
             }
-            Text(Tr(T::NsCreditsBody), left, 916, 19, Palette::TextSecondary, width, 70, false, true);
+            Text(Tr(T::NsCreditsBody), left, 924, 19, Palette::TextSecondary, width, 64, false, true);
         } else if (!panel.files && section == HomeOnline && view.online) {
             // Online: rooms of an Eden room server carry local wireless play between consoles.
             const auto& online = *view.online;

@@ -66,6 +66,7 @@ Só os projetos cujo código ou dados estão no NS HUEHUE:
 | [AMD FidelityFX FSR](https://github.com/GPUOpen-Effects/FidelityFX-FSR) | Ampliação da imagem FSR 1 |
 | [nx-cheats-db](https://github.com/sthetix/nx-cheats-db) | Banco de cheats |
 | [nx-links (CNX)](https://github.com/gamemoddesignbr/nx-links) | Índice de traduções e mods de fãs |
+| [Traducoes-BR-NX](https://codeberg.org/costelabr/Traducoes-BR-NX) | Arquivos das traduções PT-BR (e [modsnx](https://codeberg.org/costelabr/modsnx), dos mods do índice) |
 | [GameBanana](https://gamebanana.com) | Loja de mods |
 
 ## Licença

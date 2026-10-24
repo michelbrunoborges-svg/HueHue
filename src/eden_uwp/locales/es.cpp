@@ -900,5 +900,6 @@ const Catalog SpanishCatalog = MakeCatalog({
     {Text::NsTuningGroupCompat, L"COMPATIBILIDAD"},
     {Text::NsTuningGroupMemory, L"MEMORIA Y TEXTURAS"},
     {Text::NsTuningGroupAdvanced, L"AVANZADO (PRUEBAS)"},
+    {Text::NsCreditCnxFiles, L"Archivos de las traducciones PT-BR"},
 });
 } // namespace EdenXbox::I18n

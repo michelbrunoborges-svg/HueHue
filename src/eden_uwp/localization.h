@@ -927,6 +927,7 @@ enum class Text : std::uint16_t {
     NsTuningGroupCompat,
     NsTuningGroupMemory,
     NsTuningGroupAdvanced,
+    NsCreditCnxFiles,
     Count
 };
 inline constexpr std::size_t TextCount = static_cast<std::size_t>(Text::Count);

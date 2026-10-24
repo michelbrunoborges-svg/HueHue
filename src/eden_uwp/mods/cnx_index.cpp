@@ -23,6 +23,19 @@ bool IsTitleId(std::string_view text) {
     });
 }
 
+} // namespace
+
+/// NS HUEHUE 0.4.8: the index still links the files to github.com/AMSNX, which is gone (every link
+/// answers 404 since 2024); the same releases, same tags and file names, live on Codeberg.
+std::string MirrorUrl(std::string_view url) {
+    constexpr std::string_view Gone = "https://github.com/AMSNX/";
+    constexpr std::string_view Mirror = "https://codeberg.org/costelabr/";
+    if (url.starts_with(Gone)) return std::string{Mirror} + std::string{url.substr(Gone.size())};
+    return std::string{url};
+}
+
+namespace {
+
 /// "https://.../01000320000CC000.zip" -> "01000320000CC000".
 std::string_view LinkTitle(std::string_view url) {
     const auto slash = url.rfind('/');
@@ -64,7 +77,7 @@ std::vector<Entry> ParseIndex(std::string_view text, std::string_view title_id) 
             const auto& url = link->get_ref<const std::string&>();
             if (!url.starts_with("https://")) continue;
             const auto size = entry.find("size");
-            entries.push_back({name, kind, url, size != entry.end() && size->is_string() ? size->get<std::string>() : ""});
+            entries.push_back({name, kind, MirrorUrl(url), size != entry.end() && size->is_string() ? size->get<std::string>() : ""});
         }
     }
     return entries;
@@ -87,7 +100,7 @@ std::map<std::string, std::vector<Entry>> ParseTranslations(std::string_view tex
         std::string key{title};
         for (char& c : key) c = c >= 'a' && c <= 'f' ? static_cast<char>(c - 'a' + 'A') : c;
         const auto size = entry.find("size");
-        found[key].push_back({name, Kind::Translation, url,
+        found[key].push_back({name, Kind::Translation, MirrorUrl(url),
                               size != entry.end() && size->is_string() ? size->get<std::string>() : ""});
     }
     return found;

@@ -337,3 +337,15 @@ Entrou só o que tem efeito real no nosso core; nada foi duplicado.
   - **Sistema** na ordem: nome, temas, idiomas, região, volume, modo avião, estatísticas, sessões
     Pulse, mods adultos, limpar cache.
 - Versão do pacote: **0.4.7.<build>**.
+
+## 0.4.8 (24/10): traduções voltam a baixar
+
+- **Causa:** o índice CNX (nx-links) aponta os arquivos para `github.com/AMSNX/Traducoes-BR-NX`,
+  que saiu do ar: todo link respondia 404, então nenhuma tradução baixava.
+- Os mesmos releases (mesmas tags e nomes de arquivo) estão no Codeberg
+  (`codeberg.org/costelabr/Traducoes-BR-NX` e `modsnx`): os links do índice são trocados para lá.
+- Índice atualizado da v204 para a **v220** do nx-links: 153 traduções PT-BR (antes 128), com
+  Tears of the Kingdom, Persona 5 Royal, Fire Emblem Engage, Xenoblade 3, Pokémon Scarlet/Violet e
+  outras.
+- Créditos: entra o Traducoes-BR-NX (Codeberg), de onde os arquivos vêm.
+- Versão do pacote: **0.4.8.<build>**.
