@@ -1,300 +1,300 @@
-[213/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\NLSF_stabilize.c.obj
-[214/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\NLSF2A.c.obj
-[215/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\resampler_down2_3.c.obj
-[216/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\resampler.c.obj
-[217/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\resampler_down2.c.obj
-[218/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\resampler_private_AR2.c.obj
-[219/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\resampler_rom.c.obj
-[220/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\resampler_private_up2_HQ.c.obj
-[221/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\resampler_private_IIR_FIR.c.obj
-[222/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\resampler_private_down_FIR.c.obj
-[223/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\sigm_Q15.c.obj
-[224/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\sum_sqr_shift.c.obj
-[225/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\stereo_decode_pred.c.obj
-[226/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\sort.c.obj
-[227/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\stereo_encode_pred.c.obj
-[228/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\stereo_find_predictor.c.obj
-[229/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\LPC_fit.c.obj
-[230/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\stereo_quant_pred.c.obj
-[231/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\celt.c.obj
-[232/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\entcode.c.obj
-[233/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\cwrs.c.obj
-[234/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\bands.c.obj
-[235/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\entenc.c.obj
-[236/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\entdec.c.obj
-[237/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\kiss_fft.c.obj
-[238/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\laplace.c.obj
-[239/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\mdct.c.obj
-[240/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\celt_decoder.c.obj
-[241/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\mathops.c.obj
-[242/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\modes.c.obj
-[243/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\pitch.c.obj
-[244/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\celt_lpc.c.obj
-[245/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\rate.c.obj
-[246/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\quant_bands.c.obj
-[247/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\apply_sine_window_FLP.c.obj
-[248/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\vq.c.obj
-[249/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\corrMatrix_FLP.c.obj
-[250/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\celt_encoder.c.obj
-[251/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\encode_frame_FLP.c.obj
-[252/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\find_LPC_FLP.c.obj
-[253/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\find_LTP_FLP.c.obj
-[254/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\find_pitch_lags_FLP.c.obj
-[255/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\find_pred_coefs_FLP.c.obj
-[256/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\LTP_analysis_filter_FLP.c.obj
-[257/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\LTP_scale_ctrl_FLP.c.obj
-[258/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\LPC_analysis_filter_FLP.c.obj
-[259/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\process_gains_FLP.c.obj
-[260/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\regularize_correlations_FLP.c.obj
-[261/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\warped_autocorrelation_FLP.c.obj
-[262/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\residual_energy_FLP.c.obj
-[263/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\noise_shape_analysis_FLP.c.obj
-[264/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\wrappers_FLP.c.obj
-[265/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\autocorrelation_FLP.c.obj
-[266/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\bwexpander_FLP.c.obj
-[267/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\energy_FLP.c.obj
-[268/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\burg_modified_FLP.c.obj
-[269/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\inner_product_FLP.c.obj
-[270/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\k2a_FLP.c.obj
-[271/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\LPC_inv_pred_gain_FLP.c.obj
-[272/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\scale_vector_FLP.c.obj
-[273/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\scale_copy_vector_FLP.c.obj
-[274/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\sort_FLP.c.obj
-[275/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\schur_FLP.c.obj
-[276/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\pitch_analysis_core_FLP.c.obj
-[277/1801] Building C object externals\getopt\CMakeFiles\getopt.dir\getopt.c.obj
-Warning static builds of getopt violate the Lesser GNU Public License
-[278/1801] Linking C static library _deps\enet-build\enet.lib
-[279/1801] Linking CXX static library _deps\sirit-build\src\sirit.lib
-[280/1801] Building CXX object externals\CMakeFiles\tz.dir\tz\tz\tz.cpp.obj
-[281/1801] Building CXX object externals\CMakeFiles\bc_decoder.dir\bc_decoder\bc_decoder.cpp.obj
-[282/1801] Generating include/nx_tzdb/base.h
-[283/1801] Generating include/nx_tzdb/africa.h
-[284/1801] Generating ../openssl-build/libcrypto.lib, ../openssl-build/libssl.lib
-**********************************************************************
-** Visual Studio 2022 Developer Command Prompt v17.14.42
-** Copyright (c) 2025 Microsoft Corporation
-**********************************************************************
-[vcvarsall.bat] Environment initialized for: 'x64'
-
-Microsoft (R) Program Maintenance Utility Version 14.44.35229.0
-Copyright (C) Microsoft Corporation.  All rights reserved.
-
-	"C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\nmake.exe" /                   depend
-
-
-
-Microsoft (R) Program Maintenance Utility Version 14.44.35229.0
-
-Copyright (C) Microsoft Corporation.  All rights reserved.
-
-
-
-	"C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\nmake.exe" /                   _build_libs
-
-
-
-Microsoft (R) Program Maintenance Utility Version 14.44.35229.0
-
-Copyright (C) Microsoft Corporation.  All rights reserved.
-
-
-
-[285/1801] Generating include/nx_tzdb/america_argentina.h
-[286/1801] Generating include/nx_tzdb/america_indiana.h
-[287/1801] Generating include/nx_tzdb/zoneinfo.h
-[288/1801] Building C object externals\glad\CMakeFiles\glad.dir\src\glad.c.obj
-[289/1801] Building CXX object src\common\CMakeFiles\common.dir\cityhash.cpp.obj
-[290/1801] Building CXX object src\common\CMakeFiles\common.dir\address_space.cpp.obj
-[291/1801] Building CXX object src\common\CMakeFiles\common.dir\assert.cpp.obj
-[292/1801] Building CXX object src\common\CMakeFiles\common.dir\demangle.cpp.obj
-[293/1801] Building CXX object src\common\CMakeFiles\common.dir\pulse_store.cpp.obj
-[294/1801] Building CXX object src\common\CMakeFiles\common.dir\device_power_state.cpp.obj
-[295/1801] Building CXX object src\common\CMakeFiles\common.dir\bug_tracker.cpp.obj
-[296/1801] Building CXX object src\common\CMakeFiles\common.dir\dynamic_library.cpp.obj
-[297/1801] Building CXX object src\common\CMakeFiles\common.dir\error.cpp.obj
-[298/1801] Building CXX object src\common\CMakeFiles\common.dir\pulse_archive.cpp.obj
-[299/1801] Building CXX object src\common\CMakeFiles\common.dir\fiber.cpp.obj
-[300/1801] Building CXX object src\common\CMakeFiles\common.dir\fs\file.cpp.obj
-[301/1801] Generating include/nx_tzdb/america.h
-[302/1801] Building CXX object src\common\CMakeFiles\common.dir\fs\fs.cpp.obj
-[303/1801] Building CXX object src\common\CMakeFiles\common.dir\fs\fs_util.cpp.obj
-[304/1801] Building CXX object src\common\CMakeFiles\common.dir\heap_tracker.cpp.obj
-[305/1801] Building CXX object src\common\CMakeFiles\common.dir\hex_util.cpp.obj
-[306/1801] Building CXX object src\common\CMakeFiles\common.dir\lz4_compression.cpp.obj
-[307/1801] Building CXX object src\common\CMakeFiles\common.dir\memory_detect.cpp.obj
-[308/1801] Building CXX object src\common\CMakeFiles\common.dir\memory_ledger.cpp.obj
-[309/1801] Building CXX object src\common\CMakeFiles\common.dir\fs\path_util.cpp.obj
-[310/1801] Building CXX object src\common\CMakeFiles\common.dir\scm_rev.cpp.obj
-D:\a\HueHue\HueHue\build-uwp\src\common\scm_rev.cpp(16): warning C4005: 'BUILD_ID': macro redefinition
-D:\a\HueHue\HueHue\build-uwp\src\common\scm_rev.cpp(16): note: 'BUILD_ID' previously declared on the command line
-[311/1801] Building CXX object src\common\CMakeFiles\common.dir\multi_level_page_table.cpp.obj
-[312/1801] Building CXX object src\common\CMakeFiles\common.dir\logging.cpp.obj
-[313/1801] Building CXX object src\common\CMakeFiles\common.dir\page_table.cpp.obj
-[314/1801] Building CXX object src\common\CMakeFiles\common.dir\settings_input.cpp.obj
-[315/1801] Building CXX object src\common\CMakeFiles\common.dir\settings_common.cpp.obj
-[316/1801] Building CXX object src\common\CMakeFiles\common.dir\host_memory.cpp.obj
-D:\a\HueHue\HueHue\src\common\host_memory.cpp(312): warning C4834: discarding return value of function with [[nodiscard]] attribute
-D:\a\HueHue\HueHue\src\common\host_memory.cpp(323): warning C4834: discarding return value of function with [[nodiscard]] attribute
-[317/1801] Building CXX object src\common\CMakeFiles\common.dir\stb.cpp.obj
-[318/1801] Building CXX object src\common\CMakeFiles\common.dir\param_package.cpp.obj
-[319/1801] Building CXX object src\common\CMakeFiles\common.dir\sparse_large_vector.cpp.obj
-[320/1801] Building CXX object src\common\CMakeFiles\common.dir\stream.cpp.obj
-[321/1801] Building CXX object src\common\CMakeFiles\common.dir\steady_clock.cpp.obj
-[322/1801] Building CXX object src\common\CMakeFiles\common.dir\string_util.cpp.obj
-[323/1801] Building CXX object src\common\CMakeFiles\common.dir\adpf.cpp.obj
-[324/1801] Building CXX object src\common\CMakeFiles\common.dir\random.cpp.obj
-[325/1801] Building CXX object src\common\CMakeFiles\common.dir\time_zone.cpp.obj
-[326/1801] Building CXX object src\common\CMakeFiles\common.dir\thread.cpp.obj
-[327/1801] Building CXX object src\common\CMakeFiles\common.dir\zstd_compression.cpp.obj
-[328/1801] Building CXX object src\common\CMakeFiles\common.dir\settings.cpp.obj
-[329/1801] Building CXX object src\common\CMakeFiles\common.dir\uuid.cpp.obj
-[330/1801] Building CXX object src\common\CMakeFiles\common.dir\fs\ryujinx_compat.cpp.obj
-[331/1801] Building CXX object src\common\CMakeFiles\common.dir\fs\symlink.cpp.obj
-[332/1801] Building CXX object src\common\CMakeFiles\common.dir\cpu_features.cpp.obj
-[333/1801] Building CXX object src\common\CMakeFiles\common.dir\cpu_wait.cpp.obj
-[334/1801] Building CXX object src\common\CMakeFiles\common.dir\wake_flag.cpp.obj
-[335/1801] Building CXX object src\common\CMakeFiles\common.dir\windows\precise_timer.cpp.obj
-[336/1801] Building CXX object src\common\CMakeFiles\common.dir\zbic_compression.cpp.obj
-D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(3600): warning C4244: '=': conversion from 'U64' to 'U32', possible loss of data
-D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(3613): warning C4244: 'initializing': conversion from 'int' to 'short', possible loss of data
-D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(3614): warning C4244: 'initializing': conversion from 'U32' to 'short', possible loss of data
-D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(16588): warning C4244: '=': conversion from 'U64' to 'BYTE', possible loss of data
-D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(16604): warning C4244: '=': conversion from 'U64' to 'BYTE', possible loss of data
-D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(16613): warning C4244: '=': conversion from 'U64' to 'BYTE', possible loss of data
-D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(16622): warning C4244: '=': conversion from 'U64' to 'BYTE', possible loss of data
-D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(16629): warning C4244: '=': conversion from 'U64' to 'BYTE', possible loss of data
-D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(16643): warning C4267: '=': conversion from 'size_t' to 'BYTE', possible loss of data
-D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(22843): warning C4551: function call missing argument list
-D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(22843): warning C4551: function call missing argument list
-[337/1801] Building CXX object src\common\CMakeFiles\common.dir\windows\timer_resolution.cpp.obj
-[338/1801] Generating include/nx_tzdb/america_north_dakota.h
-[339/1801] Generating include/nx_tzdb/america_kentucky.h
-[340/1801] Generating include/nx_tzdb/antarctica.h
-[341/1801] Generating include/nx_tzdb/arctic.h
-[342/1801] Generating include/nx_tzdb/atlantic.h
-[343/1801] Building CXX object src\common\CMakeFiles\common.dir\x64\rdtsc.cpp.obj
-[344/1801] Building CXX object src\common\CMakeFiles\common.dir\windows\sampling_profiler.cpp.obj
-[345/1801] Generating include/nx_tzdb/brazil.h
-[346/1801] Generating include/nx_tzdb/australia.h
-[347/1801] Generating include/nx_tzdb/chile.h
-[348/1801] Generating include/nx_tzdb/canada.h
-[349/1801] Generating include/nx_tzdb/etc.h
-[350/1801] Generating include/nx_tzdb/indian.h
-[351/1801] Generating include/nx_tzdb/mexico.h
-[352/1801] Generating include/nx_tzdb/pacific.h
-[353/1801] Generating include/nx_tzdb/asia.h
-[354/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\crypto\aes.cpp.obj
-[355/1801] Generating include/nx_tzdb/us.h
-[356/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\block_range_information.cpp.obj
-[357/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\crypto\crc32.cpp.obj
-[358/1801] Generating include/nx_tzdb/europe.h
-[359/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\fused.cpp.obj
-[360/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPCompare.cpp.obj
-[361/1801] Building CXX object src\common\CMakeFiles\common.dir\net\net.cpp.obj
-[362/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPConvert.cpp.obj
-[363/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPMulAdd.cpp.obj
-[364/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPRecipExponent.cpp.obj
-[365/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPRecipEstimate.cpp.obj
-[366/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPRecipStepFused.cpp.obj
-[367/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPRoundInt.cpp.obj
-[368/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPRSqrtEstimate.cpp.obj
-[369/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\process_exception.cpp.obj
-[370/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPRSqrtStepFused.cpp.obj
-[371/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPToFixed.cpp.obj
-[372/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\math_util.cpp.obj
-[373/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\process_nan.cpp.obj
-[374/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\unpacked.cpp.obj
-[375/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\llvm_disassemble.cpp.obj
-[376/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\u128.cpp.obj
-[377/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\frontend\A32\a32_types.cpp.obj
-[378/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\ir\location_descriptor.cpp.obj
-[379/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\frontend\imm.cpp.obj
-[380/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\frontend\A64\a64_types.cpp.obj
-[381/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\ir\microinstruction.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-[382/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\ir\type.cpp.obj
-[383/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\ir\basic_block.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\ir\basic_block.cpp(75): warning C4100: 'terminal_variant': unreferenced parameter
-[384/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\ir\value.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-[385/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\frontend\A32\a32_ir_emitter.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-[386/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\ir\opt_passes.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\ir\opt_passes.cpp(1122): warning C4244: 'argument': conversion from 'u64' to 'const int', possible loss of data
-[387/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\frontend\A32\a32_location_descriptor.cpp.obj
-[388/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\frontend\A32\translate\conditional_state.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-[389/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\frontend\A64\a64_location_descriptor.cpp.obj
-[390/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\frontend\A64\a64_ir_emitter.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-[391/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\frontend\A32\translate\a32_translate.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-[392/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\ir\opcodes.cpp.obj
-[393/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\frontend\A32\translate\translate_thumb.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-[394/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\abi.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\abi.cpp(76): warning C4267: 'initializing': conversion from 'size_t' to 'int32_t', possible loss of data
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\abi.cpp(87): warning C4267: 'initializing': conversion from 'size_t' to 'int32_t', possible loss of data
-[395/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\block_of_code.cpp.obj
-[396/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\callback.cpp.obj
-[397/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\constant_pool.cpp.obj
-[398/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\emit_x64_crc32.cpp.obj
+D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\a32_emit_x64_memory.cpp(180): note: see reference to function template instantiation 'void Dynarmic::Backend::X64::A32EmitX64::EmitExclusiveReadMemory<8,uint64_t Dynarmic::A32::UserCallbacks::`vcall'{40}'(Dynarmic::A32::VAddr,size_t)>(Dynarmic::Backend::X64::A32EmitContext &,Dynarmic::IR::Inst *)' being compiled
+[420/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\a64_jitstate.cpp.obj
+[421/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\a64_emit_x64.cpp.obj
 D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
 D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/reg_alloc.h(68): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-[399/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\emit_x64_aes.cpp.obj
+[422/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\a64_interface.cpp.obj
 D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
 D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/reg_alloc.h(68): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-[400/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\emit_x64.cpp.obj
+[423/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\frontend\A64\translate\a64_translate.cpp.obj
+D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
+[424/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\a64_emit_x64_memory.cpp.obj
 D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
 D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/reg_alloc.h(68): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64.cpp(60): warning C4100: 'inst': unreferenced parameter
-[401/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\emit_x64_data_processing.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/reg_alloc.h(68): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_data_processing.cpp(932): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_data_processing.cpp(936): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_data_processing.cpp(937): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_data_processing.cpp(945): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_data_processing.cpp(957): warning C4244: 'argument': conversion from 'const u64' to 'uint32_t', possible loss of data
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_data_processing.cpp(962): warning C4244: 'argument': conversion from 'const u64' to 'uint32_t', possible loss of data
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_data_processing.cpp(966): warning C4244: 'argument': conversion from 'const u64' to 'uint32_t', possible loss of data
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_data_processing.cpp(970): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-[402/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\emit_x64_packed.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/reg_alloc.h(68): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-[403/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\frontend\A32\translate\translate_arm.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-[404/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\emit_x64_saturation.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/reg_alloc.h(68): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_saturation.cpp(138): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-[405/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\emit_x64_floating_point.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/reg_alloc.h(68): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(315): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(315): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(315): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(390): note: see reference to function template instantiation 'void Dynarmic::Backend::X64::`anonymous-namespace'::FPThreeOp<32,void(__cdecl Xbyak::CodeGenerator::* )(const Xbyak::Xmm &,const Xbyak::Operand &)>(Dynarmic::Backend::X64::BlockOfCode &,Dynarmic::Backend::X64::EmitContext &,Dynarmic::IR::Inst *,Function)' being compiled
-        with
-        [
-            Function=void (__cdecl Xbyak::CodeGenerator::* )(const Xbyak::Xmm &,const Xbyak::Operand &)
-        ]
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(315): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::`anonymous-namespace'::FPThreeOp::<lambda_1>::operator ()<Xbyak::Xmm,Xbyak::Xmm>(Xbyak::Xmm,Xbyak::Xmm) const' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(323): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(323): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(323): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(323): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::`anonymous-namespace'::FPThreeOp::<lambda_2>::()::<lambda_1>::operator ()<Xbyak::Xmm,Xbyak::Xmm>(Xbyak::Xmm,Xbyak::Xmm) const' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(418): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(418): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(418): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(566): note: see reference to function template instantiation 'void Dynarmic::Backend::X64::EmitFPMinMax<32>(Dynarmic::Backend::X64::BlockOfCode &,Dynarmic::Backend::X64::EmitContext &,Dynarmic::IR::Inst *,bool)' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(418): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::EmitFPMinMax::<lambda_1>::operator ()<Xbyak::Xmm,Xbyak::Xmm>(Xbyak::Xmm,Xbyak::Xmm) const' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(421): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(421): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(421): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(421): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::EmitFPMinMax::<lambda_2>::operator ()<Xbyak::Xmm,Xbyak::Xmm>(Xbyak::Xmm,Xbyak::Xmm) const' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(423): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_floating_point.cpp(423): note: consider using 'if constexpr' statement instead
+D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/emit_x64_memory.h(105): warning C4244: 'argument': conversion from 'const uint64_t' to 'uint32_t', possible loss of data
+D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/emit_x64_memory.h(180): warning C4244: 'argument': conversion from 'const uint64_t' to 'uint32_t', possible loss of data
+D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/emit_x64_memory.cpp.inc(239): warning C4244: 'return': conversion from 'uint64_t' to 'Dynarmic::Backend::X64::A64EmitX64::EmitExclusiveReadMemory::T', possible loss of data
+D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/emit_x64_memory.cpp.inc(239): note: the template instantiation context (the oldest one first) is
+D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\a64_emit_x64_memory.cpp(336): note: see reference to function template instantiation 'void Dynarmic::Backend::X64::A64EmitX64::EmitExclusiveReadMemory<8,uint64_t Dynarmic::A64::UserCallbacks::`vcall'{16}'(Dynarmic::A64::VAddr,size_t)>(Dynarmic::Backend::X64::A64EmitContext &,Dynarmic::IR::Inst *)' being compiled
+[425/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\exception_handler_windows.cpp.obj
+[426/1801] Linking CXX static library src\common\common.lib
+[427/1801] Building CXX object src\network\CMakeFiles\network.dir\packet.cpp.obj
+[428/1801] Building CXX object src\network\CMakeFiles\network.dir\announce_multiplayer_session.cpp.obj
+[429/1801] Building CXX object src\network\CMakeFiles\network.dir\network.cpp.obj
+[430/1801] Building CXX object src\network\CMakeFiles\network.dir\verify_user.cpp.obj
+[431/1801] Generating include/video_core/host_shaders/block_linear_unswizzle_2d_comp.h
+[432/1801] Generating include/video_core/host_shaders/blit_color_float_frag.h
+[433/1801] Generating include/video_core/host_shaders/blit_color_msaa_frag.h
+[434/1801] Generating include/video_core/host_shaders/astc_decoder_comp.h
+[435/1801] Generating include/video_core/host_shaders/blit_depth_msaa_frag.h
+[436/1801] Generating include/video_core/host_shaders/blit_depth_frag.h
+[437/1801] Generating include/video_core/host_shaders/blit_depth_stencil_msaa_frag.h
+[438/1801] Generating include/video_core/host_shaders/block_linear_unswizzle_3d_comp.h
+[439/1801] Generating include/video_core/host_shaders/block_linear_unswizzle_3d_bcn_comp.h
+[440/1801] Generating include/video_core/host_shaders/convert_abgr8_to_d24s8_frag.h
+[441/1801] Generating include/video_core/host_shaders/convert_abgr8_to_d32f_frag.h
+[442/1801] Generating include/video_core/host_shaders/convert_d32f_to_abgr8_frag.h
+[443/1801] Generating include/video_core/host_shaders/convert_d24s8_to_abgr8_frag.h
+[444/1801] Generating include/video_core/host_shaders/convert_depth_to_float_frag.h
+[445/1801] Generating include/video_core/host_shaders/convert_float_to_depth_frag.h
+[446/1801] Generating include/video_core/host_shaders/convert_msaa_to_non_msaa_comp.h
+[447/1801] Generating include/video_core/host_shaders/convert_msaa_to_non_msaa_depth_frag.h
+[448/1801] Generating include/video_core/host_shaders/convert_msaa_to_non_msaa_frag.h
+[449/1801] Generating include/video_core/host_shaders/convert_msaa_to_non_msaa_depth_stencil_frag.h
+[450/1801] Generating include/video_core/host_shaders/convert_non_msaa_to_msaa_comp.h
+[451/1801] Generating include/video_core/host_shaders/convert_non_msaa_to_msaa_frag.h
+[452/1801] Generating include/video_core/host_shaders/convert_non_msaa_to_msaa_depth_frag.h
+[453/1801] Generating include/video_core/host_shaders/convert_non_msaa_to_msaa_depth_stencil_frag.h
+[454/1801] Generating include/video_core/host_shaders/convert_s8d24_to_abgr8_frag.h
+[455/1801] Generating include/video_core/host_shaders/d3d12_depth_stencil_merge_comp.h
+[456/1801] Generating include/video_core/host_shaders/d3d12_depth_stencil_split_comp.h
+[457/1801] Generating include/video_core/host_shaders/d3d12_bc3_encoder_comp.h
+[458/1801] Generating include/video_core/host_shaders/full_screen_triangle_vert.h
+[459/1801] Generating include/video_core/host_shaders/fxaa_frag.h
+[460/1801] Generating include/video_core/host_shaders/fxaa_vert.h
+[461/1801] Generating include/video_core/host_shaders/opengl_fidelityfx_fsr_frag.h
+[462/1801] Generating include/video_core/host_shaders/opengl_copy_bc4_comp.h
+[463/1801] Generating include/video_core/host_shaders/opengl_convert_s8d24_comp.h
+[464/1801] Building CXX object src\network\CMakeFiles\network.dir\room.cpp.obj
+[465/1801] Generating include/video_core/host_shaders/opengl_fidelityfx_fsr_rcas_frag.h
+[466/1801] Generating include/video_core/host_shaders/opengl_fidelityfx_fsr_easu_frag.h
+[467/1801] Generating include/video_core/host_shaders/opengl_present_frag.h
+[468/1801] Generating include/video_core/host_shaders/opengl_present_vert.h
+[469/1801] Generating include/video_core/host_shaders/opengl_lmem_warmup_comp.h
+[470/1801] Generating include/video_core/host_shaders/opengl_present_scaleforce_frag.h
+[471/1801] Generating include/video_core/host_shaders/pitch_unswizzle_comp.h
+[472/1801] Generating include/video_core/host_shaders/present_bicubic_frag.h
+[473/1801] Generating include/video_core/host_shaders/present_area_frag.h
+[474/1801] Generating include/video_core/host_shaders/present_zero_tangent_frag.h
+[475/1801] Generating include/video_core/host_shaders/present_bspline_frag.h
+[476/1801] Generating include/video_core/host_shaders/present_gaussian_frag.h
+[477/1801] Generating include/video_core/host_shaders/present_mitchell_frag.h
+[478/1801] Building CXX object src\network\CMakeFiles\network.dir\room_member.cpp.obj
+[479/1801] Generating include/video_core/host_shaders/present_lanczos_frag.h
+[480/1801] Generating include/video_core/host_shaders/present_spline1_frag.h
+[481/1801] Generating include/video_core/host_shaders/present_mmpx_frag.h
+[482/1801] Generating include/video_core/host_shaders/queries_prefix_scan_sum_comp.h
+[483/1801] Generating include/video_core/host_shaders/resolve_conditional_render_comp.h
+[484/1801] Generating include/video_core/host_shaders/smaa_edge_detection_vert.h
+[485/1801] Generating include/video_core/host_shaders/smaa_edge_detection_frag.h
+[486/1801] Generating include/video_core/host_shaders/queries_prefix_scan_sum_nosubgroups_comp.h
+[487/1801] Generating include/video_core/host_shaders/smaa_blending_weight_calculation_vert.h
+[488/1801] Generating include/video_core/host_shaders/opengl_smaa_glsl.h
+[489/1801] Generating include/video_core/host_shaders/smaa_neighborhood_blending_vert.h
+[490/1801] Generating include/video_core/host_shaders/smaa_neighborhood_blending_frag.h
+[491/1801] Generating include/video_core/host_shaders/smaa_blending_weight_calculation_frag.h
+[492/1801] Generating include/video_core/host_shaders/vulkan_blit_depth_stencil_frag_spv.h
+[493/1801] Generating include/video_core/host_shaders/vulkan_color_clear_frag_spv.h
+[494/1801] Generating include/video_core/host_shaders/vulkan_color_clear_vert_spv.h
+[495/1801] Generating include/video_core/host_shaders/vulkan_depthstencil_clear_frag_spv.h
+[496/1801] Generating include/video_core/host_shaders/vulkan_fidelityfx_fsr_vert_spv.h
+[497/1801] Generating include/video_core/host_shaders/vulkan_fidelityfx_fsr_easu_fp16_frag_spv.h
+[498/1801] Generating include/video_core/host_shaders/vulkan_fidelityfx_fsr_rcas_fp32_frag_spv.h
+[499/1801] Generating include/video_core/host_shaders/vulkan_fidelityfx_fsr_easu_fp32_frag_spv.h
+[500/1801] Generating include/video_core/host_shaders/vulkan_fidelityfx_fsr_rcas_fp16_frag_spv.h
+[501/1801] Generating include/video_core/host_shaders/vulkan_present_frag_spv.h
+[502/1801] Generating include/video_core/host_shaders/vulkan_present_vert_spv.h
+[503/1801] Generating include/video_core/host_shaders/vulkan_present_scaleforce_fp16_frag_spv.h
+[504/1801] Generating include/video_core/host_shaders/vulkan_quad_indexed_comp_spv.h
+[505/1801] Generating include/video_core/host_shaders/vulkan_present_scaleforce_fp32_frag_spv.h
+[506/1801] Generating include/video_core/host_shaders/vulkan_turbo_mode_comp_spv.h
+[507/1801] Generating include/video_core/host_shaders/sgsr1_shader_mobile_frag.h
+[508/1801] Generating include/video_core/host_shaders/sgsr1_shader_vert.h
+[509/1801] Generating include/video_core/host_shaders/vulkan_uint8_comp_spv.h
+[510/1801] Generating include/video_core/host_shaders/sgsr1_shader_mobile_edge_direction_frag.h
+[511/1801] Generating include/video_core/host_shaders/blit_color_float_frag_spv.h
+[512/1801] Generating include/video_core/host_shaders/blit_color_msaa_frag_spv.h
+[513/1801] Generating include/video_core/host_shaders/ffx_fsr1_h.h
+[514/1801] Generating include/video_core/host_shaders/blit_depth_frag_spv.h
+[515/1801] Generating include/video_core/host_shaders/astc_decoder_comp_spv.h
+[516/1801] Generating include/video_core/host_shaders/blit_depth_msaa_frag_spv.h
+[517/1801] Generating include/video_core/host_shaders/blit_depth_stencil_msaa_frag_spv.h
+[518/1801] Generating include/video_core/host_shaders/block_linear_unswizzle_2d_comp_spv.h
+[519/1801] Generating include/video_core/host_shaders/block_linear_unswizzle_3d_bcn_comp_spv.h
+[520/1801] Generating include/video_core/host_shaders/block_linear_unswizzle_3d_comp_spv.h
+[521/1801] Generating include/video_core/host_shaders/convert_depth_to_float_frag_spv.h
+[522/1801] Generating include/video_core/host_shaders/convert_d32f_to_abgr8_frag_spv.h
+[523/1801] Generating include/video_core/host_shaders/convert_abgr8_to_d24s8_frag_spv.h
+[524/1801] Generating include/video_core/host_shaders/convert_abgr8_to_d32f_frag_spv.h
+[525/1801] Generating include/video_core/host_shaders/convert_msaa_to_non_msaa_depth_stencil_frag_spv.h
+[526/1801] Generating include/video_core/host_shaders/convert_msaa_to_non_msaa_depth_frag_spv.h
+[527/1801] Generating include/video_core/host_shaders/convert_msaa_to_non_msaa_comp_spv.h
+[528/1801] Generating include/video_core/host_shaders/convert_d24s8_to_abgr8_frag_spv.h
+[529/1801] Generating include/video_core/host_shaders/convert_float_to_depth_frag_spv.h
+[530/1801] Generating include/video_core/host_shaders/convert_msaa_to_non_msaa_sint_frag_spv.h
+[531/1801] Generating include/video_core/host_shaders/convert_msaa_to_non_msaa_frag_spv.h
+[532/1801] Generating include/video_core/host_shaders/convert_msaa_to_non_msaa_uint_frag_spv.h
+[533/1801] Generating include/video_core/host_shaders/convert_non_msaa_to_msaa_comp_spv.h
+[534/1801] Generating include/video_core/host_shaders/convert_non_msaa_to_msaa_depth_stencil_frag_spv.h
+[535/1801] Generating include/video_core/host_shaders/convert_non_msaa_to_msaa_depth_frag_spv.h
+[536/1801] Generating include/video_core/host_shaders/convert_non_msaa_to_msaa_frag_spv.h
+[537/1801] Generating include/video_core/host_shaders/ffx_a_h.h
+[538/1801] Generating include/video_core/host_shaders/convert_non_msaa_to_msaa_sint_frag_spv.h
+[539/1801] Generating include/video_core/host_shaders/convert_non_msaa_to_msaa_uint_frag_spv.h
+[540/1801] Generating include/video_core/host_shaders/convert_s8d24_to_abgr8_frag_spv.h
+[541/1801] Generating include/video_core/host_shaders/d3d12_depth_stencil_merge_comp_spv.h
+[542/1801] Generating include/video_core/host_shaders/d3d12_astc_decoder_comp_spv.h
+[543/1801] Generating include/video_core/host_shaders/d3d12_bc3_encoder_comp_spv.h
+[544/1801] Generating include/video_core/host_shaders/d3d12_depth_stencil_split_comp_spv.h
+[545/1801] Generating include/video_core/host_shaders/full_screen_triangle_vert_spv.h
+[546/1801] Generating include/video_core/host_shaders/fxaa_frag_spv.h
+[547/1801] Generating include/video_core/host_shaders/pitch_unswizzle_comp_spv.h
+[548/1801] Generating include/video_core/host_shaders/fxaa_vert_spv.h
+[549/1801] Generating include/video_core/host_shaders/present_area_frag_spv.h
+[550/1801] Generating include/video_core/host_shaders/present_bicubic_frag_spv.h
+[551/1801] Generating include/video_core/host_shaders/present_bspline_frag_spv.h
+[552/1801] Generating include/video_core/host_shaders/present_gaussian_frag_spv.h
+[553/1801] Generating include/video_core/host_shaders/present_lanczos_frag_spv.h
+[554/1801] Generating include/video_core/host_shaders/present_mitchell_frag_spv.h
+[555/1801] Generating include/video_core/host_shaders/present_mmpx_frag_spv.h
+[556/1801] Generating include/video_core/host_shaders/present_spline1_frag_spv.h
+[557/1801] Generating include/video_core/host_shaders/present_zero_tangent_frag_spv.h
+[558/1801] Generating include/video_core/host_shaders/queries_prefix_scan_sum_comp_spv.h
+[559/1801] Generating include/video_core/host_shaders/queries_prefix_scan_sum_nosubgroups_comp_spv.h
+[560/1801] Generating include/video_core/host_shaders/resolve_conditional_render_comp_spv.h
+[561/1801] Generating include/video_core/host_shaders/sgsr1_shader_mobile_edge_direction_frag_spv.h
+[562/1801] Generating include/video_core/host_shaders/sgsr1_shader_mobile_frag_spv.h
+[563/1801] Generating include/video_core/host_shaders/smaa_blending_weight_calculation_frag_spv.h
+[564/1801] Generating include/video_core/host_shaders/sgsr1_shader_vert_spv.h
+[565/1801] Generating include/video_core/host_shaders/smaa_blending_weight_calculation_vert_spv.h
+[566/1801] Generating include/video_core/host_shaders/smaa_edge_detection_frag_spv.h
+[567/1801] Generating include/video_core/host_shaders/smaa_edge_detection_vert_spv.h
+[568/1801] Generating include/video_core/host_shaders/smaa_neighborhood_blending_frag_spv.h
+[569/1801] Generating include/video_core/host_shaders/smaa_neighborhood_blending_vert_spv.h
+[570/1801] Building CXX object src\video_core\gpu_logging\CMakeFiles\gpu_logging.dir\qualcomm_debug.cpp.obj
+[571/1801] Building CXX object src\video_core\gpu_logging\CMakeFiles\gpu_logging.dir\gpu_state_capture.cpp.obj
+[572/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\demote_return_pass.cpp.obj
+[573/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\emit_spirv_atomic.cpp.obj
+[574/1801] Building CXX object src\video_core\gpu_logging\CMakeFiles\gpu_logging.dir\gpu_logging.cpp.obj
+[575/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\emit_spirv_barriers.cpp.obj
+[576/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\emit_spirv_bitwise_conversion.cpp.obj
+[577/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\emit_spirv_composite.cpp.obj
+[578/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\emit_spirv.cpp.obj
+[579/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\emit_spirv_context_get_set.cpp.obj
+[580/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\emit_spirv_control_flow.cpp.obj
+[581/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\emit_spirv_convert.cpp.obj
+[582/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\emit_spirv_floating_point.cpp.obj
+[583/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\emit_spirv_image_atomic.cpp.obj
+[584/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\emit_spirv_integer.cpp.obj
+[585/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\emit_spirv_logical.cpp.obj
+[586/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\emit_spirv_image.cpp.obj
+[587/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\emit_spirv_memory.cpp.obj
+[588/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\emit_spirv_select.cpp.obj
+[589/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\emit_spirv_special.cpp.obj
+[590/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\emit_spirv_shared_memory.cpp.obj
+[591/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\emit_spirv_undefined.cpp.obj
+[592/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\emit_spirv_warp.cpp.obj
+[593/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\ir\condition.cpp.obj
+[594/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\ir\basic_block.cpp.obj
+[595/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\ir\microinstruction.cpp.obj
+[596/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\spirv\spirv_emit_context.cpp.obj
+[597/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\ir\patch.cpp.obj
+[598/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\ir\ir_emitter.cpp.obj
+[599/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\ir\opcodes.cpp.obj
+[600/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\ir\type.cpp.obj
+[601/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\ir\post_order.cpp.obj
+[602/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\ir\value.cpp.obj
+[603/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\ir\program.cpp.obj
+[604/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\decode.cpp.obj
+[605/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\opcodes.cpp.obj
+[606/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\control_flow.cpp.obj
+[607/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\indirect_branch_table_track.cpp.obj
+[608/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\atomic_operations_global_memory.cpp.obj
+[609/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\structured_control_flow.cpp.obj
+[610/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\atomic_operations_shared_memory.cpp.obj
+[611/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\attribute_memory_to_physical.cpp.obj
+[612/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\barrier_operations.cpp.obj
+[613/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\bitfield_extract.cpp.obj
+[614/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\branch_indirect.cpp.obj
+[615/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\bitfield_insert.cpp.obj
+[616/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\common_funcs.cpp.obj
+[617/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\condition_code_set.cpp.obj
+[618/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\double_add.cpp.obj
+[619/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\double_compare_and_set.cpp.obj
+[620/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\double_multiply.cpp.obj
+[621/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\double_fused_multiply_add.cpp.obj
+[622/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\double_min_max.cpp.obj
+[623/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\double_set_predicate.cpp.obj
+[624/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\exit_program.cpp.obj
+[625/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\find_leading_one.cpp.obj
+[626/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_compare.cpp.obj
+[627/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_add.cpp.obj
+[628/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_compare_and_set.cpp.obj
+[629/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_conversion_floating_point.cpp.obj
+[630/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_conversion_integer.cpp.obj
+[631/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_fused_multiply_add.cpp.obj
+[632/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_min_max.cpp.obj
+[633/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_multi_function.cpp.obj
+[634/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_multiply.cpp.obj
+[635/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_range_reduction.cpp.obj
+[636/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_set_predicate.cpp.obj
+[637/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_swizzled_add.cpp.obj
+[638/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\half_floating_point_add.cpp.obj
+[639/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\half_floating_point_fused_multiply_add.cpp.obj
+[640/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\half_floating_point_helper.cpp.obj
+[641/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\half_floating_point_multiply.cpp.obj
+[642/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\half_floating_point_set.cpp.obj
+[643/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\half_floating_point_set_predicate.cpp.obj
+[644/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\impl.cpp.obj
+[645/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_add_three_input.cpp.obj
+[646/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_add.cpp.obj
+[647/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_compare.cpp.obj
+[648/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_compare_and_set.cpp.obj
+[649/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_floating_point_conversion.cpp.obj
+[650/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_minimum_maximum.cpp.obj
+[651/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_funnel_shift.cpp.obj
+[652/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_scaled_add.cpp.obj
+[653/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_popcount.cpp.obj
+[654/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_set_predicate.cpp.obj
+[655/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_shift_left.cpp.obj
+[656/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_shift_right.cpp.obj
+[657/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_short_multiply_add.cpp.obj
+[658/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\internal_stage_buffer_entry_read.cpp.obj
+[659/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_to_integer_conversion.cpp.obj
+[660/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\load_constant.cpp.obj
+[661/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\load_effective_address.cpp.obj
+[662/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\load_store_local_shared.cpp.obj
+[663/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\load_store_attribute.cpp.obj
+[664/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\load_store_memory.cpp.obj
+[665/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\logic_operation.cpp.obj
+[666/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\move_predicate_to_register.cpp.obj
+[667/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\move_register_to_predicate.cpp.obj
+[668/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\move_register.cpp.obj
+[669/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\logic_operation_three_input.cpp.obj
+[670/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\move_special_register.cpp.obj
+[671/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\not_implemented.cpp.obj
+[672/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\predicate_set_predicate.cpp.obj
+[673/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\predicate_set_register.cpp.obj
+[674/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\output_geometry.cpp.obj
+[675/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\pixel_load.cpp.obj
+[676/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\select_source_with_predicate.cpp.obj
+[677/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\surface_atomic_operations.cpp.obj
+[678/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_fetch.cpp.obj
+[679/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_fetch_swizzled.cpp.obj
+[680/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\surface_load_store.cpp.obj
+[681/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_gather.cpp.obj
+[682/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_gather_swizzled.cpp.obj
+[683/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_gradient.cpp.obj
+[684/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_load_swizzled.cpp.obj
+[685/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_load.cpp.obj
+[686/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_mipmap_level.cpp.obj
+[687/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_query.cpp.obj
+[688/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\video_helper.cpp.obj
+[689/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\video_multiply_add.cpp.obj
+[690/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\video_minimum_maximum.cpp.obj
+[691/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\video_set_predicate.cpp.obj
+[692/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\vote.cpp.obj
+[693/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\warp_shuffle.cpp.obj
+[694/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\translate.cpp.obj
+[695/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\conditional_barrier_pass.cpp.obj
+[696/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\collect_shader_info_pass.cpp.obj
+[697/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\constant_propagation_pass.cpp.obj
+[698/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\dead_code_elimination_pass.cpp.obj
+[699/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\dual_vertex_pass.cpp.obj
+[700/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate_program.cpp.obj
+[701/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\identity_removal_pass.cpp.obj
+[702/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\layer_pass.cpp.obj
+[703/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\global_memory_to_storage_buffer_pass.cpp.obj
+[704/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\lower_fp64_to_fp32.cpp.obj
+[705/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\lower_fp16_to_fp32.cpp.obj
+[706/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\lower_int64_to_int32.cpp.obj
