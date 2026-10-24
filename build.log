@@ -1,0 +1,300 @@
+[133/1801] Building CXX object src\common\CMakeFiles\common.dir\fiber.cpp.obj
+[134/1801] Building CXX object src\common\CMakeFiles\common.dir\pulse_archive.cpp.obj
+[135/1801] Building CXX object src\common\CMakeFiles\common.dir\fs\fs_util.cpp.obj
+[136/1801] Building CXX object src\common\CMakeFiles\common.dir\fs\file.cpp.obj
+[137/1801] Building CXX object src\common\CMakeFiles\common.dir\fs\fs.cpp.obj
+[138/1801] Building CXX object src\common\CMakeFiles\common.dir\heap_tracker.cpp.obj
+[139/1801] Building CXX object src\common\CMakeFiles\common.dir\lz4_compression.cpp.obj
+[140/1801] Building CXX object src\common\CMakeFiles\common.dir\hex_util.cpp.obj
+[141/1801] Building CXX object src\common\CMakeFiles\common.dir\memory_ledger.cpp.obj
+[142/1801] Building CXX object src\common\CMakeFiles\common.dir\memory_detect.cpp.obj
+[143/1801] Building CXX object src\common\CMakeFiles\common.dir\fs\path_util.cpp.obj
+[144/1801] Building CXX object src\common\CMakeFiles\common.dir\page_table.cpp.obj
+[145/1801] Building CXX object src\common\CMakeFiles\common.dir\multi_level_page_table.cpp.obj
+[146/1801] Building CXX object src\common\CMakeFiles\common.dir\logging.cpp.obj
+[147/1801] Building CXX object src\common\CMakeFiles\common.dir\scm_rev.cpp.obj
+D:\a\HueHue\HueHue\build-uwp\src\common\scm_rev.cpp(16): warning C4005: 'BUILD_ID': macro redefinition
+D:\a\HueHue\HueHue\build-uwp\src\common\scm_rev.cpp(16): note: 'BUILD_ID' previously declared on the command line
+[148/1801] Building CXX object src\common\CMakeFiles\common.dir\settings_input.cpp.obj
+[149/1801] Building CXX object src\common\CMakeFiles\common.dir\host_memory.cpp.obj
+D:\a\HueHue\HueHue\src\common\host_memory.cpp(312): warning C4834: discarding return value of function with [[nodiscard]] attribute
+D:\a\HueHue\HueHue\src\common\host_memory.cpp(323): warning C4834: discarding return value of function with [[nodiscard]] attribute
+[150/1801] Building CXX object src\common\CMakeFiles\common.dir\settings_common.cpp.obj
+[151/1801] Building CXX object src\common\CMakeFiles\common.dir\stb.cpp.obj
+[152/1801] Building CXX object src\common\CMakeFiles\common.dir\param_package.cpp.obj
+[153/1801] Building CXX object src\common\CMakeFiles\common.dir\sparse_large_vector.cpp.obj
+[154/1801] Building CXX object src\common\CMakeFiles\common.dir\steady_clock.cpp.obj
+[155/1801] Building CXX object src\common\CMakeFiles\common.dir\stream.cpp.obj
+[156/1801] Building CXX object src\common\CMakeFiles\common.dir\string_util.cpp.obj
+[157/1801] Building CXX object src\common\CMakeFiles\common.dir\random.cpp.obj
+[158/1801] Building CXX object src\common\CMakeFiles\common.dir\adpf.cpp.obj
+[159/1801] Building CXX object src\common\CMakeFiles\common.dir\time_zone.cpp.obj
+[160/1801] Building CXX object src\common\CMakeFiles\common.dir\thread.cpp.obj
+[161/1801] Building CXX object src\common\CMakeFiles\common.dir\zstd_compression.cpp.obj
+[162/1801] Building CXX object src\common\CMakeFiles\common.dir\settings.cpp.obj
+[163/1801] Building CXX object src\common\CMakeFiles\common.dir\uuid.cpp.obj
+[164/1801] Building CXX object src\common\CMakeFiles\common.dir\fs\ryujinx_compat.cpp.obj
+[165/1801] Building CXX object src\common\CMakeFiles\common.dir\fs\symlink.cpp.obj
+[166/1801] Building CXX object src\common\CMakeFiles\common.dir\cpu_features.cpp.obj
+[167/1801] Building CXX object src\common\CMakeFiles\common.dir\cpu_wait.cpp.obj
+[168/1801] Building CXX object src\common\CMakeFiles\common.dir\wake_flag.cpp.obj
+[169/1801] Building CXX object src\common\CMakeFiles\common.dir\zbic_compression.cpp.obj
+D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(3600): warning C4244: '=': conversion from 'U64' to 'U32', possible loss of data
+D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(3613): warning C4244: 'initializing': conversion from 'int' to 'short', possible loss of data
+D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(3614): warning C4244: 'initializing': conversion from 'U32' to 'short', possible loss of data
+D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(16588): warning C4244: '=': conversion from 'U64' to 'BYTE', possible loss of data
+D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(16604): warning C4244: '=': conversion from 'U64' to 'BYTE', possible loss of data
+D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(16613): warning C4244: '=': conversion from 'U64' to 'BYTE', possible loss of data
+D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(16622): warning C4244: '=': conversion from 'U64' to 'BYTE', possible loss of data
+D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(16629): warning C4244: '=': conversion from 'U64' to 'BYTE', possible loss of data
+D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(16643): warning C4267: '=': conversion from 'size_t' to 'BYTE', possible loss of data
+D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(22843): warning C4551: function call missing argument list
+D:\a\HueHue\HueHue\.cache\cpm\zbic\11b08f2712264bbed731545085cbd9702096ceb7\src\zstd.c(22843): warning C4551: function call missing argument list
+[170/1801] Building CXX object src\common\CMakeFiles\common.dir\windows\precise_timer.cpp.obj
+[171/1801] Building CXX object src\common\CMakeFiles\common.dir\windows\timer_resolution.cpp.obj
+[172/1801] Building CXX object src\common\CMakeFiles\common.dir\x64\rdtsc.cpp.obj
+[173/1801] Building CXX object _deps\boost-build\libs\process\CMakeFiles\boost_process.dir\src\detail\environment_posix.cpp.obj
+[174/1801] Building CXX object src\common\CMakeFiles\common.dir\windows\sampling_profiler.cpp.obj
+[175/1801] Building CXX object _deps\boost-build\libs\process\CMakeFiles\boost_process.dir\src\detail\environment_win.cpp.obj
+[176/1801] Building CXX object _deps\boost-build\libs\process\CMakeFiles\boost_process.dir\src\detail\last_error.cpp.obj
+[177/1801] Building CXX object _deps\boost-build\libs\process\CMakeFiles\boost_process.dir\src\detail\throw_error.cpp.obj
+[178/1801] Building CXX object _deps\boost-build\libs\process\CMakeFiles\boost_process.dir\src\detail\utf8.cpp.obj
+[179/1801] Building CXX object _deps\boost-build\libs\process\CMakeFiles\boost_process.dir\src\detail\process_handle_windows.cpp.obj
+Please define _WIN32_WINNT or _WIN32_WINDOWS appropriately. For example:
+- add -D_WIN32_WINNT=0x0601 to the compiler command line; or
+- add _WIN32_WINNT=0x0601 to your project's Preprocessor Definitions.
+Assuming _WIN32_WINNT=0x0601 (i.e. Windows 7 target).
+[180/1801] Building CXX object _deps\boost-build\libs\process\CMakeFiles\boost_process.dir\src\ext\cwd.cpp.obj
+Please define _WIN32_WINNT or _WIN32_WINDOWS appropriately. For example:
+- add -D_WIN32_WINNT=0x0601 to the compiler command line; or
+- add _WIN32_WINNT=0x0601 to your project's Preprocessor Definitions.
+Assuming _WIN32_WINNT=0x0601 (i.e. Windows 7 target).
+[181/1801] Building CXX object _deps\boost-build\libs\process\CMakeFiles\boost_process.dir\src\ext\cmd.cpp.obj
+Please define _WIN32_WINNT or _WIN32_WINDOWS appropriately. For example:
+- add -D_WIN32_WINNT=0x0601 to the compiler command line; or
+- add _WIN32_WINNT=0x0601 to your project's Preprocessor Definitions.
+Assuming _WIN32_WINNT=0x0601 (i.e. Windows 7 target).
+[182/1801] Building CXX object _deps\boost-build\libs\process\CMakeFiles\boost_process.dir\src\ext\exe.cpp.obj
+Please define _WIN32_WINNT or _WIN32_WINDOWS appropriately. For example:
+- add -D_WIN32_WINNT=0x0601 to the compiler command line; or
+- add _WIN32_WINNT=0x0601 to your project's Preprocessor Definitions.
+Assuming _WIN32_WINNT=0x0601 (i.e. Windows 7 target).
+[183/1801] Building CXX object _deps\boost-build\libs\process\CMakeFiles\boost_process.dir\src\ext\env.cpp.obj
+Please define _WIN32_WINNT or _WIN32_WINDOWS appropriately. For example:
+- add -D_WIN32_WINNT=0x0601 to the compiler command line; or
+- add _WIN32_WINNT=0x0601 to your project's Preprocessor Definitions.
+Assuming _WIN32_WINNT=0x0601 (i.e. Windows 7 target).
+[184/1801] Building CXX object _deps\boost-build\libs\process\CMakeFiles\boost_process.dir\src\ext\proc_info.cpp.obj
+Please define _WIN32_WINNT or _WIN32_WINDOWS appropriately. For example:
+- add -D_WIN32_WINNT=0x0601 to the compiler command line; or
+- add _WIN32_WINNT=0x0601 to your project's Preprocessor Definitions.
+Assuming _WIN32_WINNT=0x0601 (i.e. Windows 7 target).
+[185/1801] Building CXX object _deps\boost-build\libs\process\CMakeFiles\boost_process.dir\src\posix\close_handles.cpp.obj
+[186/1801] Building CXX object _deps\boost-build\libs\process\CMakeFiles\boost_process.dir\src\windows\default_launcher.cpp.obj
+Please define _WIN32_WINNT or _WIN32_WINDOWS appropriately. For example:
+- add -D_WIN32_WINNT=0x0601 to the compiler command line; or
+- add _WIN32_WINNT=0x0601 to your project's Preprocessor Definitions.
+Assuming _WIN32_WINNT=0x0601 (i.e. Windows 7 target).
+[187/1801] Building CXX object _deps\boost-build\libs\process\CMakeFiles\boost_process.dir\src\environment.cpp.obj
+Please define _WIN32_WINNT or _WIN32_WINDOWS appropriately. For example:
+- add -D_WIN32_WINNT=0x0601 to the compiler command line; or
+- add _WIN32_WINNT=0x0601 to your project's Preprocessor Definitions.
+Assuming _WIN32_WINNT=0x0601 (i.e. Windows 7 target).
+[188/1801] Building CXX object _deps\boost-build\libs\process\CMakeFiles\boost_process.dir\src\pid.cpp.obj
+[189/1801] Building CXX object _deps\boost-build\libs\process\CMakeFiles\boost_process.dir\src\error.cpp.obj
+Please define _WIN32_WINNT or _WIN32_WINDOWS appropriately. For example:
+- add -D_WIN32_WINNT=0x0601 to the compiler command line; or
+- add _WIN32_WINNT=0x0601 to your project's Preprocessor Definitions.
+Assuming _WIN32_WINNT=0x0601 (i.e. Windows 7 target).
+[190/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\src\opus.c.obj
+[191/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\src\opus_decoder.c.obj
+[192/1801] Building CXX object src\common\CMakeFiles\common.dir\net\net.cpp.obj
+[193/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\src\extensions.c.obj
+[194/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\src\opus_multistream.c.obj
+[195/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\src\opus_encoder.c.obj
+[196/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\src\opus_multistream_decoder.c.obj
+[197/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\src\opus_projection_encoder.c.obj
+[198/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\src\repacketizer.c.obj
+[199/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\src\opus_projection_decoder.c.obj
+[200/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\src\mlp_data.c.obj
+[201/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\src\opus_multistream_encoder.c.obj
+[202/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\src\mapping_matrix.c.obj
+[203/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\src\mlp.c.obj
+[204/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\init_decoder.c.obj
+[205/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\code_signs.c.obj
+[206/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\CNG.c.obj
+[207/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\decode_core.c.obj
+[208/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\decode_frame.c.obj
+[209/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\decode_parameters.c.obj
+[210/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\decode_indices.c.obj
+[211/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\decode_pulses.c.obj
+[212/1801] Building CXX object _deps\boost-build\libs\process\CMakeFiles\boost_process.dir\src\shell.cpp.obj
+Please define _WIN32_WINNT or _WIN32_WINDOWS appropriately. For example:
+- add -D_WIN32_WINNT=0x0601 to the compiler command line; or
+- add _WIN32_WINNT=0x0601 to your project's Preprocessor Definitions.
+Assuming _WIN32_WINNT=0x0601 (i.e. Windows 7 target).
+[213/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\decoder_set_fs.c.obj
+[214/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\encode_indices.c.obj
+[215/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\encode_pulses.c.obj
+[216/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\dec_API.c.obj
+[217/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\gain_quant.c.obj
+[218/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\interpolate.c.obj
+[219/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\enc_API.c.obj
+[220/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\NLSF_decode.c.obj
+[221/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\LP_variable_cutoff.c.obj
+[222/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\NSQ.c.obj
+[223/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\shell_coder.c.obj
+[224/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\NSQ_del_dec.c.obj
+[225/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\PLC.c.obj
+[226/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\tables_gain.c.obj
+[227/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\tables_NLSF_CB_NB_MB.c.obj
+[228/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\tables_LTP.c.obj
+[229/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\tables_NLSF_CB_WB.c.obj
+[230/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\tables_pitch_lag.c.obj
+[231/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\tables_other.c.obj
+[232/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\tables_pulses_per_block.c.obj
+[233/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\control_audio_bandwidth.c.obj
+[234/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\quant_LTP_gains.c.obj
+[235/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\VAD.c.obj
+[236/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\VQ_WMat_EC.c.obj
+[237/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\NLSF_VQ.c.obj
+[238/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\HP_variable_cutoff.c.obj
+[239/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\src\analysis.c.obj
+[240/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\NLSF_encode.c.obj
+[241/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\NLSF_unpack.c.obj
+[242/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\process_NLSFs.c.obj
+[243/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\stereo_MS_to_LR.c.obj
+[244/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\check_control_input.c.obj
+[245/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\stereo_LR_to_MS.c.obj
+[246/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\NLSF_del_dec_quant.c.obj
+[247/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\control_SNR.c.obj
+[248/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\init_encoder.c.obj
+[249/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\control_codec.c.obj
+[250/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\ana_filt_bank_1.c.obj
+[251/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\A2NLSF.c.obj
+[252/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\bwexpander_32.c.obj
+[253/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\biquad_alt.c.obj
+[254/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\debug.c.obj
+[255/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\bwexpander.c.obj
+[256/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\decode_pitch.c.obj
+[257/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\lin2log.c.obj
+[258/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\inner_prod_aligned.c.obj
+[259/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\log2lin.c.obj
+[260/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\table_LSF_cos.c.obj
+[261/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\LPC_analysis_filter.c.obj
+[262/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\NLSF_stabilize.c.obj
+[263/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\LPC_inv_pred_gain.c.obj
+[264/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\pitch_est_tables.c.obj
+[265/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\NLSF2A.c.obj
+[266/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\NLSF_VQ_weights_laroia.c.obj
+[267/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\resampler.c.obj
+[268/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\resampler_private_AR2.c.obj
+[269/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\resampler_down2_3.c.obj
+[270/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\resampler_down2.c.obj
+[271/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\resampler_rom.c.obj
+[272/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\resampler_private_down_FIR.c.obj
+[273/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\resampler_private_IIR_FIR.c.obj
+[274/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\sigm_Q15.c.obj
+[275/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\resampler_private_up2_HQ.c.obj
+[276/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\sort.c.obj
+[277/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\stereo_encode_pred.c.obj
+[278/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\stereo_decode_pred.c.obj
+[279/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\stereo_quant_pred.c.obj
+[280/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\stereo_find_predictor.c.obj
+[281/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\sum_sqr_shift.c.obj
+[282/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\celt.c.obj
+[283/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\LPC_fit.c.obj
+[284/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\cwrs.c.obj
+[285/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\entdec.c.obj
+[286/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\bands.c.obj
+[287/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\entcode.c.obj
+[288/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\entenc.c.obj
+[289/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\celt_decoder.c.obj
+[290/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\laplace.c.obj
+[291/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\kiss_fft.c.obj
+[292/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\mathops.c.obj
+[293/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\mdct.c.obj
+[294/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\celt_lpc.c.obj
+[295/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\modes.c.obj
+[296/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\pitch.c.obj
+[297/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\quant_bands.c.obj
+[298/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\rate.c.obj
+[299/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\vq.c.obj
+[300/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\apply_sine_window_FLP.c.obj
+[301/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\corrMatrix_FLP.c.obj
+[302/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\find_LPC_FLP.c.obj
+[303/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\find_LTP_FLP.c.obj
+[304/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\find_pitch_lags_FLP.c.obj
+[305/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\encode_frame_FLP.c.obj
+[306/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\find_pred_coefs_FLP.c.obj
+[307/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\LTP_scale_ctrl_FLP.c.obj
+[308/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\LPC_analysis_filter_FLP.c.obj
+[309/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\LTP_analysis_filter_FLP.c.obj
+[310/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\process_gains_FLP.c.obj
+[311/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\noise_shape_analysis_FLP.c.obj
+[312/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\regularize_correlations_FLP.c.obj
+[313/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\residual_energy_FLP.c.obj
+[314/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\warped_autocorrelation_FLP.c.obj
+[315/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\wrappers_FLP.c.obj
+[316/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\celt\celt_encoder.c.obj
+[317/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\autocorrelation_FLP.c.obj
+[318/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\energy_FLP.c.obj
+[319/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\bwexpander_FLP.c.obj
+[320/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\inner_product_FLP.c.obj
+[321/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\k2a_FLP.c.obj
+[322/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\LPC_inv_pred_gain_FLP.c.obj
+[323/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\burg_modified_FLP.c.obj
+[324/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\schur_FLP.c.obj
+[325/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\scale_copy_vector_FLP.c.obj
+[326/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\sort_FLP.c.obj
+[327/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\scale_vector_FLP.c.obj
+[328/1801] Building C object _deps\opus-build\CMakeFiles\opus.dir\silk\float\pitch_analysis_core_FLP.c.obj
+[329/1801] Linking C static library _deps\enet-build\enet.lib
+[330/1801] Building C object externals\getopt\CMakeFiles\getopt.dir\getopt.c.obj
+Warning static builds of getopt violate the Lesser GNU Public License
+[331/1801] Linking CXX static library _deps\sirit-build\src\sirit.lib
+[332/1801] Building CXX object externals\CMakeFiles\tz.dir\tz\tz\tz.cpp.obj
+[333/1801] Building CXX object externals\CMakeFiles\bc_decoder.dir\bc_decoder\bc_decoder.cpp.obj
+[334/1801] Generating include/nx_tzdb/base.h
+[335/1801] Generating include/nx_tzdb/africa.h
+[336/1801] Generating include/nx_tzdb/america_argentina.h
+[337/1801] Generating include/nx_tzdb/america_indiana.h
+[338/1801] Generating include/nx_tzdb/america_kentucky.h
+[339/1801] Generating include/nx_tzdb/america_north_dakota.h
+[340/1801] Generating include/nx_tzdb/arctic.h
+[341/1801] Generating include/nx_tzdb/antarctica.h
+[342/1801] Generating include/nx_tzdb/zoneinfo.h
+[343/1801] Generating include/nx_tzdb/atlantic.h
+[344/1801] Building C object externals\glad\CMakeFiles\glad.dir\src\glad.c.obj
+[345/1801] Generating include/nx_tzdb/brazil.h
+[346/1801] Generating include/nx_tzdb/chile.h
+[347/1801] Generating include/nx_tzdb/australia.h
+[348/1801] Generating include/nx_tzdb/etc.h
+[349/1801] Generating include/nx_tzdb/canada.h
+[350/1801] Generating include/nx_tzdb/indian.h
+[351/1801] Generating include/nx_tzdb/mexico.h
+[352/1801] Generating include/nx_tzdb/pacific.h
+[353/1801] Generating include/nx_tzdb/us.h
+[354/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\crypto\aes.cpp.obj
+[355/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\crypto\crc32.cpp.obj
+[356/1801] Generating include/nx_tzdb/asia.h
+[357/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\block_range_information.cpp.obj
+[358/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPCompare.cpp.obj
+[359/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\fused.cpp.obj
+[360/1801] Generating include/nx_tzdb/europe.h
+[361/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPConvert.cpp.obj
+[362/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPRecipEstimate.cpp.obj
+[363/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPMulAdd.cpp.obj
+[364/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPRecipExponent.cpp.obj
+[365/1801] Generating include/nx_tzdb/america.h
+[366/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPRecipStepFused.cpp.obj
+[367/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPRoundInt.cpp.obj
+[368/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPRSqrtEstimate.cpp.obj
+[369/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPRSqrtStepFused.cpp.obj
+[370/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\op\FPToFixed.cpp.obj
+[371/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\process_exception.cpp.obj
+[372/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\process_nan.cpp.obj
+[373/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\fp\unpacked.cpp.obj
+[374/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\math_util.cpp.obj
+[375/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\llvm_disassemble.cpp.obj
+[376/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\u128.cpp.obj
