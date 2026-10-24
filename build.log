@@ -1,249 +1,3 @@
-[655/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_shift_left.cpp.obj
-[656/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_shift_right.cpp.obj
-[657/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_short_multiply_add.cpp.obj
-[658/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\internal_stage_buffer_entry_read.cpp.obj
-[659/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_to_integer_conversion.cpp.obj
-[660/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\load_constant.cpp.obj
-[661/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\load_effective_address.cpp.obj
-[662/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\load_store_local_shared.cpp.obj
-[663/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\load_store_attribute.cpp.obj
-[664/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\load_store_memory.cpp.obj
-[665/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\logic_operation.cpp.obj
-[666/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\move_predicate_to_register.cpp.obj
-[667/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\move_register_to_predicate.cpp.obj
-[668/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\move_register.cpp.obj
-[669/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\logic_operation_three_input.cpp.obj
-[670/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\move_special_register.cpp.obj
-[671/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\not_implemented.cpp.obj
-[672/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\predicate_set_predicate.cpp.obj
-[673/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\predicate_set_register.cpp.obj
-[674/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\output_geometry.cpp.obj
-[675/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\pixel_load.cpp.obj
-[676/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\select_source_with_predicate.cpp.obj
-[677/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\surface_atomic_operations.cpp.obj
-[678/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_fetch.cpp.obj
-[679/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_fetch_swizzled.cpp.obj
-[680/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\surface_load_store.cpp.obj
-[681/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_gather.cpp.obj
-[682/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_gather_swizzled.cpp.obj
-[683/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_gradient.cpp.obj
-[684/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_load_swizzled.cpp.obj
-[685/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_load.cpp.obj
-[686/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_mipmap_level.cpp.obj
-[687/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_query.cpp.obj
-[688/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\video_helper.cpp.obj
-[689/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\video_multiply_add.cpp.obj
-[690/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\video_minimum_maximum.cpp.obj
-[691/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\video_set_predicate.cpp.obj
-[692/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\vote.cpp.obj
-[693/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\warp_shuffle.cpp.obj
-[694/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\translate.cpp.obj
-[695/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\conditional_barrier_pass.cpp.obj
-[696/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\collect_shader_info_pass.cpp.obj
-[697/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\constant_propagation_pass.cpp.obj
-[698/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\dead_code_elimination_pass.cpp.obj
-[699/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\dual_vertex_pass.cpp.obj
-[700/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate_program.cpp.obj
-[701/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\identity_removal_pass.cpp.obj
-[702/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\layer_pass.cpp.obj
-[703/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\global_memory_to_storage_buffer_pass.cpp.obj
-[704/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\lower_fp64_to_fp32.cpp.obj
-[705/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\lower_fp16_to_fp32.cpp.obj
-[706/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\lower_int64_to_int32.cpp.obj
-[707/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\position_pass.cpp.obj
-[708/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\rescaling_pass.cpp.obj
-[709/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\vendor_workaround_pass.cpp.obj
-[710/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\ssa_rewrite_pass.cpp.obj
-[711/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\verification_pass.cpp.obj
-[712/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_barriers.cpp.obj
-[713/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\texture_pass.cpp.obj
-[714/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_bitwise_conversion.cpp.obj
-[715/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_composite.cpp.obj
-[716/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_context_get_set.cpp.obj
-[717/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_control_flow.cpp.obj
-[718/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_convert.cpp.obj
-[719/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_floating_point.cpp.obj
-[720/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_integer.cpp.obj
-[721/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm.cpp.obj
-[722/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_logical.cpp.obj
-[723/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_image.cpp.obj
-[724/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_not_implemented.cpp.obj
-[725/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_memory.cpp.obj
-[726/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_shared_memory.cpp.obj
-[727/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_select.cpp.obj
-[728/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_undefined.cpp.obj
-[729/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_special.cpp.obj
-[730/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_barriers.cpp.obj
-[731/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_warp.cpp.obj
-[732/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\reg_alloc.cpp.obj
-[733/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\glasm_emit_context.cpp.obj
-[734/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_atomic.cpp.obj
-[735/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_composite.cpp.obj
-[736/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_bitwise_conversion.cpp.obj
-[737/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_control_flow.cpp.obj
-[738/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl.cpp.obj
-[739/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_convert.cpp.obj
-[740/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_context_get_set.cpp.obj
-[741/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_integer.cpp.obj
-[742/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_floating_point.cpp.obj
-[743/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_not_implemented.cpp.obj
-[744/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_logical.cpp.obj
-[745/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_select.cpp.obj
-[746/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_image.cpp.obj
-[747/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_shared_memory.cpp.obj
-[748/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_memory.cpp.obj
-[749/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_undefined.cpp.obj
-[750/1801] Linking CXX static library _deps\boost-build\libs\process\libboost_process-vc143-mt-x64-1_92.lib
-[751/1801] Linking C static library _deps\opus-build\opus.lib
-[752/1801] Linking CXX static library externals\tz.lib
-[753/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_special.cpp.obj
-[754/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_warp.cpp.obj
-[755/1801] Linking CXX static library externals\bc_decoder.lib
-[756/1801] Linking C static library externals\getopt\getopt.lib
-[757/1801] Linking C static library externals\glad\glad.lib
-[758/1801] Linking CXX static library src\video_core\gpu_logging\gpu_logging.lib
-[759/1801] Linking CXX static library src\dynarmic\src\dynarmic\dynarmic.lib
-[760/1801] Linking CXX static library src\network\network.lib
-[761/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\var_alloc.cpp.obj
-[762/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\glsl_emit_context.cpp.obj
-[763/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\frontend\input_converter.cpp.obj
-[764/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\frontend\motion_input.cpp.obj
-[765/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\frontend\emulated_devices.cpp.obj
-[766/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\frontend\emulated_console.cpp.obj
-[767/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\hidbus\hidbus_base.cpp.obj
-[768/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\frontend\input_interpreter.cpp.obj
-[769/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\frontend\emulated_controller.cpp.obj
-[770/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\irsensor\ir_led_processor.cpp.obj
-[771/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\hidbus\starlink.cpp.obj
-[772/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\hidbus\ringcon.cpp.obj
-[773/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\hidbus\stubbed.cpp.obj
-[774/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\irsensor\processor_base.cpp.obj
-[775/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\irsensor\tera_plugin_processor.cpp.obj
-[776/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\irsensor\pointing_processor.cpp.obj
-[777/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\irsensor\clustering_processor.cpp.obj
-[778/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\irsensor\image_transfer_processor.cpp.obj
-[779/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_button_handler.cpp.obj
-[780/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_battery_handler.cpp.obj
-[781/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\irsensor\moment_processor.cpp.obj
-[782/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_ir_sensor_handler.cpp.obj
-[783/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_led_handler.cpp.obj
-[784/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_mcu_handler.cpp.obj
-[785/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_pad.cpp.obj
-[786/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_nfc_handler.cpp.obj
-[787/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_palma_handler.cpp.obj
-[788/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_pad_holder.cpp.obj
-[789/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_properties_handler.cpp.obj
-[790/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_sixaxis_handler.cpp.obj
-[791/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\digitizer\digitizer.cpp.obj
-[792/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_vibration_handler.cpp.obj
-[793/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\debug_pad\debug_pad.cpp.obj
-[794/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\keyboard\keyboard.cpp.obj
-[795/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\mouse\debug_mouse.cpp.obj
-[796/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\mouse\mouse.cpp.obj
-[797/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\npad\npad_data.cpp.obj
-[798/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\npad\npad.cpp.obj
-[799/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\npad\npad_resource.cpp.obj
-[800/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\npad\npad_vibration.cpp.obj
-[801/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\six_axis\console_six_axis.cpp.obj
-[802/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\palma\palma.cpp.obj
-[803/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\system_buttons\sleep_button.cpp.obj
-[804/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\system_buttons\capture_button.cpp.obj
-[805/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\six_axis\seven_six_axis.cpp.obj
-[806/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\six_axis\six_axis.cpp.obj
-[807/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\touch_screen\gesture_handler.cpp.obj
-[808/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\touch_screen\gesture.cpp.obj
-[809/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\system_buttons\home_button.cpp.obj
-[810/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\touch_screen\touch_screen.cpp.obj
-[811/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\unique_pad\unique_pad.cpp.obj
-[812/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\touch_screen\touch_screen_driver.cpp.obj
-[813/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\touch_screen\touch_screen_resource.cpp.obj
-[814/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\vibration\vibration_base.cpp.obj
-[815/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\vibration\gc_vibration_device.cpp.obj
-[816/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\vibration\n64_vibration_device.cpp.obj
-[817/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\controller_base.cpp.obj
-[818/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\vibration\vibration_device.cpp.obj
-[819/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\applet_resource.cpp.obj
-[820/1801] Linking CXX static library src\shader_recompiler\shader_recompiler.lib
-[821/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\shared_memory_holder.cpp.obj
-[822/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\hid_firmware_settings.cpp.obj
-[823/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\hid_core.cpp.obj
-[824/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\compatible_formats.cpp.obj
-[825/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\cdma_pusher.cpp.obj
-[826/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resource_manager.cpp.obj
-[827/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\control\channel_state_cache.cpp.obj
-[828/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\control\channel_state.cpp.obj
-[829/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\buffer_cache\buffer_cache.cpp.obj
-[830/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\dirty_flags.cpp.obj
-[831/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\control\scheduler.cpp.obj
-[832/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\engines\sw_blitter\blitter.cpp.obj
-[833/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\dma_pusher.cpp.obj
-[834/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\engines\draw_manager.cpp.obj
-[835/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\engines\engine_upload.cpp.obj
-[836/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\engines\kepler_compute.cpp.obj
-[837/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\engines\fermi_2d.cpp.obj
-[838/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\engines\kepler_memory.cpp.obj
-[839/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\framebuffer_config.cpp.obj
-[840/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\fsr.cpp.obj
-[841/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\engines\maxwell_3d.cpp.obj
-[842/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\engines\maxwell_dma.cpp.obj
-[843/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\engines\sw_blitter\converter.cpp.obj
-[844/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\engines\puller.cpp.obj
-[845/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\host1x\codecs\decoder.cpp.obj
-[846/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\host1x\codecs\vp8.cpp.obj
-[847/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\host1x\codecs\vp9.cpp.obj
-[848/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\host1x\ffmpeg.cpp.obj
-[849/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\host1x\codecs\h264.cpp.obj
-[850/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\host1x\syncpoint_manager.cpp.obj
-[851/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\host1x\control.cpp.obj
-[852/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\host1x\host1x.cpp.obj
-[853/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\host1x\gpu_device_memory_manager.cpp.obj
-[854/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\host1x\nvdec.cpp.obj
-[855/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\frame_trace.cpp.obj
-[856/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\host1x\vic.cpp.obj
-[857/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_base.cpp.obj
-[858/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\gpu_thread.cpp.obj
-[859/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\macro.cpp.obj
-[860/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\memory_manager.cpp.obj
-[861/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\gpu.cpp.obj
-[862/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_null\null_rasterizer.cpp.obj
-[863/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_null\renderer_null.cpp.obj
-[864/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_vulkan\vk_state_tracker.cpp.obj
-[865/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_vulkan\fixed_pipeline_state.cpp.obj
-[866/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\shader_notify.cpp.obj
-[867/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\shader_environment.cpp.obj
-[868/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\surface.cpp.obj
-[869/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\shader_cache.cpp.obj
-[870/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\texture_cache\decode_bc.cpp.obj
-[871/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\texture_cache\accelerated_swizzle.cpp.obj
-[872/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\texture_cache\format_lookup_table.cpp.obj
-[873/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\texture_cache\formatter.cpp.obj
-[874/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\texture_cache\image_view_base.cpp.obj
-[875/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\texture_cache\image_info.cpp.obj
-[876/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\texture_cache\image_base.cpp.obj
-[877/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\textures\etc2.cpp.obj
-[878/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\textures\bcn.cpp.obj
-[879/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\textures\astc.cpp.obj
-[880/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\texture_cache\image_view_info.cpp.obj
-[881/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\texture_cache\util.cpp.obj
-[882/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\texture_cache\texture_cache.cpp.obj
-[883/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\textures\decoders.cpp.obj
-[884/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\textures\workers.cpp.obj
-[885/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\textures\texture.cpp.obj
-[886/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\transform_feedback.cpp.obj
-[887/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_opengl\present\filters.cpp.obj
-[888/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_opengl\present\fxaa.cpp.obj
-[889/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_opengl\present\fsr.cpp.obj
-[890/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_opengl\present\smaa.cpp.obj
-[891/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_opengl\blit_image.cpp.obj
-[892/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_opengl\present\window_adapt_pass.cpp.obj
-[893/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_opengl\gl_blit_screen.cpp.obj
-[894/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_opengl\present\layer.cpp.obj
-[895/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\video_core.cpp.obj
-[896/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_opengl\gl_device.cpp.obj
-[897/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_opengl\gl_buffer_cache.cpp.obj
-[898/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_opengl\gl_buffer_cache_base.cpp.obj
-[899/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_opengl\gl_compute_pipeline.cpp.obj
-[900/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_opengl\gl_fence_manager.cpp.obj
 [901/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_opengl\gl_shader_manager.cpp.obj
 [902/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_opengl\gl_resource_manager.cpp.obj
 [903/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_opengl\gl_shader_util.cpp.obj
@@ -298,3 +52,249 @@ D:\a\HueHue\HueHue\src\video_core\renderer_opengl\gl_shader_cache.cpp(709): warn
 [950/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_d3d12\d3d12_rasterizer_state.cpp.obj
 [951/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_d3d12\d3d12_rasterizer.cpp.obj
 [952/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_d3d12\d3d12_swapchain.cpp.obj
+[953/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_d3d12\d3d12_astc_gpu_decoder.cpp.obj
+[954/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_d3d12\d3d12_depth_stencil_transfer.cpp.obj
+[955/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_d3d12\d3d12_image_copy_blit.cpp.obj
+[956/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_d3d12\d3d12_framebuffer.cpp.obj
+[957/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_d3d12\d3d12_image_transfer.cpp.obj
+[958/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_d3d12\d3d12_transfer_buffer_pool.cpp.obj
+[959/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_d3d12\d3d12_texture_cache.cpp.obj
+[960/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_d3d12\d3d12_image_view.cpp.obj
+[961/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_d3d12\d3d12_texture_formats.cpp.obj
+[962/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_d3d12\d3d12_sampler.cpp.obj
+[963/1801] Linking CXX static library src\hid_core\hid_core.lib
+[964/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\adsp\adsp.cpp.obj
+[965/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\adsp\apps\opus\opus_decode_object.cpp.obj
+[966/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\adsp\apps\audio_renderer\audio_renderer.cpp.obj
+[967/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\adsp\apps\opus\opus_multistream_decode_object.cpp.obj
+[968/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\adsp\apps\opus\opus_decoder.cpp.obj
+[969/1801] Building CXX object src\video_core\CMakeFiles\video_core.dir\renderer_d3d12\renderer_d3d12.cpp.obj
+[970/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\adsp\apps\audio_renderer\command_list_processor.cpp.obj
+[971/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\audio_core.cpp.obj
+[972/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\audio_event.cpp.obj
+[973/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\audio_render_manager.cpp.obj
+[974/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\audio_manager.cpp.obj
+[975/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\audio_out_manager.cpp.obj
+[976/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\audio_in_manager.cpp.obj
+[977/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\in\audio_in.cpp.obj
+[978/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\opus\hardware_opus.cpp.obj
+[979/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\in\audio_in_system.cpp.obj
+[980/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\opus\decoder_manager.cpp.obj
+[981/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\device\device_session.cpp.obj
+[982/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\opus\decoder.cpp.obj
+[983/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\audio_device.cpp.obj
+[984/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\out\audio_out.cpp.obj
+[985/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\behavior\behavior_info.cpp.obj
+[986/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\out\audio_out_system.cpp.obj
+[987/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\audio_renderer.cpp.obj
+[988/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\behavior\info_updater.cpp.obj
+[989/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\data_source\adpcm.cpp.obj
+[990/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\data_source\decode.cpp.obj
+[991/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\data_source\pcm_int16.cpp.obj
+[992/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\data_source\pcm_float.cpp.obj
+[993/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\effect\aux_.cpp.obj
+[994/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\effect\capture.cpp.obj
+[995/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\effect\biquad_filter.cpp.obj
+[996/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\effect\compressor.cpp.obj
+[997/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\effect\delay.cpp.obj
+[998/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\effect\i3dl2_reverb.cpp.obj
+[999/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\mix\clear_mix.cpp.obj
+[1000/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\effect\light_limiter.cpp.obj
+[1001/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\mix\copy_mix.cpp.obj
+[1002/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\effect\reverb.cpp.obj
+[1003/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\mix\depop_for_mix_buffers.cpp.obj
+[1004/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\effect\multi_tap_biquad_filter.cpp.obj
+[1005/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\mix\mix_ramp.cpp.obj
+[1006/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\mix\depop_prepare.cpp.obj
+[1007/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\mix\mix_ramp_grouped.cpp.obj
+[1008/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\mix\mix.cpp.obj
+[1009/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\mix\volume.cpp.obj
+[1010/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\mix\volume_ramp.cpp.obj
+[1011/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\resample\downmix_6ch_to_2ch.cpp.obj
+[1012/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\performance\performance.cpp.obj
+[1013/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\resample\resample.cpp.obj
+[1014/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\resample\upsample.cpp.obj
+[1015/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\sink\device.cpp.obj
+[1016/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\command_generator.cpp.obj
+[1017/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\sink\circular_buffer.cpp.obj
+[1018/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\command_buffer.cpp.obj
+[1019/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\command\command_processing_time_estimator.cpp.obj
+[1020/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\effect\aux_.cpp.obj
+[1021/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\effect\biquad_filter.cpp.obj
+[1022/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\effect\buffer_mixer.cpp.obj
+[1023/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\effect\capture.cpp.obj
+[1024/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\effect\compressor.cpp.obj
+[1025/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\effect\delay.cpp.obj
+[1026/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\effect\effect_context.cpp.obj
+[1027/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\effect\i3dl2.cpp.obj
+[1028/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\effect\light_limiter.cpp.obj
+[1029/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\effect\reverb.cpp.obj
+[1030/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\mix\mix_context.cpp.obj
+[1031/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\mix\mix_info.cpp.obj
+[1032/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\nodes\edge_matrix.cpp.obj
+[1033/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\memory\memory_pool_info.cpp.obj
+[1034/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\nodes\node_states.cpp.obj
+[1035/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\performance\detail_aspect.cpp.obj
+[1036/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\performance\entry_aspect.cpp.obj
+[1037/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\performance\performance_manager.cpp.obj
+[1038/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\memory\pool_mapper.cpp.obj
+[1039/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\sink\device_sink_info.cpp.obj
+[1040/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\sink\sink_context.cpp.obj
+[1041/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\sink\sink_info_base.cpp.obj
+[1042/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\sink\circular_buffer_sink_info.cpp.obj
+[1043/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\splitter\splitter_context.cpp.obj
+[1044/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\splitter\splitter_info.cpp.obj
+[1045/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\splitter\splitter_destinations_data.cpp.obj
+[1046/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\system_manager.cpp.obj
+[1047/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\upsampler\upsampler_manager.cpp.obj
+[1048/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\voice\voice_info.cpp.obj
+[1049/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\voice\voice_context.cpp.obj
+[1050/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\common\tuklib_physmem.c.obj
+[1051/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\renderer\system.cpp.obj
+[1052/1801] Linking CXX static library src\video_core\video_core.lib
+[1053/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\check\check.c.obj
+[1054/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\block_util.c.obj
+[1055/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\common.c.obj
+[1056/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\easy_preset.c.obj
+[1057/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\filter_common.c.obj
+[1058/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\hardware_physmem.c.obj
+[1059/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\index.c.obj
+[1060/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\stream_flags_common.c.obj
+[1061/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\string_conversion.c.obj
+[1062/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\vli_size.c.obj
+[1063/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\check\crc64_fast.c.obj
+[1064/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\check\crc32_fast.c.obj
+[1065/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\alone_encoder.c.obj
+[1066/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\block_buffer_encoder.c.obj
+[1067/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\check\sha256.c.obj
+[1068/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\sink\sink_details.cpp.obj
+[1069/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\sink\xaudio2_sink.cpp.obj
+[1070/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\block_encoder.c.obj
+[1071/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\easy_buffer_encoder.c.obj
+[1072/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\block_header_encoder.c.obj
+[1073/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\easy_encoder.c.obj
+[1074/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\easy_encoder_memusage.c.obj
+[1075/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\filter_buffer_encoder.c.obj
+[1076/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\filter_encoder.c.obj
+[1077/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\filter_flags_encoder.c.obj
+[1078/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\index_encoder.c.obj
+[1079/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\stream_buffer_encoder.c.obj
+[1080/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\stream_flags_encoder.c.obj
+[1081/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\stream_encoder.c.obj
+[1082/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\vli_encoder.c.obj
+[1083/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\simple_encoder.c.obj
+[1084/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\lz\lz_encoder.c.obj
+[1085/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\lzma\lzma_encoder.c.obj
+[1086/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\lz\lz_encoder_mf.c.obj
+[1087/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\lzma\lzma_encoder_optimum_fast.c.obj
+[1088/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\rangecoder\price_table.c.obj
+[1089/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\lzma\fastpos_table.c.obj
+[1090/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\lzma\lzma_encoder_optimum_normal.c.obj
+[1091/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\lzma\lzma2_encoder.c.obj
+[1092/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\delta\delta_encoder.c.obj
+[1093/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\alone_decoder.c.obj
+[1094/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\auto_decoder.c.obj
+[1095/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\block_buffer_decoder.c.obj
+[1096/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\block_header_decoder.c.obj
+[1097/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\block_decoder.c.obj
+[1098/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\easy_decoder_memusage.c.obj
+[1099/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\filter_buffer_decoder.c.obj
+[1100/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\filter_decoder.c.obj
+[1101/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\file_info.c.obj
+[1102/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\filter_flags_decoder.c.obj
+[1103/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\index_decoder.c.obj
+[1104/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\index_hash.c.obj
+[1105/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\stream_buffer_decoder.c.obj
+[1106/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\stream_decoder.c.obj
+[1107/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\stream_flags_decoder.c.obj
+[1108/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\common\vli_decoder.c.obj
+[1109/1801] Building CXX object src\audio_core\CMakeFiles\audio_core.dir\sink\sink_stream.cpp.obj
+[1110/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\simple_decoder.c.obj
+[1111/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\lz\lz_decoder.c.obj
+[1112/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\delta\delta_decoder.c.obj
+[1113/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\lzma\lzma_encoder_presets.c.obj
+[1114/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\delta\delta_common.c.obj
+[1115/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\lzma\lzma2_decoder.c.obj
+[1116/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\x86.c.obj
+[1117/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\simple_coder.c.obj
+[1118/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\arm.c.obj
+[1119/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\armthumb.c.obj
+[1120/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\arm64.c.obj
+[1121/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\powerpc.c.obj
+[1122/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\sparc.c.obj
+[1123/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\ia64.c.obj
+[1124/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\riscv.c.obj
+[1125/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\lzma\lzma_decoder.c.obj
+[1126/1801] Building CXX object src\core\CMakeFiles\core.dir\constants.cpp.obj
+[1127/1801] Building CXX object src\core\CMakeFiles\core.dir\arm\exclusive_monitor.cpp.obj
+[1128/1801] Building CXX object src\core\CMakeFiles\core.dir\arm\symbols.cpp.obj
+[1129/1801] Building CXX object src\core\CMakeFiles\core.dir\arm\arm_interface.cpp.obj
+[1130/1801] Building CXX object src\core\CMakeFiles\core.dir\arm\debug.cpp.obj
+[1131/1801] Building CXX object src\core\CMakeFiles\core.dir\game_settings.cpp.obj
+[1132/1801] Building CXX object src\core\CMakeFiles\core.dir\crypto\aes_util.cpp.obj
+[1133/1801] Building CXX object src\core\CMakeFiles\core.dir\cpu_manager.cpp.obj
+[1134/1801] Building CXX object src\core\CMakeFiles\core.dir\core_timing.cpp.obj
+[1135/1801] Building CXX object src\core\CMakeFiles\core.dir\crypto\ctr_encryption_layer.cpp.obj
+[1136/1801] Building CXX object src\core\CMakeFiles\core.dir\crypto\encryption_layer.cpp.obj
+[1137/1801] Building CXX object src\core\CMakeFiles\core.dir\launch_params.cpp.obj
+Warning static builds of getopt violate the Lesser GNU Public License
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\optional(166): warning C4267: '=': conversion from 'size_t' to '_Ty', possible loss of data
+        with
+        [
+            _Ty=int
+        ]
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\optional(166): note: the template instantiation context (the oldest one first) is
+D:\a\HueHue\HueHue\src\core\launch_params.cpp(103): note: see reference to function template instantiation 'std::optional<int> &std::optional<int>::operator =<const _Ty&,0>(_Ty2) noexcept' being compiled
+        with
+        [
+            _Ty=size_t,
+            _Ty2=const size_t &
+        ]
+D:\a\HueHue\HueHue\src\core\launch_params.cpp(103): note: see the first reference to 'std::optional<int>::operator =' in 'Core::ParseLaunchParams'
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\optional(312): note: see reference to function template instantiation 'void std::_Optional_construct_base<_Ty>::_Assign<const unsigned __int64&>(_Ty2) noexcept' being compiled
+        with
+        [
+            _Ty=int,
+            _Ty2=const size_t &
+        ]
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\xutility(462): warning C4267: 'initializing': conversion from 'size_t' to '_Ty', possible loss of data
+        with
+        [
+            _Ty=int
+        ]
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\xutility(462): note: the template instantiation context (the oldest one first) is
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\optional(312): note: see reference to function template instantiation 'void std::_Optional_construct_base<_Ty>::_Assign<const unsigned __int64&>(_Ty2) noexcept' being compiled
+        with
+        [
+            _Ty=int,
+            _Ty2=const size_t &
+        ]
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\optional(168): note: see reference to function template instantiation '_Ty &std::_Optional_construct_base<_Ty>::_Construct<const unsigned __int64&>(const unsigned __int64 &) noexcept' being compiled
+        with
+        [
+            _Ty=int
+        ]
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\optional(156): note: see reference to function template instantiation 'void std::_Construct_in_place<int,const _Ty&>(int &,const _Ty &) noexcept' being compiled
+        with
+        [
+            _Ty=size_t
+        ]
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\xutility(472): note: see reference to function template instantiation '_Ty *std::construct_at<_Ty,const unsigned __int64&>(_Ty *const ,const unsigned __int64 &) noexcept(<expr>)' being compiled
+        with
+        [
+            _Ty=int
+        ]
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\xutility(476): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\xutility(463): warning C4267: 'initializing': conversion from 'size_t' to '_Ty', possible loss of data
+        with
+        [
+            _Ty=int
+        ]
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\xutility(463): note: the template instantiation context (the oldest one first) is
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\optional(156): note: see reference to function template instantiation 'void std::_Construct_in_place<int,const _Ty&>(int &,const _Ty &) noexcept' being compiled
+        with
+        [
+            _Ty=size_t
+        ]
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\xutility(472): note: see reference to function template instantiation '_Ty *std::construct_at<_Ty,const unsigned __int64&>(_Ty *const ,const unsigned __int64 &) noexcept' being compiled
+        with
