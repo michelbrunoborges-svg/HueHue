@@ -137,6 +137,20 @@ std::uint32_t CountGames(const Manifest& manifest) {
     return static_cast<std::uint32_t>(titles.size());
 }
 
+constexpr std::wstring_view ConfigToken = L"ns-huehue-config";
+
+/// 0.4.7: the settings' own folder (Pasta das configuracoes), picked apart from the saves'.
+std::optional<StorageFolder> ConfigFolder() {
+    try {
+        auto list = StorageApplicationPermissions::FutureAccessList();
+        if (!list.ContainsItem(winrt::hstring{ConfigToken})) return std::nullopt;
+        return list.GetFolderAsync(winrt::hstring{ConfigToken}).get();
+    } catch (const winrt::hresult_error& e) {
+        LOG_WARNING(Frontend, "settings: the backup folder cannot be opened: {}", winrt::to_string(e.message()));
+        return std::nullopt;
+    }
+}
+
 std::optional<StorageFolder> PickedFolder() {
     try {
         auto list = StorageApplicationPermissions::FutureAccessList();
@@ -292,6 +306,25 @@ bool SaveSettings(const Settings& settings) {
         << settings.last_time << "\nfiles\t" << settings.last_files << "\ngames\t" << settings.last_games
         << "\nfolder\t" << winrt::to_string(settings.folder) << '\n';
     return WriteFileAtomically(file, out.str());
+}
+
+bool HasConfigFolder() {
+    try {
+        return StorageApplicationPermissions::FutureAccessList().ContainsItem(winrt::hstring{ConfigToken});
+    } catch (...) { return false; }
+}
+
+std::wstring ConfigFolderPath() {
+    try {
+        for (const auto& entry : StorageApplicationPermissions::FutureAccessList().Entries())
+            if (std::wstring_view{entry.Token} == ConfigToken) return std::wstring{entry.Metadata};
+    } catch (...) {}
+    return {};
+}
+
+void RememberConfigFolder(const StorageFolder& folder) {
+    StorageApplicationPermissions::FutureAccessList().AddOrReplace(winrt::hstring{ConfigToken}, folder, folder.Path());
+    LOG_INFO(Frontend, "settings: backup folder {}", winrt::to_string(folder.Path()));
 }
 
 bool HasFolder() {
@@ -559,8 +592,8 @@ std::string Unescape(std::string_view text) {
 
 Result BackupSettings() {
     Result result;
-    if (!HasFolder()) { result.outcome = Outcome::NoFolder; return result; }
-    const auto picked = PickedFolder();
+    if (!HasConfigFolder()) { result.outcome = Outcome::NoFolder; return result; }
+    const auto picked = ConfigFolder();
     if (!picked) { result.outcome = Outcome::FolderUnavailable; return result; }
     try {
         const auto root = *ChildFolder(*picked, ConfigFolderName, true);
@@ -610,8 +643,8 @@ Result BackupSettings() {
 
 Result RestoreSettings() {
     Result result;
-    if (!HasFolder()) { result.outcome = Outcome::NoFolder; return result; }
-    const auto picked = PickedFolder();
+    if (!HasConfigFolder()) { result.outcome = Outcome::NoFolder; return result; }
+    const auto picked = ConfigFolder();
     if (!picked) { result.outcome = Outcome::FolderUnavailable; return result; }
     try {
         const auto root = ChildFolder(*picked, ConfigFolderName, false);

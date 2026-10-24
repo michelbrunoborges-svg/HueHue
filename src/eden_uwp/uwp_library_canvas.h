@@ -64,6 +64,9 @@ struct SavesView {
     bool shaders_folder{};
     std::wstring shaders_path;
     bool shaders_sync{};
+    // 0.4.7: the settings' own folder.
+    bool config_folder{};
+    std::wstring config_path;
 };
 /// NS HUEHUE Configuracoes > Sistema > Temas (theme.h): the cards, the buttons and the preview.
 struct ThemesView {

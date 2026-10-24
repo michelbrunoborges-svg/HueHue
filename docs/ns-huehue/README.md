@@ -325,5 +325,15 @@ Entrou só o que tem efeito real no nosso core; nada foi duplicado.
   `NSHueHue-<versão>.appx` e `NSHueHue-<versão>.cer` (o VCLibs da Microsoft mantém o nome). Só o
   nome do arquivo muda: a identidade do pacote (HueHue.HueHueSwitch, CN=HueHueSwitch) continua a
   mesma, então instalar por cima mantém saves, chaves e firmware.
-- Créditos: a linha do Jadyx não corta mais o texto.
+- Créditos: a linha do Jadyx não corta mais o texto; A sobre Créditos não abre mais o Sistema.
+- **Revisão das configurações** (retorno do teste da 0.4.5: "muito desarmonizada"):
+  - **HD externo** (antes "Saves e shaders (USB)"): três grupos com título, cada um com a sua
+    pasta: Saves dos jogos (pasta, backup, restaurar), **Configurações (pasta própria, nova)**,
+    copiar, restaurar) e Cache de shaders (pasta, copiar, trazer, sincronizar). Ações sem pasta
+    ficam apagadas; o aviso do que acabou de acontecer ocupa o lugar da dica.
+  - **Desempenho e gráficos** em grupos: Geral (perfil, velocidade, firmware), Imagem, Quadros,
+    Shaders, Compatibilidade, Memória e texturas, Avançado (testes); sem o ⚙. "Shaders" passou a
+    "Compilação de shaders" e "Memória" a "Modo de memória".
+  - **Sistema** na ordem: nome, temas, idiomas, região, volume, modo avião, estatísticas, sessões
+    Pulse, mods adultos, limpar cache.
 - Versão do pacote: **0.4.7.<build>**.

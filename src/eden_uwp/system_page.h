@@ -18,7 +18,9 @@
 namespace EdenXbox {
 
 struct SystemPage {
-    enum Row : std::size_t { UserName, Theme, InterfaceLanguage, GameLanguage, Region, Airplane, AdultMods, PerformanceStats, Volume, PulseSessions, ClearCache, RowCount };
+    // 0.4.7: grouped as the player reads them: who and how it looks, the console (language, region,
+    // sound, network), then the games' extras, then upkeep.
+    enum Row : std::size_t { UserName, Theme, InterfaceLanguage, GameLanguage, Region, Volume, Airplane, PerformanceStats, PulseSessions, AdultMods, ClearCache, RowCount };
 
     bool open{};
     std::size_t selected{};

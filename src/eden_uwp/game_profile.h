@@ -27,6 +27,7 @@
 #include <sstream>
 #include <span>
 #include <string>
+#include <utility>
 
 #include <winrt/Windows.Storage.h>
 
@@ -180,6 +181,32 @@ enum class TuningRow : std::uint8_t {
 inline constexpr std::size_t TuningRowCount = 29;
 /// Rows the page shows at once (it scrolls past them).
 inline constexpr std::size_t TuningRowsVisible = 10;
+
+/// 0.4.7: the page's order, in groups under a title (TuningRow keeps the order of the file and the
+/// hints). The cursor walks this order.
+inline constexpr std::array<TuningRow, TuningRowCount> TuningOrder{
+    // Geral
+    TuningRow::Profile, TuningRow::SpeedLimit, TuningRow::Firmware,
+    // Imagem
+    TuningRow::Renderer, TuningRow::GlShaderPath, TuningRow::Resolution, TuningRow::Upscaling,
+    TuningRow::Anisotropy, TuningRow::AspectRatio,
+    // Quadros
+    TuningRow::Fps, TuningRow::FpsManual, TuningRow::FrameSkip,
+    // Shaders
+    TuningRow::Shaders, TuningRow::PsoDefer, TuningRow::CriticalVertices, TuningRow::PsoEviction,
+    // Compatibilidade
+    TuningRow::GpuAccuracy, TuningRow::CpuAccuracy, TuningRow::ReactiveFlushing, TuningRow::AsyncGpu,
+    TuningRow::VideoDecode,
+    // Memoria e texturas
+    TuningRow::Memory, TuningRow::Astc, TuningRow::AstcOpaque, TuningRow::Fastmem, TuningRow::JitCache,
+    // Avancado
+    TuningRow::RecordThread, TuningRow::PresentThread, TuningRow::IdleSpin};
+/// Where each group starts in TuningOrder, and its title.
+inline constexpr std::array<std::pair<std::size_t, I18n::Text>, 7> TuningGroups{{
+    {0, I18n::Text::NsTuningGroupGeneral},   {3, I18n::Text::NsTuningGroupImage},
+    {9, I18n::Text::NsTuningGroupFrames},    {12, I18n::Text::NsTuningGroupShaders},
+    {16, I18n::Text::NsTuningGroupCompat},   {21, I18n::Text::NsTuningGroupMemory},
+    {26, I18n::Text::NsTuningGroupAdvanced}}};
 
 /// Left/Right (back = Left) on a row steps its value; big (LB/RB) moves the manual FPS by 10.
 inline void StepTuning(GameTuning& tuning, TuningRow row, bool back, bool big = false) {

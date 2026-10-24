@@ -895,38 +895,57 @@ private:
                       view.online_page && i == view.online_row);
             Text(Tr(T::NsOnlineHint), left, 690, 21, Palette::TextSecondary, width, 160, false, true);
         } else if (!panel.files && section == HomeSaves && view.saves) {
-            // Saves (USB): the folder on the external drive, the automatic copy, copy now, restore.
+            // HD externo: the saves, the settings and the shader caches, each with its own folder.
             const auto& saves = *view.saves;
-            const std::array<std::pair<T, std::wstring>, 9> rows{{
-                {T::NsSavesFolder, !saves.has_folder ? std::wstring{Tr(T::NsSavesPick)}
-                                   : saves.folder.empty() ? std::wstring{Tr(T::UsbFolder)} : saves.folder},
+            const auto folder_value = [&](bool has, const std::wstring& path) {
+                return !has ? std::wstring{Tr(T::NsSavesPick)} : path.empty() ? std::wstring{Tr(T::UsbFolder)} : path;
+            };
+            const std::array<std::pair<T, std::wstring>, 10> rows{{
+                {T::NsSavesFolder, folder_value(saves.has_folder, saves.folder)},
                 {T::NsSavesBackupNow, saves.last_time
                                           ? I18n::Format(T::NsSavesLast, {SaveBackup::FormatTime(saves.last_time),
                                                                           std::to_wstring(saves.last_games)})
                                           : std::wstring{Tr(T::NsSavesNever)}},
                 {T::NsSavesRestore, L"›"},
+                {T::NsConfigFolder, folder_value(saves.config_folder, saves.config_path)},
                 {T::NsConfigBackup, L"›"},
                 {T::NsConfigRestore, L"›"},
-                {T::NsShadersFolder, !saves.shaders_folder ? std::wstring{Tr(T::NsSavesPick)}
-                                     : saves.shaders_path.empty() ? std::wstring{Tr(T::UsbFolder)} : saves.shaders_path},
+                {T::NsShadersFolder, folder_value(saves.shaders_folder, saves.shaders_path)},
                 {T::NsShadersBackup, L"›"},
                 {T::NsShadersRestore, L"›"},
                 {T::NsShadersSync, L"‹  " + std::wstring{Tr(saves.shaders_sync ? T::NsOn : T::NsOff)} + L"  ›"}}};
-            // Nine rows of 56 (356 to 860), then the hint, the progress and the notice.
-            for (size_t i = 0; i < rows.size(); ++i)
-                NsRow(left, 356 + static_cast<float>(i) * 56, width, Tr(rows[i].first), rows[i].second,
-                      saves.page && i == saves.row, 24, 56);
-            static constexpr std::array<T, 9> hints{T::NsSavesHintFolder, T::NsSavesHintBackup, T::NsSavesHintRestore,
-                                                    T::NsConfigHintBackup, T::NsConfigHintRestore, T::NsShadersHintFolder,
-                                                    T::NsShadersHintBackup, T::NsShadersHintRestore, T::NsShadersHintSync};
-            Text(Tr(saves.page ? hints[std::min<size_t>(saves.row, 8)] : T::NsSavesOverview), left, 872, 20,
-                 Palette::TextSecondary, width, 56, false, true);
-            // (The overview fits in two lines too.)
+            // Three groups (Saves, Configuracoes, Shaders), each under its title and with its own
+            // folder first: rows of 42, 46 apart, titles of 34 (348 to 878).
+            static constexpr std::array<std::pair<size_t, T>, 3> groups{{
+                {0, T::NsGroupSaves}, {3, T::NsGroupConfig}, {6, T::NsGroupShaders}}};
+            float y = 348;
+            for (size_t i = 0; i < rows.size(); ++i) {
+                for (const auto& [first, title] : groups) {
+                    if (first != i) continue;
+                    Text(Tr(title), left, y + 4, 19, Palette::Accent, width, 28, true);
+                    y += 34;
+                }
+                const bool muted = (i == 1 || i == 2) ? !saves.has_folder
+                                 : (i == 4 || i == 5) ? !saves.config_folder
+                                 : (i >= 7) ? !saves.shaders_folder : false;
+                NsRow(left, y, width, Tr(rows[i].first), rows[i].second, saves.page && i == saves.row, 22, 40);
+                if (muted) NsFill(left + 1, y, width - 2, 39, 0, Palette::Backdrop, 0.45f);
+                y += 44;
+            }
+            static constexpr std::array<T, 10> hints{T::NsSavesHintFolder, T::NsSavesHintBackup, T::NsSavesHintRestore,
+                                                     T::NsConfigHintFolder, T::NsConfigHintBackup, T::NsConfigHintRestore,
+                                                     T::NsShadersHintFolder, T::NsShadersHintBackup, T::NsShadersHintRestore,
+                                                     T::NsShadersHintSync};
+            // Under the list: what just happened (the notice) or, when nothing did, the row's hint.
+            if (!saves.notice.empty())
+                Text(saves.notice, left, y + 6, 21, Palette::Warning, width, 52, false, true);
+            else
+                Text(Tr(saves.page ? hints[std::min<size_t>(saves.row, 9)] : T::NsSavesOverview), left, y + 6, 20,
+                     Palette::TextSecondary, width, 52, false, true);
             if (saves.busy)
                 Text(I18n::Format(saves.restoring ? T::NsSavesRestoring : T::NsSavesCopying,
                                   {std::to_wstring(saves.done), std::to_wstring(saves.total)}),
-                     left, 930, 22, Palette::Accent, width, 34);
-            if (!saves.notice.empty()) Text(saves.notice, left, saves.busy ? 964 : 932, 21, Palette::Warning, width, 60, false, true);
+                     left, y + 60, 22, Palette::Accent, width, 30);
         } else if (!panel.files) {
             // A preview of the section (its two main values); A on the section opens it.
             std::array<std::pair<std::wstring, std::wstring>, 2> rows;
@@ -1278,25 +1297,38 @@ private:
                                                : tuning.idle_spin == IdleSpin::Fixed ? T::NsSpinFixed : T::NsSpinAdaptive)}},
             {T::NsAdvJit, tuning.jit_cache == JitCache::Small ? L"64 MiB" : tuning.jit_cache == JitCache::Large ? L"256 MiB"
                                                                                                          : L"128 MiB"}}};
-        // Ten rows of 52 under the title, then the hint, all inside the panel (286 to 982); the
-        // list scrolls to keep the selected row on screen.
+        // 0.4.7: the rows in the page's order (TuningOrder), in groups under their titles. Ten lines
+        // of 52 under the game's name, then the hint, all inside the panel (286 to 982); the list
+        // scrolls to keep the selected row (and its group's title, when it is the first) on screen.
+        struct Line { bool title; size_t index; }; // a group title (TuningGroups) or a position in TuningOrder
+        std::vector<Line> lines;
+        size_t selected_line = 0;
+        for (size_t position = 0; position < TuningOrder.size(); ++position) {
+            for (size_t g = 0; g < TuningGroups.size(); ++g)
+                if (TuningGroups[g].first == position) lines.push_back({true, g});
+            if (position == selected) selected_line = lines.size();
+            lines.push_back({false, position});
+        }
         constexpr float top = 392, row = 52;
-        const size_t first = selected < TuningRowsVisible ? 0 : selected + 1 - TuningRowsVisible;
-        const size_t advanced = static_cast<size_t>(TuningRow::SpeedLimit);
-        for (size_t i = first; i < std::min(rows.size(), first + TuningRowsVisible); ++i) {
+        size_t first = selected_line < TuningRowsVisible ? 0 : selected_line + 1 - TuningRowsVisible;
+        if (first > 0 && first == selected_line && lines[first - 1].title) --first;
+        for (size_t l = first; l < std::min(lines.size(), first + TuningRowsVisible); ++l) {
+            const float y = top + static_cast<float>(l - first) * row;
+            if (lines[l].title) {
+                Text(Tr(TuningGroups[lines[l].index].second), 445, y + 16, 19, Palette::Accent, 1030, 30, true);
+                continue;
+            }
+            const size_t i = static_cast<size_t>(TuningOrder[lines[l].index]);
             const bool muted = (i == static_cast<size_t>(TuningRow::FpsManual) && tuning.fps != FpsLimit::Manual) ||
                                (i == static_cast<size_t>(TuningRow::GlShaderPath) && tuning.renderer != GameRenderer::OpenGL) ||
                                (i == static_cast<size_t>(TuningRow::AstcOpaque) && tuning.astc != AstcMode::Gpu) ||
                                (i == static_cast<size_t>(TuningRow::CriticalVertices) && !tuning.pso_defer);
-            const float y = top + static_cast<float>(i - first) * row;
-            std::wstring label{Tr(rows[i].first)};
-            if (i >= advanced) label = L"⚙ " + label;
-            NsRow(441, y, 1038, label, L"‹  " + rows[i].second + L"  ›", i == selected, 24, row);
+            NsRow(441, y, 1038, Tr(rows[i].first), L"‹  " + rows[i].second + L"  ›", lines[l].index == selected, 24, row);
             if (muted) NsFill(442, y, 1036, row - 1, 0, Palette::Backdrop, 0.45f);
         }
         // Where the list is: rows above and below.
-        Text(std::to_wstring(selected + 1) + L" / " + std::to_wstring(rows.size()) +
-                 (first + TuningRowsVisible < rows.size() ? L"  ▼" : L"") + (first > 0 ? L"  ▲" : L""),
+        Text(std::to_wstring(selected + 1) + L" / " + std::to_wstring(TuningOrder.size()) +
+                 (first + TuningRowsVisible < lines.size() ? L"  ▼" : L"") + (first > 0 ? L"  ▲" : L""),
              1300, 330, 20, Palette::TextSecondary, 180, 32, false, false, false, true);
         static constexpr std::array<T, TuningRowCount> hints{
             T::NsHintProfile, T::NsHintRenderer, T::NsHintGlShaders, T::NsHintResolution, T::NsHintUpscaling,
@@ -1305,10 +1337,11 @@ private:
             T::NsHintSpeedLimit, T::NsHintPsoDefer, T::NsHintCriticalVertices, T::NsHintRecordThread, T::NsHintPresentThread,
             T::NsHintAsyncGpu, T::NsHintGpuAccuracy, T::NsHintCpuAccuracy, T::NsHintReactive, T::NsHintAstc, T::NsHintAstcOpaque,
             T::NsHintVideo, T::NsHintFastmem, T::NsHintPsoEviction, T::NsHintIdleSpin, T::NsHintJit};
-        Text(Tr(hints[std::min(selected, hints.size() - 1)]), 441, top + static_cast<float>(TuningRowsVisible) * row + 8, 19,
+        Text(Tr(hints[static_cast<size_t>(TuningOrder[std::min(selected, TuningOrder.size() - 1)])]), 441,
+             top + static_cast<float>(TuningRowsVisible) * row + 8, 19,
              Palette::TextSecondary, 1038, 60, false, true);
         if (!notice.empty()) NsToast(notice);
-        if (selected == static_cast<size_t>(TuningRow::FpsManual))
+        if (TuningOrder[std::min(selected, TuningOrder.size() - 1)] == TuningRow::FpsManual)
             NsFooter({{L'↔', Palette::Text, T::NsStepOne}, {L'±', Palette::Text, T::NsStepTen},
                       {L'B', Ns::Error, T::Back}});
         else
@@ -1625,8 +1658,8 @@ private:
         PageHeader(L::RowX, L::HeaderY, ConfigurationIcon::Language, Tr(T::SystemTitle), Tr(T::SystemSubtitle));
         static constexpr std::array<ConfigurationIcon, SystemPage::RowCount> icons{
             ConfigurationIcon::User, ConfigurationIcon::Settings, ConfigurationIcon::Language, ConfigurationIcon::Controller,
-            ConfigurationIcon::Region, ConfigurationIcon::Region, ConfigurationIcon::Mods, ConfigurationIcon::Settings,
-            ConfigurationIcon::Settings, ConfigurationIcon::Archive, ConfigurationIcon::Cache};
+            ConfigurationIcon::Region, ConfigurationIcon::Settings, ConfigurationIcon::Region, ConfigurationIcon::Settings,
+            ConfigurationIcon::Archive, ConfigurationIcon::Mods, ConfigurationIcon::Cache};
         for (size_t i = 0; i < SystemPage::RowCount; ++i) {
             const auto row = static_cast<SystemPage::Row>(i);
             const float y = L::RowTop + static_cast<float>(i) * L::RowStride;

@@ -913,6 +913,20 @@ enum class Text : std::uint16_t {
     NsCreditCnx,
     NsCreditGameBanana,
     NsCreditMesaUwp,
+    NsGroupSaves,
+    NsGroupConfig,
+    NsGroupShaders,
+    NsConfigFolder,
+    NsConfigHintFolder,
+    NsConfigNoFolder,
+    NsConfigFolderSet,
+    NsTuningGroupGeneral,
+    NsTuningGroupImage,
+    NsTuningGroupFrames,
+    NsTuningGroupShaders,
+    NsTuningGroupCompat,
+    NsTuningGroupMemory,
+    NsTuningGroupAdvanced,
     Count
 };
 inline constexpr std::size_t TextCount = static_cast<std::size_t>(Text::Count);

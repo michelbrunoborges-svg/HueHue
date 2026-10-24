@@ -80,11 +80,11 @@ Key "{DOWN}"
 Key "{DOWN}"
 Shot "44-saves-usb"
 Key "{ENTER}"
-Shot "44b-saves-usb-pagina"
-for ($i = 0; $i -lt 5; $i++) { Key "{DOWN}" }
-Shot "44c-shaders-usb"
+Shot "44b-hd-externo"
 for ($i = 0; $i -lt 3; $i++) { Key "{DOWN}" }
-Shot "44d-shaders-sincronizar"
+Shot "44c-pasta-das-configuracoes"
+for ($i = 0; $i -lt 3; $i++) { Key "{DOWN}" }
+Shot "44d-pasta-dos-shaders"
 Key "{ESC}"
 Key "{DOWN}"
 Shot "45-online"
@@ -98,12 +98,12 @@ Key "{UP}"
 Key "{ENTER}"
 Shot "11b-sistema"
 for ($i = 0; $i -lt 5; $i++) { Key "{DOWN}" }
-Shot "11e-sistema-modo-aviao"
-for ($i = 0; $i -lt 3; $i++) { Key "{DOWN}" }
 Shot "11c-sistema-volume"
 Key "{RIGHT}"
 Shot "11d-sistema-volume-110"
 Key "{LEFT}"
+Key "{DOWN}"
+Shot "11e-sistema-modo-aviao"
 Key "{ESC}"
 Key "{ESC}"
 Shot "01e-inicio-de-volta"
@@ -136,16 +136,19 @@ Shot "07-opcoes-do-jogo"
 for ($i = 0; $i -lt 6; $i++) { Key "{DOWN}" }
 Key "{ENTER}"
 Shot "08-desempenho-e-graficos"
-Key "{DOWN}"
+# 0.4.7: em grupos (Geral, Imagem, Quadros, Shaders, Compatibilidade, Memoria e texturas, Avancado).
+for ($i = 0; $i -lt 3; $i++) { Key "{DOWN}" }
 Key "{RIGHT}"
 Shot "08b-renderizador-opengl"
 Key "{LEFT}"
 for ($i = 0; $i -lt 4; $i++) { Key "{DOWN}" }
 Shot "08d-filtro-e-proporcao"
-for ($i = 0; $i -lt 9; $i++) { Key "{DOWN}" }
-Shot "08c-desempenho-avancado"
 for ($i = 0; $i -lt 6; $i++) { Key "{DOWN}" }
-Shot "08e-precisao-gpu-cpu"
+Shot "08c-shaders"
+for ($i = 0; $i -lt 4; $i++) { Key "{DOWN}" }
+Shot "08e-compatibilidade"
+for ($i = 0; $i -lt 9; $i++) { Key "{DOWN}" }
+Shot "08f-avancado"
 Key "{ESC}"
 Key "{DOWN}"
 Key "{ENTER}"

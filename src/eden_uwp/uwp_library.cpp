@@ -267,11 +267,14 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
     SaveBackup::Settings saves = SaveBackup::LoadSettings();
     bool saves_folder = SaveBackup::HasFolder();
     enum class SavesJob : std::uint8_t { None, Pick, Backup, Replace, Restore, Automatic, SettingsBackup, SettingsRestore,
-                                         ShadersPick, ShadersBackup, ShadersRestore };
+                                         ShadersPick, ShadersBackup, ShadersRestore, ConfigPick };
     // 0.4.5: the shader caches' folder on the drive (shader_backup.h), on the same page.
     bool shaders_folder = ShaderBackup::HasFolder();
     std::wstring shaders_path = ShaderBackup::FolderPath();
     bool shaders_sync = ShaderBackup::AutoSync();
+    // 0.4.7: the settings' own folder (Pasta das configuracoes).
+    bool config_folder = SaveBackup::HasConfigFolder();
+    std::wstring config_path = SaveBackup::ConfigFolderPath();
     SavesJob saves_job = SavesJob::None;
     unsigned saves_confirm = 0; // pressed once: 2 replace another installation's copy, 3 restore
     auto saves_confirm_until = std::chrono::steady_clock::time_point{};
@@ -932,6 +935,10 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     done.shaders = ShaderBackup::Restore(std::nullopt, stop);
                     done.result.outcome = SaveBackup::Outcome::Done;
                     break;
+                case SavesJob::ConfigPick:
+                    SaveBackup::RememberConfigFolder(folder);
+                    done.result.outcome = SaveBackup::Outcome::Done;
+                    break;
                 case SavesJob::SettingsBackup: done.result = SaveBackup::BackupSettings(); break;
                 case SavesJob::SettingsRestore: done.result = SaveBackup::RestoreSettings(); break;
                 default: done.result = SaveBackup::Backup(job == SavesJob::Replace, saves_progress, stop); break;
@@ -1149,6 +1156,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     else if (folder && picker_kind == 40 && mod_session) mod_session->SetDownloadFolder(folder);
                     else if (folder && picker_kind == 5) start_saves(SavesJob::Pick, folder);
                     else if (folder && picker_kind == 7) start_saves(SavesJob::ShadersPick, folder);
+                    else if (folder && picker_kind == 8) start_saves(SavesJob::ConfigPick, folder);
                     else if (folder && picker_kind == 6 && !themes_import.valid()) {
                         std::packaged_task<ThemeImportResult(std::stop_token)> task{[folder](std::stop_token stop) {
                             winrt::init_apartment(winrt::apartment_type::multi_threaded);
@@ -1300,6 +1308,8 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 try { done = saves_future.get(); } catch (...) { done.result.outcome = SaveBackup::Outcome::Failed; }
                 saves = SaveBackup::LoadSettings();
                 saves_folder = SaveBackup::HasFolder();
+                config_folder = SaveBackup::HasConfigFolder();
+                config_path = SaveBackup::ConfigFolderPath();
                 using O = SaveBackup::Outcome;
                 const auto& result = done.result;
                 const auto number = [](std::uint32_t n) { return std::to_wstring(n); };
@@ -1335,6 +1345,11 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 } else {
                     switch (result.outcome) {
                     case O::Done:
+                        if (saves_job == SavesJob::ConfigPick) {
+                            text = Tr(T::NsConfigFolderSet);
+                            saves_row = 4; // Copiar as configuracoes
+                            break;
+                        }
                         if (saves_job == SavesJob::SettingsBackup) {
                             text = Tr(T::NsConfigSaved);
                             break;
@@ -1373,7 +1388,10 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                         text = Tr(saves_job == SavesJob::SettingsRestore ? T::NsConfigNothing : T::NsSavesNothing);
                         break;
                     case O::FolderUnavailable: text = Tr(T::NsSavesUnavailable); break;
-                    case O::NoFolder: text = Tr(T::NsSavesNoFolder); break;
+                    case O::NoFolder:
+                        text = Tr(saves_job == SavesJob::SettingsBackup || saves_job == SavesJob::SettingsRestore
+                                      ? T::NsConfigNoFolder : T::NsSavesNoFolder);
+                        break;
                     case O::Stopped: break;
                     case O::Failed: text = I18n::Format(T::NsSavesFailed, {Wide(result.error)}); break;
                     }
@@ -1955,14 +1973,15 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 if (cheat_session) send(Quit, MenuAction::Back);
                 dirty = true;
             } else if (tuning_page && actions) {
-                // Desempenho e graficos: Up/Down pick a row, Left/Right (or A) change it, B goes back.
+                // Desempenho e graficos: Up/Down pick a row (in the page's order, TuningOrder),
+                // Left/Right (or A) change it, B goes back.
                 if (actions & Up) tuning_row = (tuning_row + TuningRowCount - 1) % TuningRowCount;
                 if (actions & Down) tuning_row = (tuning_row + 1) % TuningRowCount;
                 // LB/RB move the manual FPS by 10 (Left/Right by 1).
                 const bool big = (actions & (PreviousTab | NextTab)) != 0 &&
-                                 static_cast<TuningRow>(tuning_row) == TuningRow::FpsManual;
+                                 TuningOrder[tuning_row] == TuningRow::FpsManual;
                 if ((actions & (Left | Right | Play)) || big) {
-                    StepTuning(tuning, static_cast<TuningRow>(tuning_row), (actions & (Left | PreviousTab)) != 0, big);
+                    StepTuning(tuning, TuningOrder[tuning_row], (actions & (Left | PreviousTab)) != 0, big);
                     notify(SaveGameTuning(scan.entries[game_options.game].launch_path, tuning) ? T::NsTuningSaved
                                                                                              : T::SystemSaveFailed);
                 }
@@ -2173,76 +2192,71 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
             dirty = true;
         }
         if (configuration.open && saves_page && !settings && !picker && !configuration.busy && actions) {
-            // Saves (USB): Pasta no HD externo, Fazer backup agora, Restaurar saves, Copiar as
-            // configuracoes, Restaurar as configuracoes (the automatic copy is gone: 19/10/2026).
+            // HD externo (0.4.7), three groups, each with its own folder on the drive:
+            //   Saves: 0 Pasta dos saves, 1 Fazer backup agora, 2 Restaurar saves da pasta;
+            //   Configuracoes: 3 Pasta das configuracoes, 4 Copiar, 5 Restaurar;
+            //   Shaders: 6 Pasta dos shaders, 7 Copiar, 8 Trazer, 9 Sincronizar ao jogar.
             const auto say = [&](std::wstring text, std::chrono::seconds for_how_long) {
                 saves_notice = std::move(text);
                 saves_notice_until = now + for_how_long;
             };
-            // 0.4.5: then Pasta dos shaders, Copiar shaders, Trazer shaders, Sincronizar ao jogar.
-            constexpr unsigned SavesRows = 9;
+            const auto pick = [&](unsigned kind) {
+                picker_kind = kind;
+                try {
+                    winrt::Windows::Storage::Pickers::FolderPicker folder_picker;
+                    folder_picker.SuggestedStartLocation(winrt::Windows::Storage::Pickers::PickerLocationId::ComputerFolder);
+                    folder_picker.FileTypeFilter().Append(L"*");
+                    picker = folder_picker.PickSingleFolderAsync();
+                    say(std::wstring{Tr(T::NsSavesPickHint)}, std::chrono::seconds{8});
+                } catch (...) { say(std::wstring{Tr(T::PickerOpenFailed)}, std::chrono::seconds{4}); }
+            };
+            const auto confirm_then = [&](unsigned key, SavesJob job, T question) {
+                if (saves_confirm == key) {
+                    start_saves(job, nullptr);
+                    saves_notice.clear();
+                } else {
+                    saves_confirm = key;
+                    saves_confirm_until = now + std::chrono::seconds{10};
+                    saves_notice = Tr(question);
+                    saves_notice_until = std::chrono::steady_clock::time_point::max();
+                }
+            };
+            constexpr unsigned SavesRows = 10;
             if (actions & Up) { saves_row = (saves_row + SavesRows - 1) % SavesRows; saves_confirm = 0; }
             if (actions & Down) { saves_row = (saves_row + 1) % SavesRows; saves_confirm = 0; }
             const bool pressed = (actions & Play) != 0;
             if (pressed && saves_future.valid()) {
                 say(std::wstring{Tr(T::NsSavesBusy)}, std::chrono::seconds{3});
-            } else if ((pressed || (actions & (Left | Right))) && saves_row == 8) {
+            } else if ((pressed || (actions & (Left | Right))) && saves_row == 9) {
                 shaders_sync = !shaders_sync;
                 ShaderBackup::SetAutoSync(shaders_sync);
                 say(std::wstring{Tr(T::SettingsSaved)}, std::chrono::seconds{3});
-            } else if (pressed && saves_row == 5) {
-                picker_kind = 7;
-                try {
-                    winrt::Windows::Storage::Pickers::FolderPicker folder_picker;
-                    folder_picker.SuggestedStartLocation(winrt::Windows::Storage::Pickers::PickerLocationId::ComputerFolder);
-                    folder_picker.FileTypeFilter().Append(L"*");
-                    picker = folder_picker.PickSingleFolderAsync();
-                    say(std::wstring{Tr(T::NsSavesPickHint)}, std::chrono::seconds{8});
-                } catch (...) { say(std::wstring{Tr(T::PickerOpenFailed)}, std::chrono::seconds{4}); }
-            } else if (pressed && (saves_row == 6 || saves_row == 7)) {
-                if (!shaders_folder) say(std::wstring{Tr(T::NsShadersNoFolder)}, std::chrono::seconds{4});
-                else {
-                    start_saves(saves_row == 6 ? SavesJob::ShadersBackup : SavesJob::ShadersRestore, nullptr);
-                    saves_notice = Tr(T::NsShadersCopying);
-                    saves_notice_until = std::chrono::steady_clock::time_point::max();
-                }
             } else if (pressed && saves_row == 0) {
-                picker_kind = 5;
-                try {
-                    winrt::Windows::Storage::Pickers::FolderPicker folder_picker;
-                    folder_picker.SuggestedStartLocation(winrt::Windows::Storage::Pickers::PickerLocationId::ComputerFolder);
-                    folder_picker.FileTypeFilter().Append(L"*");
-                    picker = folder_picker.PickSingleFolderAsync();
-                    say(std::wstring{Tr(T::NsSavesPickHint)}, std::chrono::seconds{8});
-                } catch (...) { say(std::wstring{Tr(T::PickerOpenFailed)}, std::chrono::seconds{4}); }
-            } else if (pressed && !saves_folder) {
+                pick(5);
+            } else if (pressed && saves_row == 3) {
+                pick(8);
+            } else if (pressed && saves_row == 6) {
+                pick(7);
+            } else if (pressed && (saves_row == 1 || saves_row == 2) && !saves_folder) {
                 say(std::wstring{Tr(T::NsSavesNoFolder)}, std::chrono::seconds{4});
+            } else if (pressed && (saves_row == 4 || saves_row == 5) && !config_folder) {
+                say(std::wstring{Tr(T::NsConfigNoFolder)}, std::chrono::seconds{4});
+            } else if (pressed && (saves_row == 7 || saves_row == 8) && !shaders_folder) {
+                say(std::wstring{Tr(T::NsShadersNoFolder)}, std::chrono::seconds{4});
             } else if (pressed && saves_row == 1) {
                 start_saves(saves_confirm == 2 ? SavesJob::Replace : SavesJob::Backup, nullptr);
                 saves_notice.clear();
             } else if (pressed && saves_row == 2) {
-                if (saves_confirm == 3) {
-                    start_saves(SavesJob::Restore, nullptr);
-                    saves_notice.clear();
-                } else {
-                    saves_confirm = 3;
-                    saves_confirm_until = now + std::chrono::seconds{10};
-                    saves_notice = Tr(T::NsSavesConfirmRestore);
-                    saves_notice_until = std::chrono::steady_clock::time_point::max();
-                }
-            } else if (pressed && saves_row == 3) {
+                confirm_then(3, SavesJob::Restore, T::NsSavesConfirmRestore);
+            } else if (pressed && saves_row == 4) {
                 start_saves(SavesJob::SettingsBackup, nullptr);
                 saves_notice.clear();
-            } else if (pressed && saves_row == 4) {
-                if (saves_confirm == 4) {
-                    start_saves(SavesJob::SettingsRestore, nullptr);
-                    saves_notice.clear();
-                } else {
-                    saves_confirm = 4;
-                    saves_confirm_until = now + std::chrono::seconds{10};
-                    saves_notice = Tr(T::NsConfigConfirmRestore);
-                    saves_notice_until = std::chrono::steady_clock::time_point::max();
-                }
+            } else if (pressed && saves_row == 5) {
+                confirm_then(4, SavesJob::SettingsRestore, T::NsConfigConfirmRestore);
+            } else if (pressed && (saves_row == 7 || saves_row == 8)) {
+                start_saves(saves_row == 7 ? SavesJob::ShadersBackup : SavesJob::ShadersRestore, nullptr);
+                saves_notice = Tr(T::NsShadersCopying);
+                saves_notice_until = std::chrono::steady_clock::time_point::max();
             }
             actions = 0;
             dirty = true;
@@ -2258,6 +2272,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                     case HomeFiles: configuration.files = true; configuration.selected = 0; break;
                     case HomeControllers: settings = true; return_to_configuration = true; break;
                     case HomeOnline: online_page = true; online_row = 0; break;
+                    case HomeCredits: break; // the list is the section itself
                     case HomeSaves:
                         saves_page = true;
                         saves_row = saves_folder ? 1 : 0;
@@ -2663,7 +2678,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                                        saves.last_time, saves.last_games, saves_future.valid() && !shader_job,
                                        saves_job == SavesJob::Restore, saves_progress.done.load(),
                                        saves_progress.total.load(), saves_notice, shaders_folder, shaders_path,
-                                       shaders_sync};
+                                       shaders_sync, config_folder, config_path};
             canvas->Draw({scan, selected, loading, settings, setting_row, options, notice, panel,
                           configuration, system_page, options_view, missing_content, home, home_row,
                           false, library_tab, library_focus, &shown, &favorites, query,

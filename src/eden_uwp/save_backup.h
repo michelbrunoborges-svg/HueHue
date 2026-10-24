@@ -89,8 +89,12 @@ Result Backup(bool replace_other, Progress& progress, std::stop_token stop);
 Result Restore(Progress& progress, std::stop_token stop);
 
 /// NS HUEHUE: the app's and the games' settings (LocalSettings, the per-game profiles, favorites,
-/// recent games, online settings) copied to <folder>/NS-HUEHUE-config, and back. Restoring
+/// recent games, online settings) copied to <config folder>/NS-HUEHUE-config, and back. Restoring
 /// replaces this console's settings with the copy's; the saves are not touched.
+/// 0.4.7: in their own folder (Pasta das configuracoes), picked apart from the saves'.
+bool HasConfigFolder();
+std::wstring ConfigFolderPath();
+void RememberConfigFolder(const winrt::Windows::Storage::StorageFolder& folder);
 Result BackupSettings();
 Result RestoreSettings();
 
