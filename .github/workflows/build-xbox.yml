@@ -2,7 +2,8 @@
 #
 # Roda num runner Windows do GitHub (o build UWP exige Visual Studio 2022 + Store CRT).
 # Ao final, cria um Release com tudo que o Device Portal do Xbox pede:
-#   huehue-switch.appx, Microsoft.VCLibs.x64.14.00.appx (dependencia) e huehue-switch.cer.
+#   NSHueHue-<versao>.appx, Microsoft.VCLibs.x64.14.00.appx (dependencia) e NSHueHue-<versao>.cer.
+# Regra do projeto (24/10/2026): o instalador sempre leva o nome NSHueHue e o numero da versao.
 name: Build Xbox (appx)
 
 on:
@@ -89,7 +90,7 @@ jobs:
       - name: Versao do pacote (cada build instala por cima da anterior)
         shell: pwsh
         run: |
-          $v = "0.4.6.${{ github.run_number }}"
+          $v = "0.4.7.${{ github.run_number }}"
           $m = "dist\uwp\AppxManifest.xml"
           # So o Version do <Identity> (MinVersion/MaxVersionTested ficam como estao).
           $xml = Get-Content $m -Raw
@@ -273,6 +274,9 @@ jobs:
           # perde o drive Cert: (usado para assinar). Volta para os modulos dele.
           & .github\scripts\run-logged.ps1 -Name package -Command "set PSModulePath=%SystemRoot%\system32\WindowsPowerShell\v1.0\Modules&& powershell -ExecutionPolicy Bypass -File tools\xbox\package-appx.ps1 -Library -MesaGl mesa-gl -BootCfg jit_prewarm=1"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          # O instalador leva o nome do projeto e a versao (o nome do arquivo nao muda a identidade).
+          Rename-Item build-uwp\package\huehue-switch.appx "NSHueHue-$env:APP_VERSION.appx"
+          Rename-Item build-uwp\package\huehue-switch.cer "NSHueHue-$env:APP_VERSION.cer"
           Get-ChildItem build-uwp\package -Filter *.appx
           Get-ChildItem build-uwp\package -Filter *.cer
 
@@ -290,10 +294,10 @@ jobs:
       - name: Guardar o pacote (artefato do build)
         uses: actions/upload-artifact@v4
         with:
-          name: huehue-switch-${{ env.APP_VERSION }}
+          name: NSHueHue-${{ env.APP_VERSION }}
           path: |
-            build-uwp/package/huehue-switch.appx
-            build-uwp/package/huehue-switch.cer
+            build-uwp/package/NSHueHue-${{ env.APP_VERSION }}.appx
+            build-uwp/package/NSHueHue-${{ env.APP_VERSION }}.cer
             build-uwp/package/Microsoft.VCLibs.x64.14.00.appx
           if-no-files-found: error
 
@@ -313,13 +317,13 @@ jobs:
           name: NS HUEHUE ${{ env.APP_VERSION }}
           body: |
             Instale pelo Device Portal do Xbox (https://IP-DO-XBOX:11443) -> Add:
-            1. huehue-switch.appx
+            1. NSHueHue-${{ env.APP_VERSION }}.appx
             2. Em dependencias: Microsoft.VCLibs.x64.14.00.appx
-            3. Se pedir certificado: huehue-switch.cer
+            3. Se pedir certificado: NSHueHue-${{ env.APP_VERSION }}.cer
             Depois: app em modo **Game**. Guia completo no README.
           files: |
-            build-uwp/package/huehue-switch.appx
-            build-uwp/package/huehue-switch.cer
+            build-uwp/package/NSHueHue-${{ env.APP_VERSION }}.appx
+            build-uwp/package/NSHueHue-${{ env.APP_VERSION }}.cer
             build-uwp/package/Microsoft.VCLibs.x64.14.00.appx
 
       - name: Logs de falha

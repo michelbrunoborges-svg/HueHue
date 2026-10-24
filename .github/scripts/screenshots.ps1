@@ -29,9 +29,14 @@ $unlock = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock"
 New-Item -Path $unlock -Force | Out-Null
 Set-ItemProperty $unlock AllowDevelopmentWithoutDevLicense 1 -Type DWord
 Set-ItemProperty $unlock AllowAllTrustedApps 1 -Type DWord
-Import-Certificate -FilePath "$Pkg\huehue-switch.cer" -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
-Import-Certificate -FilePath "$Pkg\huehue-switch.cer" -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
-Add-AppxPackage -Path "$Pkg\huehue-switch.appx" -DependencyPath "$Pkg\Microsoft.VCLibs.x64.14.00.appx"
+# NSHueHue-<versao>.appx / .cer (0.4.7 em diante) ou os nomes antigos.
+$appxFile = (Get-ChildItem $Pkg -Filter "NSHueHue-*.appx" | Select-Object -First 1).FullName
+if (-not $appxFile) { $appxFile = "$Pkg\huehue-switch.appx" }
+$cerFile = (Get-ChildItem $Pkg -Filter "NSHueHue-*.cer" | Select-Object -First 1).FullName
+if (-not $cerFile) { $cerFile = "$Pkg\huehue-switch.cer" }
+Import-Certificate -FilePath $cerFile -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
+Import-Certificate -FilePath $cerFile -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+Add-AppxPackage -Path $appxFile -DependencyPath "$Pkg\Microsoft.VCLibs.x64.14.00.appx"
 $app = Get-AppxPackage -Name HueHue.HueHueSwitch
 if (-not $app) { throw "o pacote nao instalou" }
 Write-Host "instalado: $($app.PackageFullName)"

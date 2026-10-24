@@ -19,12 +19,16 @@ trap {
   exit 1
 }
 
-$appx = "$pkg\huehue-switch.appx"
+# O instalador se chama NSHueHue-<versao>.appx (0.4.7 em diante); os anteriores, huehue-switch.appx.
+$appx = (Get-ChildItem $pkg -Filter "NSHueHue-*.appx" | Select-Object -First 1).FullName
+if (-not $appx) { $appx = "$pkg\huehue-switch.appx" }
+$cer = (Get-ChildItem $pkg -Filter "NSHueHue-*.cer" | Select-Object -First 1).FullName
+if (-not $cer) { $cer = "$pkg\huehue-switch.cer" }
 # 1. Assinatura valida com o certificado publicado junto.
 $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
   Where-Object FullName -match "x64" | Sort-Object FullName -Descending | Select-Object -First 1
-Import-Certificate -FilePath "$pkg\huehue-switch.cer" -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
-Import-Certificate -FilePath "$pkg\huehue-switch.cer" -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+Import-Certificate -FilePath $cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
+Import-Certificate -FilePath $cer -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
 & $signtool.FullName verify /pa /v $appx | Select-Object -Last 4
 if ($LASTEXITCODE) { throw "assinatura invalida" }
 # 2. Conteudo: manifesto com a versao do build, identidade de sempre e os arquivos do app.

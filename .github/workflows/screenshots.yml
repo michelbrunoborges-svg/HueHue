@@ -32,7 +32,7 @@ jobs:
         run: |
           if ("${{ inputs.tag }}") { gh release download "${{ inputs.tag }}" -R "${{ github.repository }}" -D pkg }
           else {
-            gh run download "${{ inputs.run_id }}" -R "${{ github.repository }}" -p "huehue-switch-*" -D dl
+            gh run download "${{ inputs.run_id }}" -R "${{ github.repository }}" -p "NSHueHue-*" -p "huehue-switch-*" -D dl
             New-Item -ItemType Directory -Force pkg | Out-Null
             Get-ChildItem dl -Recurse -File | Copy-Item -Destination pkg
           }

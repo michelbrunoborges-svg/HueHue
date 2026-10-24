@@ -318,3 +318,12 @@ Entrou só o que tem efeito real no nosso core; nada foi duplicado.
   nx-cheats-db, nx-links e GameBanana), com o que cada um faz e o link. Inspirações não aparecem.
   O README do repositório e os textos do app seguem a mesma regra.
 - Versão do pacote: **0.4.6.<build>**.
+
+## 0.4.7 (24/10): nome do instalador
+
+- **Regra do projeto:** o instalador sempre leva o nome do projeto e a versão:
+  `NSHueHue-<versão>.appx` e `NSHueHue-<versão>.cer` (o VCLibs da Microsoft mantém o nome). Só o
+  nome do arquivo muda: a identidade do pacote (HueHue.HueHueSwitch, CN=HueHueSwitch) continua a
+  mesma, então instalar por cima mantém saves, chaves e firmware.
+- Créditos: a linha do Jadyx não corta mais o texto.
+- Versão do pacote: **0.4.7.<build>**.

@@ -28,10 +28,10 @@ interface em português do Brasil e temas próprios.
 1. **Pré-requisitos:** console em **Dev Mode**, um PC na mesma rede e **suas próprias** chaves
    (`prod.keys`, `title.keys`), firmware e jogos, extraídos do **seu** Switch. Nada disso vem no
    pacote nem neste repositório, e nunca deve ser colocado aqui.
-2. **Baixar:** na aba **Releases**, a versão mais recente: `huehue-switch.appx` (o app),
-   `Microsoft.VCLibs.x64.14.00.appx` (dependência obrigatória) e `huehue-switch.cer` (certificado).
+2. **Baixar:** na aba **Releases**, a versão mais recente: `NSHueHue-<versão>.appx` (o app),
+   `Microsoft.VCLibs.x64.14.00.appx` (dependência obrigatória) e `NSHueHue-<versão>.cer` (certificado).
 3. **Instalar:** no PC, abra o Device Portal do Xbox (`https://<ip-do-xbox>:11443`) → **Add** →
-   `huehue-switch.appx` → adicione o `Microsoft.VCLibs.x64.14.00.appx` como dependência → Start.
+   `NSHueHue-<versão>.appx` → adicione o `Microsoft.VCLibs.x64.14.00.appx` como dependência → Start.
 4. **Modo Game (obrigatório):** no Dev Home, selecione **NS HUEHUE** → View → View details →
    **App type: Game**.
 5. **Chaves, firmware e jogos:** Configurações → Arquivos e USB, a partir de uma pasta do HD externo

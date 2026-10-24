@@ -875,7 +875,7 @@ const Catalog EnglishCatalog = MakeCatalog({
     {Text::NsShadersNoFolder, L"Choose the shader folder first"},
     {Text::NsShadersCopying, L"Copying shaders..."},
     {Text::NsCreditEden, L"Emulator core: the Switch's CPU, GPU and system"},
-    {Text::NsCreditJadyx, L"Xbox port, Direct3D 12 renderer, mods, cheats and Pulse"},
+    {Text::NsCreditJadyx, L"Xbox port, Direct3D 12, mods, cheats and Pulse"},
     {Text::NsCreditJuan, L"The original UWP base for the Xbox"},
     {Text::NsCreditNxbox, L"OpenGL renderer through Mesa"},
     {Text::NsCreditMesa, L"d3d12 OpenGL driver and shader translation (spirv_to_dxil)"},
