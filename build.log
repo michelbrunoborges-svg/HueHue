@@ -1,99 +1,3 @@
-[1413/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\fatal\fatal.cpp.obj
-[1414/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\fatal\fatal_p.cpp.obj
-[1415/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\fatal\fatal_u.cpp.obj
-[1416/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\fgm\fgm.cpp.obj
-[1417/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\fsp\fs_i_directory.cpp.obj
-[1418/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\filesystem.cpp.obj
-[1419/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\fsp\fs_i_file.cpp.obj
-[1420/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\fsp\fs_i_filesystem.cpp.obj
-[1421/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\fsp\fs_i_multi_commit_manager.cpp.obj
-[1422/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\fsp\fs_i_save_data_info_reader.cpp.obj
-[1423/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\fsp\fs_i_storage.cpp.obj
-[1424/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\fsp\fsp_pr.cpp.obj
-[1425/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\fsp\fsp_ldr.cpp.obj
-[1426/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\romfs_controller.cpp.obj
-[1427/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\fsp\save_data_transfer_prohibiter.cpp.obj
-[1428/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\save_data_controller.cpp.obj
-[1429/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\friend\friend_interface.cpp.obj
-[1430/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\glue\arp.cpp.obj
-[1431/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\glue\bgtc.cpp.obj
-[1432/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\friend\friend.cpp.obj
-[1433/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\fsp\fsp_srv.cpp.obj
-[1434/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\glue\ectx.cpp.obj
-[1435/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\glue\glue_manager.cpp.obj
-[1436/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\glue\glue.cpp.obj
-[1437/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\glue\time\pm_state_change_handler.cpp.obj
-[1438/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\glue\notif.cpp.obj
-[1439/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\glue\time\alarm_worker.cpp.obj
-[1440/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\glue\time\file_timestamp_worker.cpp.obj
-[1441/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\glue\time\manager.cpp.obj
-[1442/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\glue\time\time_zone_binary.cpp.obj
-[1443/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\glue\time\standard_steady_clock_resource.cpp.obj
-[1444/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\glue\time\static.cpp.obj
-[1445/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\glue\time\time_zone.cpp.obj
-[1446/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\grc\grc.cpp.obj
-[1447/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\glue\time\worker.cpp.obj
-[1448/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\hid\applet_resource.cpp.obj
-[1449/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\hid\active_vibration_device_list.cpp.obj
-[1450/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\hid\hid.cpp.obj
-[1451/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\hid\hid_debug_server.cpp.obj
-[1452/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\hid\hid_system_server.cpp.obj
-[1453/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\hid\xcd.cpp.obj
-[1454/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\hid\hidbus.cpp.obj
-[1455/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\hid\irs.cpp.obj
-[1456/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\hle_ipc.cpp.obj
-[1457/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\kernel_helpers.cpp.obj
-[1458/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\lbl\lbl.cpp.obj
-[1459/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\hid\hid_server.cpp.obj
-[1460/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ldn\lan_discovery.cpp.obj
-[1461/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ldn\ldn.cpp.obj
-[1462/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ldn\monitor_service.cpp.obj
-[1463/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ldn\sf_service.cpp.obj
-[1464/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ldn\sf_monitor_service.cpp.obj
-[1465/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ldn\sf_service_monitor.cpp.obj
-[1466/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ldn\system_local_communication_service.cpp.obj
-[1467/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ldr\ldr.cpp.obj
-[1468/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ldn\user_local_communication_service.cpp.obj
-[1469/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\mig\mig.cpp.obj
-[1470/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\lm\lm.cpp.obj
-[1471/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\mii\mii_database.cpp.obj
-[1472/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\mii\mii_database_manager.cpp.obj
-[1473/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\mii\types\raw_data.cpp.obj
-[1474/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\mii\types\char_info.cpp.obj
-[1475/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\mii\mii_manager.cpp.obj
-[1476/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\mii\types\core_data.cpp.obj
-[1477/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\mii\mii.cpp.obj
-[1478/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\mii\types\store_data.cpp.obj
-[1479/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\mii\types\ver3_store_data.cpp.obj
-[1480/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\mnpp\mnpp.cpp.obj
-[1481/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\mm\mm_u.cpp.obj
-[1482/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\nfc\common\amiibo_crypto.cpp.obj
-[1483/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ncm\ncm.cpp.obj
-[1484/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\nfc\common\device_manager.cpp.obj
-[1485/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\nfc\nfc_interface.cpp.obj
-[1486/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\nfc\common\device.cpp.obj
-[1487/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\nfc\nfc.cpp.obj
-[1488/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\nfp\nfp.cpp.obj
-[1489/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\nfp\nfp_interface.cpp.obj
-[1490/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ngc\ngc.cpp.obj
-[1491/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ns\account_proxy_interface.cpp.obj
-[1492/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\npns\npns.cpp.obj
-[1493/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\nim\nim.cpp.obj
-[1494/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\nifm\nifm.cpp.obj
-[1495/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ns\application_version_interface.cpp.obj
-[1496/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ns\content_management_interface.cpp.obj
-[1497/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ns\async_result.cpp.obj
-[1498/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ns\develop_interface.cpp.obj
-[1499/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ns\document_interface.cpp.obj
-[1500/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ns\ecommerce_interface.cpp.obj
-[1501/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ns\dynamic_rights_interface.cpp.obj
-[1502/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ns\application_manager_interface.cpp.obj
-[1503/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ns\download_task_interface.cpp.obj
-[1504/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ns\factory_reset_interface.cpp.obj
-[1505/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ns\language.cpp.obj
-[1506/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ns\ns.cpp.obj
-[1507/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ns\query_service.cpp.obj
-[1508/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ns\platform_service_manager.cpp.obj
 [1509/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ns\read_only_application_record_interface.cpp.obj
 [1510/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ns\read_only_application_control_data_interface.cpp.obj
 [1511/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\ns\system_update_control.cpp.obj
@@ -298,3 +202,99 @@ D:\a\HueHue\HueHue\src\core\internal_network\emu_net_state.cpp(10): note: 'NOMIN
 [1708/1801] Building C object externals\libarchive\CMakeFiles\archive_read.dir\__\__\.cache\cpm\libarchive\v3.8.9\libarchive\archive_blake2s_ref.c.obj
 [1709/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\drivers\camera.cpp.obj
 [1710/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\drivers\keyboard.cpp.obj
+[1711/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\drivers\mouse.cpp.obj
+[1712/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\drivers\touch_screen.cpp.obj
+[1713/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\drivers\tas_input.cpp.obj
+[1714/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\drivers\virtual_gamepad.cpp.obj
+[1715/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\helpers\udp_protocol.cpp.obj
+[1716/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\drivers\virtual_amiibo.cpp.obj
+[1717/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\helpers\touch_from_buttons.cpp.obj
+[1718/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\helpers\stick_from_buttons.cpp.obj
+[1719/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\drivers\udp_client.cpp.obj
+[1720/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\input_engine.cpp.obj
+[1721/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\input_mapping.cpp.obj
+[1722/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\input_poller.cpp.obj
+[1723/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\main.cpp.obj
+[1724/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\drivers\joycon.cpp.obj
+[1725/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\helpers\joycon_driver.cpp.obj
+[1726/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\helpers\joycon_protocol\calibration.cpp.obj
+[1727/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\helpers\joycon_protocol\common_protocol.cpp.obj
+[1728/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\helpers\joycon_protocol\generic_functions.cpp.obj
+[1729/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\drivers\sdl_driver.cpp.obj
+[1730/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\helpers\joycon_protocol\irs.cpp.obj
+[1731/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\helpers\joycon_protocol\poller.cpp.obj
+[1732/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\helpers\joycon_protocol\ringcon.cpp.obj
+[1733/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\helpers\joycon_protocol\nfc.cpp.obj
+[1734/1801] Building CXX object src\input_common\CMakeFiles\input_common.dir\helpers\joycon_protocol\rumble.cpp.obj
+[1735/1801] Building CXX object src\frontend_common\CMakeFiles\frontend_common.dir\settings_generator.cpp.obj
+D:\a\HueHue\HueHue\src\frontend_common\settings_generator.cpp(18): warning C4267: 'argument': conversion from 'size_t' to '_Ty', possible loss of data
+        with
+        [
+            _Ty=int
+        ]
+[1736/1801] Building CXX object src\frontend_common\CMakeFiles\frontend_common.dir\data_manager.cpp.obj
+[1737/1801] Building CXX object src\frontend_common\CMakeFiles\frontend_common.dir\mod_manager.cpp.obj
+[1738/1801] Linking C static library externals\libarchive\archive_read.lib
+[1739/1801] Building CXX object src\frontend_common\CMakeFiles\frontend_common.dir\play_time_manager.cpp.obj
+[1740/1801] Linking CXX static library src\input_common\input_common.lib
+[1741/1801] Building CXX object src\frontend_common\CMakeFiles\frontend_common.dir\firmware_manager.cpp.obj
+[1742/1801] Building CXX object src\frontend_common\CMakeFiles\frontend_common.dir\config.cpp.obj
+[1743/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\pulse_sessions.cpp.obj
+[1744/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\gl_window.cpp.obj
+[1745/1801] Linking CXX static library src\frontend_common\frontend_common.lib
+[1746/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\alloc_watch.cpp.obj
+[1747/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\pulse_screen.cpp.obj
+[1748/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\pulse_gate.cpp.obj
+[1749/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\pulse_store_gate.cpp.obj
+[1750/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\uwp_library_metadata.cpp.obj
+[1751/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\uwp_input.cpp.obj
+[1752/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\uwp_library_canvas.cpp.obj
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\utility(274): warning C4244: 'initializing': conversion from '_Ty' to '_Ty2', possible loss of data
+        with
+        [
+            _Ty=int
+        ]
+        and
+        [
+            _Ty2=float
+        ]
+C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\utility(274): note: the template instantiation context (the oldest one first) is
+D:\a\HueHue\HueHue\src\eden_uwp\uwp_library_canvas.cpp(677): note: see reference to function template instantiation 'std::pair<std::wstring,float>::pair<std::wstring,int,0>(_Other1 &&,_Other2 &&) noexcept' being compiled
+        with
+        [
+            _Other1=std::wstring,
+            _Other2=int
+        ]
+D:\a\HueHue\HueHue\src\eden_uwp\uwp_library_canvas.cpp(677): note: see the first reference to 'std::pair<std::wstring,float>::pair' in 'EdenXbox::LibraryCanvas::Impl::DrawThemes'
+[1753/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\uwp_rom_storage.cpp.obj
+D:\a\HueHue\HueHue\src\eden_uwp\uwp_rom_storage.cpp(352): warning C4996: 'std::filesystem::u8path': warning STL4021: The std::filesystem::u8path() overloads are deprecated in C++20. The constructors of std::filesystem::path provide equivalent functionality via construction from u8string, u8string_view, or iterators with value_type char8_t. You can define _SILENCE_CXX20_U8PATH_DEPRECATION_WARNING or _SILENCE_ALL_CXX20_DEPRECATION_WARNINGS to suppress this warning.
+D:\a\HueHue\HueHue\src\eden_uwp\uwp_rom_storage.cpp(366): warning C4996: 'std::filesystem::u8path': warning STL4021: The std::filesystem::u8path() overloads are deprecated in C++20. The constructors of std::filesystem::path provide equivalent functionality via construction from u8string, u8string_view, or iterators with value_type char8_t. You can define _SILENCE_CXX20_U8PATH_DEPRECATION_WARNING or _SILENCE_ALL_CXX20_DEPRECATION_WARNINGS to suppress this warning.
+[1754/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\vma_impl.cpp.obj
+D:\a\HueHue\HueHue\.cache\cpm\vulkanmemoryallocator\v3.3.0\include\vk_mem_alloc.h(14030): warning C4127: conditional expression is constant
+D:\a\HueHue\HueHue\.cache\cpm\vulkanmemoryallocator\v3.3.0\include\vk_mem_alloc.h(14030): note: consider using 'if constexpr' statement instead
+D:\a\HueHue\HueHue\.cache\cpm\vulkanmemoryallocator\v3.3.0\include\vk_mem_alloc.h(15001): warning C4127: conditional expression is constant
+D:\a\HueHue\HueHue\.cache\cpm\vulkanmemoryallocator\v3.3.0\include\vk_mem_alloc.h(15001): note: consider using 'if constexpr' statement instead
+[1755/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\uwp_boot.cpp.obj
+[1756/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\uwp_pro_controller.cpp.obj
+[1757/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\localization.cpp.obj
+[1758/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\locales\registry.cpp.obj
+[1759/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\locales\en.cpp.obj
+[1760/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\uwp_file_manager.cpp.obj
+[1761/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\locales\es.cpp.obj
+[1762/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\locales\pt.cpp.obj
+[1763/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\uwp_controllers.cpp.obj
+[1764/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\text_entry_panel.cpp.obj
+[1765/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\uwp_software_keyboard.cpp.obj
+[1766/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\uwp_library.cpp.obj
+[1767/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\library_cache.cpp.obj
+[1768/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\shader_backup.cpp.obj
+[1769/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\ui_painter.cpp.obj
+[1770/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\uwp_system_settings.cpp.obj
+[1771/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\save_backup.cpp.obj
+[1772/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\theme_catalog.cpp.obj
+[1773/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\content\content_inspector.cpp.obj
+[1774/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\game_menu_surface.cpp.obj
+[1775/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\content\content_service.cpp.obj
+[1776/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\content\auto_import.cpp.obj
+[1777/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\content\content_store.cpp.obj
+[1778/1801] Building CXX object src\eden_uwp\CMakeFiles\eden-uwp.dir\cheats\cheat_db.cpp.obj
