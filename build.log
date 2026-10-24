@@ -1,117 +1,3 @@
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\a32_emit_x64_memory.cpp(180): note: see reference to function template instantiation 'void Dynarmic::Backend::X64::A32EmitX64::EmitExclusiveReadMemory<8,uint64_t Dynarmic::A32::UserCallbacks::`vcall'{40}'(Dynarmic::A32::VAddr,size_t)>(Dynarmic::Backend::X64::A32EmitContext &,Dynarmic::IR::Inst *)' being compiled
-[420/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\a64_jitstate.cpp.obj
-[421/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\a64_emit_x64.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/reg_alloc.h(68): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-[422/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\a64_interface.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/reg_alloc.h(68): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-[423/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\frontend\A64\translate\a64_translate.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-[424/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\a64_emit_x64_memory.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/reg_alloc.h(68): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/emit_x64_memory.h(105): warning C4244: 'argument': conversion from 'const uint64_t' to 'uint32_t', possible loss of data
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/emit_x64_memory.h(180): warning C4244: 'argument': conversion from 'const uint64_t' to 'uint32_t', possible loss of data
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/emit_x64_memory.cpp.inc(239): warning C4244: 'return': conversion from 'uint64_t' to 'Dynarmic::Backend::X64::A64EmitX64::EmitExclusiveReadMemory::T', possible loss of data
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/emit_x64_memory.cpp.inc(239): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\a64_emit_x64_memory.cpp(336): note: see reference to function template instantiation 'void Dynarmic::Backend::X64::A64EmitX64::EmitExclusiveReadMemory<8,uint64_t Dynarmic::A64::UserCallbacks::`vcall'{16}'(Dynarmic::A64::VAddr,size_t)>(Dynarmic::Backend::X64::A64EmitContext &,Dynarmic::IR::Inst *)' being compiled
-[425/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\exception_handler_windows.cpp.obj
-[426/1801] Linking CXX static library src\common\common.lib
-[427/1801] Building CXX object src\network\CMakeFiles\network.dir\packet.cpp.obj
-[428/1801] Building CXX object src\network\CMakeFiles\network.dir\announce_multiplayer_session.cpp.obj
-[429/1801] Building CXX object src\network\CMakeFiles\network.dir\network.cpp.obj
-[430/1801] Building CXX object src\network\CMakeFiles\network.dir\verify_user.cpp.obj
-[431/1801] Generating include/video_core/host_shaders/block_linear_unswizzle_2d_comp.h
-[432/1801] Generating include/video_core/host_shaders/blit_color_float_frag.h
-[433/1801] Generating include/video_core/host_shaders/blit_color_msaa_frag.h
-[434/1801] Generating include/video_core/host_shaders/astc_decoder_comp.h
-[435/1801] Generating include/video_core/host_shaders/blit_depth_msaa_frag.h
-[436/1801] Generating include/video_core/host_shaders/blit_depth_frag.h
-[437/1801] Generating include/video_core/host_shaders/blit_depth_stencil_msaa_frag.h
-[438/1801] Generating include/video_core/host_shaders/block_linear_unswizzle_3d_comp.h
-[439/1801] Generating include/video_core/host_shaders/block_linear_unswizzle_3d_bcn_comp.h
-[440/1801] Generating include/video_core/host_shaders/convert_abgr8_to_d24s8_frag.h
-[441/1801] Generating include/video_core/host_shaders/convert_abgr8_to_d32f_frag.h
-[442/1801] Generating include/video_core/host_shaders/convert_d32f_to_abgr8_frag.h
-[443/1801] Generating include/video_core/host_shaders/convert_d24s8_to_abgr8_frag.h
-[444/1801] Generating include/video_core/host_shaders/convert_depth_to_float_frag.h
-[445/1801] Generating include/video_core/host_shaders/convert_float_to_depth_frag.h
-[446/1801] Generating include/video_core/host_shaders/convert_msaa_to_non_msaa_comp.h
-[447/1801] Generating include/video_core/host_shaders/convert_msaa_to_non_msaa_depth_frag.h
-[448/1801] Generating include/video_core/host_shaders/convert_msaa_to_non_msaa_frag.h
-[449/1801] Generating include/video_core/host_shaders/convert_msaa_to_non_msaa_depth_stencil_frag.h
-[450/1801] Generating include/video_core/host_shaders/convert_non_msaa_to_msaa_comp.h
-[451/1801] Generating include/video_core/host_shaders/convert_non_msaa_to_msaa_frag.h
-[452/1801] Generating include/video_core/host_shaders/convert_non_msaa_to_msaa_depth_frag.h
-[453/1801] Generating include/video_core/host_shaders/convert_non_msaa_to_msaa_depth_stencil_frag.h
-[454/1801] Generating include/video_core/host_shaders/convert_s8d24_to_abgr8_frag.h
-[455/1801] Generating include/video_core/host_shaders/d3d12_depth_stencil_merge_comp.h
-[456/1801] Generating include/video_core/host_shaders/d3d12_depth_stencil_split_comp.h
-[457/1801] Generating include/video_core/host_shaders/d3d12_bc3_encoder_comp.h
-[458/1801] Generating include/video_core/host_shaders/full_screen_triangle_vert.h
-[459/1801] Generating include/video_core/host_shaders/fxaa_frag.h
-[460/1801] Generating include/video_core/host_shaders/fxaa_vert.h
-[461/1801] Generating include/video_core/host_shaders/opengl_fidelityfx_fsr_frag.h
-[462/1801] Generating include/video_core/host_shaders/opengl_copy_bc4_comp.h
-[463/1801] Generating include/video_core/host_shaders/opengl_convert_s8d24_comp.h
-[464/1801] Building CXX object src\network\CMakeFiles\network.dir\room.cpp.obj
-[465/1801] Generating include/video_core/host_shaders/opengl_fidelityfx_fsr_rcas_frag.h
-[466/1801] Generating include/video_core/host_shaders/opengl_fidelityfx_fsr_easu_frag.h
-[467/1801] Generating include/video_core/host_shaders/opengl_present_frag.h
-[468/1801] Generating include/video_core/host_shaders/opengl_present_vert.h
-[469/1801] Generating include/video_core/host_shaders/opengl_lmem_warmup_comp.h
-[470/1801] Generating include/video_core/host_shaders/opengl_present_scaleforce_frag.h
-[471/1801] Generating include/video_core/host_shaders/pitch_unswizzle_comp.h
-[472/1801] Generating include/video_core/host_shaders/present_bicubic_frag.h
-[473/1801] Generating include/video_core/host_shaders/present_area_frag.h
-[474/1801] Generating include/video_core/host_shaders/present_zero_tangent_frag.h
-[475/1801] Generating include/video_core/host_shaders/present_bspline_frag.h
-[476/1801] Generating include/video_core/host_shaders/present_gaussian_frag.h
-[477/1801] Generating include/video_core/host_shaders/present_mitchell_frag.h
-[478/1801] Building CXX object src\network\CMakeFiles\network.dir\room_member.cpp.obj
-[479/1801] Generating include/video_core/host_shaders/present_lanczos_frag.h
-[480/1801] Generating include/video_core/host_shaders/present_spline1_frag.h
-[481/1801] Generating include/video_core/host_shaders/present_mmpx_frag.h
-[482/1801] Generating include/video_core/host_shaders/queries_prefix_scan_sum_comp.h
-[483/1801] Generating include/video_core/host_shaders/resolve_conditional_render_comp.h
-[484/1801] Generating include/video_core/host_shaders/smaa_edge_detection_vert.h
-[485/1801] Generating include/video_core/host_shaders/smaa_edge_detection_frag.h
-[486/1801] Generating include/video_core/host_shaders/queries_prefix_scan_sum_nosubgroups_comp.h
-[487/1801] Generating include/video_core/host_shaders/smaa_blending_weight_calculation_vert.h
-[488/1801] Generating include/video_core/host_shaders/opengl_smaa_glsl.h
-[489/1801] Generating include/video_core/host_shaders/smaa_neighborhood_blending_vert.h
-[490/1801] Generating include/video_core/host_shaders/smaa_neighborhood_blending_frag.h
-[491/1801] Generating include/video_core/host_shaders/smaa_blending_weight_calculation_frag.h
-[492/1801] Generating include/video_core/host_shaders/vulkan_blit_depth_stencil_frag_spv.h
-[493/1801] Generating include/video_core/host_shaders/vulkan_color_clear_frag_spv.h
-[494/1801] Generating include/video_core/host_shaders/vulkan_color_clear_vert_spv.h
-[495/1801] Generating include/video_core/host_shaders/vulkan_depthstencil_clear_frag_spv.h
-[496/1801] Generating include/video_core/host_shaders/vulkan_fidelityfx_fsr_vert_spv.h
-[497/1801] Generating include/video_core/host_shaders/vulkan_fidelityfx_fsr_easu_fp16_frag_spv.h
-[498/1801] Generating include/video_core/host_shaders/vulkan_fidelityfx_fsr_rcas_fp32_frag_spv.h
-[499/1801] Generating include/video_core/host_shaders/vulkan_fidelityfx_fsr_easu_fp32_frag_spv.h
-[500/1801] Generating include/video_core/host_shaders/vulkan_fidelityfx_fsr_rcas_fp16_frag_spv.h
-[501/1801] Generating include/video_core/host_shaders/vulkan_present_frag_spv.h
-[502/1801] Generating include/video_core/host_shaders/vulkan_present_vert_spv.h
-[503/1801] Generating include/video_core/host_shaders/vulkan_present_scaleforce_fp16_frag_spv.h
-[504/1801] Generating include/video_core/host_shaders/vulkan_quad_indexed_comp_spv.h
-[505/1801] Generating include/video_core/host_shaders/vulkan_present_scaleforce_fp32_frag_spv.h
-[506/1801] Generating include/video_core/host_shaders/vulkan_turbo_mode_comp_spv.h
-[507/1801] Generating include/video_core/host_shaders/sgsr1_shader_mobile_frag.h
-[508/1801] Generating include/video_core/host_shaders/sgsr1_shader_vert.h
-[509/1801] Generating include/video_core/host_shaders/vulkan_uint8_comp_spv.h
-[510/1801] Generating include/video_core/host_shaders/sgsr1_shader_mobile_edge_direction_frag.h
-[511/1801] Generating include/video_core/host_shaders/blit_color_float_frag_spv.h
-[512/1801] Generating include/video_core/host_shaders/blit_color_msaa_frag_spv.h
-[513/1801] Generating include/video_core/host_shaders/ffx_fsr1_h.h
-[514/1801] Generating include/video_core/host_shaders/blit_depth_frag_spv.h
-[515/1801] Generating include/video_core/host_shaders/astc_decoder_comp_spv.h
-[516/1801] Generating include/video_core/host_shaders/blit_depth_msaa_frag_spv.h
-[517/1801] Generating include/video_core/host_shaders/blit_depth_stencil_msaa_frag_spv.h
-[518/1801] Generating include/video_core/host_shaders/block_linear_unswizzle_2d_comp_spv.h
-[519/1801] Generating include/video_core/host_shaders/block_linear_unswizzle_3d_bcn_comp_spv.h
-[520/1801] Generating include/video_core/host_shaders/block_linear_unswizzle_3d_comp_spv.h
 [521/1801] Generating include/video_core/host_shaders/convert_depth_to_float_frag_spv.h
 [522/1801] Generating include/video_core/host_shaders/convert_d32f_to_abgr8_frag_spv.h
 [523/1801] Generating include/video_core/host_shaders/convert_abgr8_to_d24s8_frag_spv.h
@@ -298,3 +184,117 @@ D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\a64_emit_x64_memory.cpp
 [704/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\lower_fp64_to_fp32.cpp.obj
 [705/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\lower_fp16_to_fp32.cpp.obj
 [706/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\lower_int64_to_int32.cpp.obj
+[707/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\position_pass.cpp.obj
+[708/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\rescaling_pass.cpp.obj
+[709/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\vendor_workaround_pass.cpp.obj
+[710/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\ssa_rewrite_pass.cpp.obj
+[711/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\verification_pass.cpp.obj
+[712/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_barriers.cpp.obj
+[713/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\texture_pass.cpp.obj
+[714/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_bitwise_conversion.cpp.obj
+[715/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_composite.cpp.obj
+[716/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_context_get_set.cpp.obj
+[717/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_control_flow.cpp.obj
+[718/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_convert.cpp.obj
+[719/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_floating_point.cpp.obj
+[720/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_integer.cpp.obj
+[721/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm.cpp.obj
+[722/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_logical.cpp.obj
+[723/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_image.cpp.obj
+[724/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_not_implemented.cpp.obj
+[725/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_memory.cpp.obj
+[726/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_shared_memory.cpp.obj
+[727/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_select.cpp.obj
+[728/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_undefined.cpp.obj
+[729/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_special.cpp.obj
+[730/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_barriers.cpp.obj
+[731/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_warp.cpp.obj
+[732/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\reg_alloc.cpp.obj
+[733/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\glasm_emit_context.cpp.obj
+[734/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_atomic.cpp.obj
+[735/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_composite.cpp.obj
+[736/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_bitwise_conversion.cpp.obj
+[737/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_control_flow.cpp.obj
+[738/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl.cpp.obj
+[739/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_convert.cpp.obj
+[740/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_context_get_set.cpp.obj
+[741/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_integer.cpp.obj
+[742/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_floating_point.cpp.obj
+[743/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_not_implemented.cpp.obj
+[744/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_logical.cpp.obj
+[745/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_select.cpp.obj
+[746/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_image.cpp.obj
+[747/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_shared_memory.cpp.obj
+[748/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_memory.cpp.obj
+[749/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_undefined.cpp.obj
+[750/1801] Linking CXX static library _deps\boost-build\libs\process\libboost_process-vc143-mt-x64-1_92.lib
+[751/1801] Linking C static library _deps\opus-build\opus.lib
+[752/1801] Linking CXX static library externals\tz.lib
+[753/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_special.cpp.obj
+[754/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_warp.cpp.obj
+[755/1801] Linking CXX static library externals\bc_decoder.lib
+[756/1801] Linking C static library externals\getopt\getopt.lib
+[757/1801] Linking C static library externals\glad\glad.lib
+[758/1801] Linking CXX static library src\video_core\gpu_logging\gpu_logging.lib
+[759/1801] Linking CXX static library src\dynarmic\src\dynarmic\dynarmic.lib
+[760/1801] Linking CXX static library src\network\network.lib
+[761/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\var_alloc.cpp.obj
+[762/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\glsl_emit_context.cpp.obj
+[763/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\frontend\input_converter.cpp.obj
+[764/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\frontend\motion_input.cpp.obj
+[765/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\frontend\emulated_devices.cpp.obj
+[766/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\frontend\emulated_console.cpp.obj
+[767/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\hidbus\hidbus_base.cpp.obj
+[768/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\frontend\input_interpreter.cpp.obj
+[769/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\frontend\emulated_controller.cpp.obj
+[770/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\irsensor\ir_led_processor.cpp.obj
+[771/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\hidbus\starlink.cpp.obj
+[772/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\hidbus\ringcon.cpp.obj
+[773/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\hidbus\stubbed.cpp.obj
+[774/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\irsensor\processor_base.cpp.obj
+[775/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\irsensor\tera_plugin_processor.cpp.obj
+[776/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\irsensor\pointing_processor.cpp.obj
+[777/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\irsensor\clustering_processor.cpp.obj
+[778/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\irsensor\image_transfer_processor.cpp.obj
+[779/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_button_handler.cpp.obj
+[780/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_battery_handler.cpp.obj
+[781/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\irsensor\moment_processor.cpp.obj
+[782/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_ir_sensor_handler.cpp.obj
+[783/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_led_handler.cpp.obj
+[784/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_mcu_handler.cpp.obj
+[785/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_pad.cpp.obj
+[786/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_nfc_handler.cpp.obj
+[787/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_palma_handler.cpp.obj
+[788/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_pad_holder.cpp.obj
+[789/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_properties_handler.cpp.obj
+[790/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_sixaxis_handler.cpp.obj
+[791/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\digitizer\digitizer.cpp.obj
+[792/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\abstracted_pad\abstract_vibration_handler.cpp.obj
+[793/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\debug_pad\debug_pad.cpp.obj
+[794/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\keyboard\keyboard.cpp.obj
+[795/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\mouse\debug_mouse.cpp.obj
+[796/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\mouse\mouse.cpp.obj
+[797/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\npad\npad_data.cpp.obj
+[798/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\npad\npad.cpp.obj
+[799/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\npad\npad_resource.cpp.obj
+[800/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\npad\npad_vibration.cpp.obj
+[801/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\six_axis\console_six_axis.cpp.obj
+[802/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\palma\palma.cpp.obj
+[803/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\system_buttons\sleep_button.cpp.obj
+[804/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\system_buttons\capture_button.cpp.obj
+[805/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\six_axis\seven_six_axis.cpp.obj
+[806/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\six_axis\six_axis.cpp.obj
+[807/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\touch_screen\gesture_handler.cpp.obj
+[808/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\touch_screen\gesture.cpp.obj
+[809/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\system_buttons\home_button.cpp.obj
+[810/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\touch_screen\touch_screen.cpp.obj
+[811/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\unique_pad\unique_pad.cpp.obj
+[812/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\touch_screen\touch_screen_driver.cpp.obj
+[813/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\touch_screen\touch_screen_resource.cpp.obj
+[814/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\vibration\vibration_base.cpp.obj
+[815/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\vibration\gc_vibration_device.cpp.obj
+[816/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\vibration\n64_vibration_device.cpp.obj
+[817/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\controller_base.cpp.obj
+[818/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\vibration\vibration_device.cpp.obj
+[819/1801] Building CXX object src\hid_core\CMakeFiles\hid_core.dir\resources\applet_resource.cpp.obj
+[820/1801] Linking CXX static library src\shader_recompiler\shader_recompiler.lib
