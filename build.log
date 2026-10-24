@@ -1,135 +1,3 @@
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2031): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::EmitFPVectorToFixed::<lambda_1>::()::<lambda_4>::operator ()<Xbyak::Xmm,Xbyak::Xmm,Xbyak::Address,u8>(Xbyak::Xmm,Xbyak::Xmm,Xbyak::Address,u8) const' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2033): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2033): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2033): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2033): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::EmitFPVectorToFixed::<lambda_1>::()::<lambda_5>::operator ()<Xbyak::Xmm,Xbyak::Xmm,Xbyak::Xmm>(Xbyak::Xmm,Xbyak::Xmm,Xbyak::Xmm) const' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2034): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2034): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2034): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2034): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::EmitFPVectorToFixed::<lambda_1>::()::<lambda_6>::operator ()<Xbyak::Xmm,Xbyak::Xmm,Xbyak::Xmm>(Xbyak::Xmm,Xbyak::Xmm,Xbyak::Xmm) const' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2037): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2037): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2037): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2037): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::EmitFPVectorToFixed::<lambda_1>::()::<lambda_7>::operator ()<Xbyak::Xmm,Xbyak::Xmm>(Xbyak::Xmm,Xbyak::Xmm) const' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2086): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2086): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2086): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2086): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::EmitFPVectorToFixed::<lambda_1>::()::<lambda_8>::operator ()<Xbyak::Xmm,Xbyak::Xmm>(Xbyak::Xmm,Xbyak::Xmm) const' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2088): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2088): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2088): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2088): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::EmitFPVectorToFixed::<lambda_1>::()::<lambda_9>::operator ()<Xbyak::Xmm,Xbyak::Address>(Xbyak::Xmm,Xbyak::Address) const' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2048): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2048): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2048): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2048): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::EmitFPVectorToFixed::<lambda_1>::()::<lambda_8>::operator ()<Xbyak::Opmask,Xbyak::Xmm,Xbyak::Xmm,u8>(Xbyak::Opmask,Xbyak::Xmm,Xbyak::Xmm,u8) const' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2052): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2052): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2060): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2060): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2060): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2060): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::EmitFPVectorToFixed::<lambda_1>::()::<lambda_9>::operator ()<Xbyak::Xmm,Xbyak::Xmm>(Xbyak::Xmm,Xbyak::Xmm) const' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2061): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2061): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2061): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2061): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::EmitFPVectorToFixed::<lambda_1>::()::<lambda_10>::operator ()<Xbyak::Xmm,Xbyak::Xmm>(Xbyak::Xmm,Xbyak::Xmm) const' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2066): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2066): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2066): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2066): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::EmitFPVectorToFixed::<lambda_1>::()::<lambda_11>::operator ()<Xbyak::Xmm,Xbyak::Xmm>(Xbyak::Xmm,Xbyak::Xmm) const' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2072): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2072): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2072): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2072): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::EmitFPVectorToFixed::<lambda_1>::()::<lambda_12>::operator ()<Xbyak::Xmm,Xbyak::Xmm>(Xbyak::Xmm,Xbyak::Xmm) const' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2073): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2073): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2073): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2073): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::EmitFPVectorToFixed::<lambda_1>::()::<lambda_13>::operator ()<Xbyak::Xmm,Xbyak::Xmm>(Xbyak::Xmm,Xbyak::Xmm) const' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2074): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2074): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2074): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2074): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::EmitFPVectorToFixed::<lambda_1>::()::<lambda_14>::operator ()<Xbyak::Xmm,Xbyak::Xmm>(Xbyak::Xmm,Xbyak::Xmm) const' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2076): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2076): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2076): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2076): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::EmitFPVectorToFixed::<lambda_1>::()::<lambda_15>::operator ()<Xbyak::Xmm,u8>(Xbyak::Xmm,u8) const' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2077): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2077): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2077): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2077): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::EmitFPVectorToFixed::<lambda_1>::()::<lambda_16>::operator ()<Xbyak::Xmm,Xbyak::Xmm>(Xbyak::Xmm,Xbyak::Xmm) const' being compiled
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2080): warning C4127: conditional expression is constant
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2080): note: consider using 'if constexpr' statement instead
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2080): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\emit_x64_vector_floating_point.cpp(2080): note: see reference to function template instantiation 'auto Dynarmic::Backend::X64::EmitFPVectorToFixed::<lambda_1>::()::<lambda_17>::operator ()<Xbyak::Xmm,Xbyak::Xmm>(Xbyak::Xmm,Xbyak::Xmm) const' being compiled
-[413/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\reg_alloc.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/reg_alloc.h(68): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\reg_alloc.cpp(95): warning C4267: '+=': conversion from 'size_t' to 'uint16_t', possible loss of data
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\reg_alloc.cpp(96): warning C4244: 'argument': conversion from 'int' to 'const _Ty', possible loss of data
-        with
-        [
-            _Ty=uint8_t
-        ]
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\reg_alloc.cpp(87): warning C4100: 'loc': unreferenced parameter
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\reg_alloc.cpp(468): warning C4100: 'code': unreferenced parameter
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\reg_alloc.cpp(531): warning C4100: 'is_xmm': unreferenced parameter
-[414/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\verbose_debugging_output.cpp.obj
-[415/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\common\spin_lock_x64.cpp.obj
-[416/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\a32_jitstate.cpp.obj
-[417/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\a32_emit_x64.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/reg_alloc.h(68): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\a32_emit_x64.cpp(732): warning C4244: 'initializing': conversion from 'u64' to 'u32', possible loss of data
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\a32_emit_x64.cpp(732): warning C4244: 'initializing': conversion from 'u64' to 'const u32', possible loss of data
-[418/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\a32_interface.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/reg_alloc.h(68): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-[419/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\a32_emit_x64_memory.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/reg_alloc.h(68): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/emit_x64_memory.h(105): warning C4244: 'argument': conversion from 'const uint64_t' to 'uint32_t', possible loss of data
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/emit_x64_memory.h(180): warning C4244: 'argument': conversion from 'const uint64_t' to 'uint32_t', possible loss of data
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/emit_x64_memory.cpp.inc(239): warning C4244: 'return': conversion from 'uint64_t' to 'Dynarmic::Backend::X64::A32EmitX64::EmitExclusiveReadMemory::T', possible loss of data
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/emit_x64_memory.cpp.inc(239): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\a32_emit_x64_memory.cpp(180): note: see reference to function template instantiation 'void Dynarmic::Backend::X64::A32EmitX64::EmitExclusiveReadMemory<8,uint64_t Dynarmic::A32::UserCallbacks::`vcall'{40}'(Dynarmic::A32::VAddr,size_t)>(Dynarmic::Backend::X64::A32EmitContext &,Dynarmic::IR::Inst *)' being compiled
-[420/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\a64_emit_x64.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/reg_alloc.h(68): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-[421/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\a64_jitstate.cpp.obj
-[422/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\frontend\A64\translate\a64_translate.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-[423/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\a64_interface.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/reg_alloc.h(68): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-[424/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\x64\a64_emit_x64_memory.cpp.obj
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/ir/microinstruction.h(87): warning C4324: 'Dynarmic::IR::Inst': structure was padded due to alignment specifier
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/reg_alloc.h(68): warning C4334: '<<': result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/emit_x64_memory.h(105): warning C4244: 'argument': conversion from 'const uint64_t' to 'uint32_t', possible loss of data
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/emit_x64_memory.h(180): warning C4244: 'argument': conversion from 'const uint64_t' to 'uint32_t', possible loss of data
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/emit_x64_memory.cpp.inc(239): warning C4244: 'return': conversion from 'uint64_t' to 'Dynarmic::Backend::X64::A64EmitX64::EmitExclusiveReadMemory::T', possible loss of data
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\..\dynarmic/backend/x64/emit_x64_memory.cpp.inc(239): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\a64_emit_x64_memory.cpp(336): note: see reference to function template instantiation 'void Dynarmic::Backend::X64::A64EmitX64::EmitExclusiveReadMemory<8,uint64_t Dynarmic::A64::UserCallbacks::`vcall'{16}'(Dynarmic::A64::VAddr,size_t)>(Dynarmic::Backend::X64::A64EmitContext &,Dynarmic::IR::Inst *)' being compiled
-[425/1801] Building CXX object src\dynarmic\src\dynarmic\CMakeFiles\dynarmic.dir\backend\exception_handler_windows.cpp.obj
-[426/1801] Linking CXX static library src\common\common.lib
-[427/1801] Building CXX object src\network\CMakeFiles\network.dir\packet.cpp.obj
-[428/1801] Building CXX object src\network\CMakeFiles\network.dir\network.cpp.obj
-[429/1801] Building CXX object src\network\CMakeFiles\network.dir\announce_multiplayer_session.cpp.obj
-[430/1801] Building CXX object src\network\CMakeFiles\network.dir\verify_user.cpp.obj
-[431/1801] Generating include/video_core/host_shaders/blit_color_float_frag.h
-[432/1801] Generating include/video_core/host_shaders/block_linear_unswizzle_2d_comp.h
-[433/1801] Generating include/video_core/host_shaders/blit_color_msaa_frag.h
-[434/1801] Generating include/video_core/host_shaders/blit_depth_frag.h
-[435/1801] Generating include/video_core/host_shaders/blit_depth_msaa_frag.h
-[436/1801] Generating include/video_core/host_shaders/astc_decoder_comp.h
-[437/1801] Generating include/video_core/host_shaders/blit_depth_stencil_msaa_frag.h
-[438/1801] Building CXX object src\network\CMakeFiles\network.dir\room.cpp.obj
-[439/1801] Generating include/video_core/host_shaders/block_linear_unswizzle_3d_bcn_comp.h
-[440/1801] Generating include/video_core/host_shaders/block_linear_unswizzle_3d_comp.h
-[441/1801] Generating include/video_core/host_shaders/convert_abgr8_to_d24s8_frag.h
-[442/1801] Generating include/video_core/host_shaders/convert_d32f_to_abgr8_frag.h
-[443/1801] Generating include/video_core/host_shaders/convert_abgr8_to_d32f_frag.h
-[444/1801] Generating include/video_core/host_shaders/convert_d24s8_to_abgr8_frag.h
-[445/1801] Generating include/video_core/host_shaders/convert_depth_to_float_frag.h
 [446/1801] Generating include/video_core/host_shaders/convert_float_to_depth_frag.h
 [447/1801] Generating include/video_core/host_shaders/convert_msaa_to_non_msaa_comp.h
 [448/1801] Generating include/video_core/host_shaders/convert_msaa_to_non_msaa_depth_stencil_frag.h
@@ -298,3 +166,135 @@ D:\a\HueHue\HueHue\src\dynarmic\src\dynarmic\backend\x64\a64_emit_x64_memory.cpp
 [611/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\attribute_memory_to_physical.cpp.obj
 [612/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\barrier_operations.cpp.obj
 [613/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\bitfield_extract.cpp.obj
+[614/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\bitfield_insert.cpp.obj
+[615/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\common_funcs.cpp.obj
+[616/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\condition_code_set.cpp.obj
+[617/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\branch_indirect.cpp.obj
+[618/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\double_add.cpp.obj
+[619/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\double_compare_and_set.cpp.obj
+[620/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\double_fused_multiply_add.cpp.obj
+[621/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\double_multiply.cpp.obj
+[622/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\double_set_predicate.cpp.obj
+[623/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\double_min_max.cpp.obj
+[624/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\exit_program.cpp.obj
+[625/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_add.cpp.obj
+[626/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_compare.cpp.obj
+[627/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\find_leading_one.cpp.obj
+[628/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_conversion_floating_point.cpp.obj
+[629/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_compare_and_set.cpp.obj
+[630/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_min_max.cpp.obj
+[631/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_conversion_integer.cpp.obj
+[632/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_fused_multiply_add.cpp.obj
+[633/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_multi_function.cpp.obj
+[634/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_range_reduction.cpp.obj
+[635/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_multiply.cpp.obj
+[636/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_set_predicate.cpp.obj
+[637/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\floating_point_swizzled_add.cpp.obj
+[638/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\half_floating_point_fused_multiply_add.cpp.obj
+[639/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\half_floating_point_add.cpp.obj
+[640/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\half_floating_point_multiply.cpp.obj
+[641/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\half_floating_point_helper.cpp.obj
+[642/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\half_floating_point_set.cpp.obj
+[643/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\half_floating_point_set_predicate.cpp.obj
+[644/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_add.cpp.obj
+[645/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\impl.cpp.obj
+[646/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_add_three_input.cpp.obj
+[647/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_compare_and_set.cpp.obj
+[648/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_compare.cpp.obj
+[649/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_floating_point_conversion.cpp.obj
+[650/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_funnel_shift.cpp.obj
+[651/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_scaled_add.cpp.obj
+[652/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_popcount.cpp.obj
+[653/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_minimum_maximum.cpp.obj
+[654/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_set_predicate.cpp.obj
+[655/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_short_multiply_add.cpp.obj
+[656/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_shift_right.cpp.obj
+[657/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_shift_left.cpp.obj
+[658/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\integer_to_integer_conversion.cpp.obj
+[659/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\internal_stage_buffer_entry_read.cpp.obj
+[660/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\load_constant.cpp.obj
+[661/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\load_effective_address.cpp.obj
+[662/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\load_store_local_shared.cpp.obj
+[663/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\load_store_attribute.cpp.obj
+[664/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\load_store_memory.cpp.obj
+[665/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\move_register_to_predicate.cpp.obj
+[666/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\logic_operation.cpp.obj
+[667/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\move_predicate_to_register.cpp.obj
+[668/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\logic_operation_three_input.cpp.obj
+[669/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\move_register.cpp.obj
+[670/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\move_special_register.cpp.obj
+[671/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\pixel_load.cpp.obj
+[672/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\output_geometry.cpp.obj
+[673/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\predicate_set_predicate.cpp.obj
+[674/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\not_implemented.cpp.obj
+[675/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\predicate_set_register.cpp.obj
+[676/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\select_source_with_predicate.cpp.obj
+[677/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\surface_load_store.cpp.obj
+[678/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\surface_atomic_operations.cpp.obj
+[679/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_fetch_swizzled.cpp.obj
+[680/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_fetch.cpp.obj
+[681/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_gather.cpp.obj
+[682/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_gradient.cpp.obj
+[683/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_gather_swizzled.cpp.obj
+[684/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_load.cpp.obj
+[685/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_load_swizzled.cpp.obj
+[686/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_mipmap_level.cpp.obj
+[687/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\video_helper.cpp.obj
+[688/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\texture_query.cpp.obj
+[689/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\video_minimum_maximum.cpp.obj
+[690/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\video_multiply_add.cpp.obj
+[691/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\video_set_predicate.cpp.obj
+[692/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\translate.cpp.obj
+[693/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\warp_shuffle.cpp.obj
+[694/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate\impl\vote.cpp.obj
+[695/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\frontend\maxwell\translate_program.cpp.obj
+[696/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\conditional_barrier_pass.cpp.obj
+[697/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\collect_shader_info_pass.cpp.obj
+[698/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\dead_code_elimination_pass.cpp.obj
+[699/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\constant_propagation_pass.cpp.obj
+[700/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\dual_vertex_pass.cpp.obj
+[701/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\lower_fp16_to_fp32.cpp.obj
+[702/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\identity_removal_pass.cpp.obj
+[703/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\global_memory_to_storage_buffer_pass.cpp.obj
+[704/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\layer_pass.cpp.obj
+[705/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\lower_fp64_to_fp32.cpp.obj
+[706/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\position_pass.cpp.obj
+[707/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\lower_int64_to_int32.cpp.obj
+[708/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\rescaling_pass.cpp.obj
+[709/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\ssa_rewrite_pass.cpp.obj
+[710/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\vendor_workaround_pass.cpp.obj
+[711/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\verification_pass.cpp.obj
+[712/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_barriers.cpp.obj
+[713/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_bitwise_conversion.cpp.obj
+[714/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\ir_opt\texture_pass.cpp.obj
+[715/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_composite.cpp.obj
+[716/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_control_flow.cpp.obj
+[717/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_context_get_set.cpp.obj
+[718/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_convert.cpp.obj
+[719/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm.cpp.obj
+[720/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_floating_point.cpp.obj
+[721/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_integer.cpp.obj
+[722/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_logical.cpp.obj
+[723/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_not_implemented.cpp.obj
+[724/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_memory.cpp.obj
+[725/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_image.cpp.obj
+[726/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_special.cpp.obj
+[727/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_select.cpp.obj
+[728/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_shared_memory.cpp.obj
+[729/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_undefined.cpp.obj
+[730/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\emit_glasm_warp.cpp.obj
+[731/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\glasm_emit_context.cpp.obj
+[732/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glasm\reg_alloc.cpp.obj
+[733/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_barriers.cpp.obj
+[734/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_atomic.cpp.obj
+[735/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_bitwise_conversion.cpp.obj
+[736/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_composite.cpp.obj
+[737/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_control_flow.cpp.obj
+[738/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_convert.cpp.obj
+[739/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl.cpp.obj
+[740/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_context_get_set.cpp.obj
+[741/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_logical.cpp.obj
+[742/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_integer.cpp.obj
+[743/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_memory.cpp.obj
+[744/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_floating_point.cpp.obj
+[745/1801] Building CXX object src\shader_recompiler\CMakeFiles\shader_recompiler.dir\backend\glsl\emit_glsl_not_implemented.cpp.obj
