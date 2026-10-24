@@ -32,16 +32,18 @@ jobs:
         run: |
           set -eE
           trap 'echo "::error::falhou: $BASH_COMMAND"' ERR
-          gh run download "${{ inputs.run_id }}" -R "$REPO" -p "huehue-switch-*" -D dl
+          # O artifact se chama NSHueHue-<versao> (0.4.7 em diante) ou huehue-switch-<versao>.
+          gh run download "${{ inputs.run_id }}" -R "$REPO" -p "NSHueHue-*" -p "huehue-switch-*" -D dl
           art=$(ls dl)
-          version=${art#huehue-switch-}
+          version=${art#NSHueHue-}
+          version=${version#huehue-switch-}
           sha=$(gh api "repos/$REPO/actions/runs/${{ inputs.run_id }}" --jq .head_sha)
           mkdir pkg && find dl -type f -exec cp {} pkg/ \;
           ls -la pkg
           echo "::notice::artifact $art, versao $version, commit $sha"
           flag=""; [ "${{ inputs.prerelease }}" = "true" ] && flag="--prerelease"
           if ! gh release create "v$version" pkg/* -R "$REPO" --title "${{ inputs.name }} $version" $flag \
-            --notes "Pacote do build ${{ inputs.run_id }} (commit $sha). Instale o .cer, o VCLibs e o .appx pelo Device Portal." > out.txt 2>&1; then
+            --notes "Pacote do build ${{ inputs.run_id }} (commit $sha). Instale o NSHueHue-$version.appx com o VCLibs (e o .cer, se pedir) pelo Device Portal." > out.txt 2>&1; then
             echo "::error::gh release create: $(tr '\n' ' ' < out.txt)"
             exit 1
           fi

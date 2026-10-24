@@ -29,11 +29,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh run download "${{ inputs.run_id }}" -R "${{ github.repository }}" -p "huehue-switch-*" -D dl
+          gh run download "${{ inputs.run_id }}" -R "${{ github.repository }}" -p "NSHueHue-*" -p "huehue-switch-*" -D dl
           $art = (Get-ChildItem dl -Directory | Select-Object -First 1).Name
           New-Item -ItemType Directory -Force pkg | Out-Null
           Get-ChildItem dl -Recurse -File | Copy-Item -Destination pkg
-          "APP_VERSION=$($art -replace '^huehue-switch-','')" | Out-File $env:GITHUB_ENV -Append
+          "APP_VERSION=$($art -replace '^(NSHueHue|huehue-switch)-','')" | Out-File $env:GITHUB_ENV -Append
       - name: Conferir
         shell: powershell
         env:
