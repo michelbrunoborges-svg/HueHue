@@ -1,85 +1,3 @@
-[1113/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\lzma\lzma_encoder_presets.c.obj
-[1114/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\delta\delta_common.c.obj
-[1115/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\lzma\lzma2_decoder.c.obj
-[1116/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\x86.c.obj
-[1117/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\simple_coder.c.obj
-[1118/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\arm.c.obj
-[1119/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\armthumb.c.obj
-[1120/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\arm64.c.obj
-[1121/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\powerpc.c.obj
-[1122/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\sparc.c.obj
-[1123/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\ia64.c.obj
-[1124/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\simple\riscv.c.obj
-[1125/1801] Building C object _deps\xz-build\CMakeFiles\liblzma.dir\src\liblzma\lzma\lzma_decoder.c.obj
-[1126/1801] Building CXX object src\core\CMakeFiles\core.dir\constants.cpp.obj
-[1127/1801] Building CXX object src\core\CMakeFiles\core.dir\arm\exclusive_monitor.cpp.obj
-[1128/1801] Building CXX object src\core\CMakeFiles\core.dir\arm\symbols.cpp.obj
-[1129/1801] Building CXX object src\core\CMakeFiles\core.dir\arm\arm_interface.cpp.obj
-[1130/1801] Building CXX object src\core\CMakeFiles\core.dir\arm\debug.cpp.obj
-[1131/1801] Building CXX object src\core\CMakeFiles\core.dir\game_settings.cpp.obj
-[1132/1801] Building CXX object src\core\CMakeFiles\core.dir\crypto\aes_util.cpp.obj
-[1133/1801] Building CXX object src\core\CMakeFiles\core.dir\cpu_manager.cpp.obj
-[1134/1801] Building CXX object src\core\CMakeFiles\core.dir\core_timing.cpp.obj
-[1135/1801] Building CXX object src\core\CMakeFiles\core.dir\crypto\ctr_encryption_layer.cpp.obj
-[1136/1801] Building CXX object src\core\CMakeFiles\core.dir\crypto\encryption_layer.cpp.obj
-[1137/1801] Building CXX object src\core\CMakeFiles\core.dir\launch_params.cpp.obj
-Warning static builds of getopt violate the Lesser GNU Public License
-C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\optional(166): warning C4267: '=': conversion from 'size_t' to '_Ty', possible loss of data
-        with
-        [
-            _Ty=int
-        ]
-C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\optional(166): note: the template instantiation context (the oldest one first) is
-D:\a\HueHue\HueHue\src\core\launch_params.cpp(103): note: see reference to function template instantiation 'std::optional<int> &std::optional<int>::operator =<const _Ty&,0>(_Ty2) noexcept' being compiled
-        with
-        [
-            _Ty=size_t,
-            _Ty2=const size_t &
-        ]
-D:\a\HueHue\HueHue\src\core\launch_params.cpp(103): note: see the first reference to 'std::optional<int>::operator =' in 'Core::ParseLaunchParams'
-C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\optional(312): note: see reference to function template instantiation 'void std::_Optional_construct_base<_Ty>::_Assign<const unsigned __int64&>(_Ty2) noexcept' being compiled
-        with
-        [
-            _Ty=int,
-            _Ty2=const size_t &
-        ]
-C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\xutility(462): warning C4267: 'initializing': conversion from 'size_t' to '_Ty', possible loss of data
-        with
-        [
-            _Ty=int
-        ]
-C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\xutility(462): note: the template instantiation context (the oldest one first) is
-C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\optional(312): note: see reference to function template instantiation 'void std::_Optional_construct_base<_Ty>::_Assign<const unsigned __int64&>(_Ty2) noexcept' being compiled
-        with
-        [
-            _Ty=int,
-            _Ty2=const size_t &
-        ]
-C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\optional(168): note: see reference to function template instantiation '_Ty &std::_Optional_construct_base<_Ty>::_Construct<const unsigned __int64&>(const unsigned __int64 &) noexcept' being compiled
-        with
-        [
-            _Ty=int
-        ]
-C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\optional(156): note: see reference to function template instantiation 'void std::_Construct_in_place<int,const _Ty&>(int &,const _Ty &) noexcept' being compiled
-        with
-        [
-            _Ty=size_t
-        ]
-C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\xutility(472): note: see reference to function template instantiation '_Ty *std::construct_at<_Ty,const unsigned __int64&>(_Ty *const ,const unsigned __int64 &) noexcept(<expr>)' being compiled
-        with
-        [
-            _Ty=int
-        ]
-C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\xutility(476): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\xutility(463): warning C4267: 'initializing': conversion from 'size_t' to '_Ty', possible loss of data
-        with
-        [
-            _Ty=int
-        ]
-C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\xutility(463): note: the template instantiation context (the oldest one first) is
-C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\optional(156): note: see reference to function template instantiation 'void std::_Construct_in_place<int,const _Ty&>(int &,const _Ty &) noexcept' being compiled
-        with
-        [
             _Ty=size_t
         ]
 C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\include\xutility(472): note: see reference to function template instantiation '_Ty *std::construct_at<_Ty,const unsigned __int64&>(_Ty *const ,const unsigned __int64 &) noexcept' being compiled
@@ -298,3 +216,85 @@ D:\a\HueHue\HueHue\src\core\hle\service\acc\profile_manager.cpp(576): warning C4
 [1344/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\am\service\home_menu_functions.cpp.obj
 [1345/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\am\service\library_applet_proxy.cpp.obj
 [1346/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\am\service\library_applet_accessor.cpp.obj
+[1347/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\am\service\library_applet_creator.cpp.obj
+[1348/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\am\service\lock_accessor.cpp.obj
+[1349/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\am\service\library_applet_self_accessor.cpp.obj
+[1350/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\am\service\overlay_functions.cpp.obj
+[1351/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\am\service\overlay_applet_proxy.cpp.obj
+[1352/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\am\service\storage.cpp.obj
+[1353/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\am\service\self_controller.cpp.obj
+[1354/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\am\service\process_winding_controller.cpp.obj
+[1355/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\am\service\storage_accessor.cpp.obj
+[1356/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\am\service\system_applet_proxy.cpp.obj
+[1357/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\am\service\window_controller.cpp.obj
+[1358/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\aoc\purchase_event_manager.cpp.obj
+[1359/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\apm\apm.cpp.obj
+[1360/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\am\window_system.cpp.obj
+[1361/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\aoc\addon_content_manager.cpp.obj
+[1362/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\apm\apm_interface.cpp.obj
+[1363/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\apm\apm_controller.cpp.obj
+[1364/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\audio\audio_device.cpp.obj
+[1365/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\audio\audio_in_manager.cpp.obj
+[1366/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\audio\audio_controller.cpp.obj
+[1367/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\audio\audio_in.cpp.obj
+[1368/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\audio\audio_out_manager.cpp.obj
+[1369/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\audio\audio_out.cpp.obj
+[1370/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\audio\audio_renderer_manager.cpp.obj
+[1371/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\audio\final_output_recorder_manager_for_applet.cpp.obj
+[1372/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\audio\audio_renderer.cpp.obj
+[1373/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\audio\audio.cpp.obj
+[1374/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\audio\final_output_recorder_manager.cpp.obj
+[1375/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\audio\hardware_opus_decoder_manager.cpp.obj
+[1376/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\audio\hardware_opus_decoder.cpp.obj
+[1377/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\bcat\backend\backend.cpp.obj
+[1378/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\bcat\bcat.cpp.obj
+[1379/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\bcat\bcat_service.cpp.obj
+[1380/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\bcat\delivery_cache_file_service.cpp.obj
+[1381/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\bcat\delivery_cache_directory_service.cpp.obj
+[1382/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\bcat\news\msgpack.cpp.obj
+[1383/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\bcat\delivery_cache_storage_service.cpp.obj
+[1384/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\bcat\delivery_cache_progress_service.cpp.obj
+[1385/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\bcat\news\newly_arrived_event_holder.cpp.obj
+[1386/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\bcat\news\news_data_service.cpp.obj
+[1387/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\bcat\news\news_storage.cpp.obj
+[1388/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\bcat\news\news_service.cpp.obj
+[1389/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\bcat\news\news_database_service.cpp.obj
+[1390/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\bcat\news\overwrite_event_holder.cpp.obj
+[1391/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\bpc\bpc.cpp.obj
+[1392/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\bcat\news\service_creator.cpp.obj
+[1393/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\bcat\service_creator.cpp.obj
+[1394/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\btdrv\btdrv.cpp.obj
+[1395/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\btm\btm.cpp.obj
+[1396/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\btm\btm_debug.cpp.obj
+[1397/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\btm\btm_system.cpp.obj
+[1398/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\btm\btm_system_core.cpp.obj
+[1399/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\btm\btm_user.cpp.obj
+[1400/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\btm\btm_user_core.cpp.obj
+[1401/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\caps\caps.cpp.obj
+[1402/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\bcat\news\builtin_news.cpp.obj
+[1403/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\caps\caps_a.cpp.obj
+[1404/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\caps\caps_c.cpp.obj
+[1405/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\caps\caps_sc.cpp.obj
+[1406/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\caps\caps_manager.cpp.obj
+[1407/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\caps\caps_ss.cpp.obj
+[1408/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\caps\caps_u.cpp.obj
+[1409/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\caps\caps_su.cpp.obj
+[1410/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\eupld\eupld.cpp.obj
+[1411/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\erpt\erpt.cpp.obj
+[1412/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\es\es.cpp.obj
+[1413/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\fatal\fatal.cpp.obj
+[1414/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\fatal\fatal_p.cpp.obj
+[1415/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\fatal\fatal_u.cpp.obj
+[1416/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\fgm\fgm.cpp.obj
+[1417/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\fsp\fs_i_directory.cpp.obj
+[1418/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\filesystem.cpp.obj
+[1419/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\fsp\fs_i_file.cpp.obj
+[1420/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\fsp\fs_i_filesystem.cpp.obj
+[1421/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\fsp\fs_i_multi_commit_manager.cpp.obj
+[1422/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\fsp\fs_i_save_data_info_reader.cpp.obj
+[1423/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\fsp\fs_i_storage.cpp.obj
+[1424/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\fsp\fsp_pr.cpp.obj
+[1425/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\fsp\fsp_ldr.cpp.obj
+[1426/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\romfs_controller.cpp.obj
+[1427/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\fsp\save_data_transfer_prohibiter.cpp.obj
+[1428/1801] Building CXX object src\core\CMakeFiles\core.dir\hle\service\filesystem\save_data_controller.cpp.obj
