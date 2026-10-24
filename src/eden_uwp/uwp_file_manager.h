@@ -52,7 +52,7 @@ struct ConfigurationPanel {
     unsigned completed{}, total{};
 };
 /// Rows of the settings home, in order.
-enum ConfigurationHomeRow : size_t { HomeSystem, HomeControllers, HomeFiles, HomeSaves, HomeOnline, HomeRowCount };
+enum ConfigurationHomeRow : size_t { HomeSystem, HomeControllers, HomeFiles, HomeSaves, HomeOnline, HomeCredits, HomeRowCount };
 /// Arquivos e USB rows: games folder, keys, firmware, updates, DLC, restore the previous
 /// firmware, online firmware (not configured), then one row per game folder.
 /// (19/10/2026: the online firmware row is gone; there is no authorized source.)

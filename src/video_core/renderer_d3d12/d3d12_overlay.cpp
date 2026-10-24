@@ -156,7 +156,7 @@ void RendererD3D12::DrawPerformanceOverlay(CommandStream* cmd,
         const u64 cpu_ticks = ticks(kernel) + ticks(user);
         const u64 gpu_us = VideoCore::Perf::counters[
             static_cast<size_t>(VideoCore::Perf::Counter::GpuBusyUs)].load(std::memory_order_relaxed);
-        // NS HUEHUE 0.4.5: the lines of the Eden 0.3.9 overlay (FPS and frame time, RAM against the
+        // NS HUEHUE 0.4.5: the overlay's lines (FPS and frame time, RAM against the
         // limit, GPU, JIT, emulated DRAM, the rest, GPU and CPU load, cores in use). The memory
         // lines are sampled once a second; hiding the HUD resets this state and queries nothing.
         const OverlayStatsQuery stats_query = overlay_stats_query.load(std::memory_order_acquire);
@@ -212,7 +212,7 @@ void RendererD3D12::DrawPerformanceOverlay(CommandStream* cmd,
         hud.game_frames_valid = stats.frames_valid;
         const LONG cell = std::max<LONG>(2, static_cast<LONG>(swapchain.Height()) / 360);
         const LONG pad = 3 * cell;
-        const LONG left = 8 * cell; // top left, as in the Eden 0.3.9 overlay
+        const LONG left = 8 * cell; // top left
         const LONG top = 8 * cell;
         size_t chars = 0;
         for (const auto& line : lines) {

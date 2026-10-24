@@ -286,34 +286,19 @@ Os prints do CI rodam num Windows sem GPU, com o mesmo código Direct2D.
   arquivos 7z/RAR/RAR5 de teste do libarchive.
 - Versão do pacote: **0.4.4.<build>**.
 
-## 0.4.5 (23/10): o que o Eden 0.3.9 tem e o NS HUEHUE não tinha
+## 0.4.5 (23/10): configurações novas, cache de shaders no HD e painel completo
 
-Mapa das telas "Definições da consola" e "Definições rápidas" do Eden 0.3.9 (MNKE) contra o
-nosso, item a item. Só entrou o que tem efeito real no nosso core; nada foi duplicado.
+Entrou só o que tem efeito real no nosso core; nada foi duplicado.
 
-| Eden 0.3.9 | NS HUEHUE |
-|---|---|
-| Tema, Idioma, Região, Volume, Velocidade, Contador de fotogramas | já existiam (Sistema; Velocidade por jogo e no menu) |
-| Modo da consola (TV/portátil) | já existia por jogo: Resolução TV / Portátil |
-| **Modo de avião** | **novo** em Sistema (`airplane_mode`) |
-| Filtro de ampliação | já existia: Ampliação da imagem |
-| Texturas ASTC guardadas como / Descodificar ASTC na GPU | já existiam: Texturas ASTC e ASTC sem transparência |
-| Resolução 1x/2x, Suavização (SMAA/FXAA), MSAA, Maior textura, Resolução de saída | não entram: o nosso D3D12 não tem escala de resolução nem esses filtros (são do renderizador próprio deles); seriam botões sem efeito |
-| Shaders assíncronos / Modo assíncrono | já existiam: Shaders pendentes (Esperar / Não esperar) |
-| **Passagens que esperam (vértices)** | **novo** por jogo e no menu do jogo (`SetPipelineDeferral`) |
-| Threads de compilação de shaders | já existia: Shaders 4 / 6 núcleos |
-| Reutilizar shaders traduzidos | o nosso já faz sempre (cache de shaders ligados) |
-| Emular tesselação / grelha | o nosso usa a tesselação da própria GPU |
-| **Emulação assíncrona da GPU** | **novo** por jogo |
-| Gravar comandos num thread | já existia: Comandos da GPU em outra thread |
-| Apresentação sem bloqueio | equivalente: Apresentar quadros em outra thread |
-| Tabelas de descritores no thread, Emulação na própria fila, os 10 itens de Correções para a consola, e 7 de Memória | não entram: correções e caminhos internos do renderizador deles, sem código equivalente no nosso |
-| Esperar pelos dados da GPU nas barreiras | **novo**: Leitura da GPU pela CPU (`use_reactive_flushing`) e **Precisão da GPU** |
-| Memória inativa do jogo para o SSD | parecido com o nosso Memória do jogo no SSD (fastmem) |
-| — | **novos** sem par no 0.3.9: Precisão da CPU (com Insegura), Filtro anisotrópico, Proporção da imagem, Vídeos do jogo (NVDEC) |
-| Silenciar (menu rápido) | **novo** no menu do jogo |
-| Painel de FPS | **refeito** com as mesmas linhas: FPS / ms, RAM usada / limite, GPU, JIT, EMU, Outro, carga da GPU, carga da CPU, núcleos (e o pico de quadro), no canto superior esquerdo |
-
+- **Sistema:** Modo avião (`airplane_mode`).
+- **Desempenho e gráficos (por jogo):** Filtro anisotrópico, Proporção da imagem, Passagens que
+  esperam (vértices), Emulação assíncrona da GPU, Precisão da GPU, Precisão da CPU (com Insegura),
+  Leitura da GPU pela CPU (`use_reactive_flushing`) e Vídeos do jogo (NVDEC). "Do perfil" mantém o
+  perfil.
+- **Menu do jogo:** Shaders pendentes e Passagens que esperam ao vivo, e Silenciar.
+- **Painel de desempenho** refeito: FPS / ms (quadros do próprio jogo), RAM usada / limite, GPU, JIT,
+  EMU, Outro, carga da GPU, carga da CPU, núcleos e pico de quadro, no canto superior esquerdo.
+- Ficaram de fora opções sem efeito no nosso D3D12 (escala de resolução, SMAA/FXAA, MSAA).
 - **Cache de shaders no HD externo** (`shader_backup.*`, Configurações > Saves e shaders (USB)):
   pasta própria, Copiar shaders para o HD, Trazer shaders do HD e Sincronizar ao jogar (ligado:
   antes de abrir o jogo traz o cache dele do HD se for maior; ao fechar leva o que cresceu). Em
@@ -323,3 +308,13 @@ nosso, item a item. Só entrou o que tem efeito real no nosso core; nada foi dup
 - **Temas:** os 15 temas com personagens e marcas de terceiros (e o logo do Xbox) continuam fora
   do appx e do repositório públicos; vão como pacote para Importar temas (USB).
 - Versão do pacote: **0.4.5.<build>**.
+
+## 0.4.6 (24/10): logotipo em todos os temas e créditos diretos
+
+- **Logotipo no canto superior esquerdo** em todas as telas de todos os temas: no Grafite já era
+  assim; nos temas Switch e nos pacotes do catálogo o logo entra no cabeçalho, antes do perfil.
+- **Créditos** voltam como seção de Configurações, só com os projetos cujo código ou dados estão
+  no NS HUEHUE (Eden, Jadyx, eden-xbox, NXbox, Mesa, mesa-uwp, FFmpeg, libarchive, FSR,
+  nx-cheats-db, nx-links e GameBanana), com o que cada um faz e o link. Inspirações não aparecem.
+  O README do repositório e os textos do app seguem a mesma regra.
+- Versão do pacote: **0.4.6.<build>**.

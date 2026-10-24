@@ -26,7 +26,7 @@ namespace EdenXbox {
 /// The renderer the compatibility list starts a title on, by its base program id.
 inline std::optional<GameRenderer> KnownRenderer(std::uint64_t program_id) {
     switch (program_id & ~std::uint64_t{0xFFF}) {
-    case 0x0100000000010000: // Runs on NX Zero's OpenGL path; closes on D3D12 (18/10/2026).
+    case 0x0100000000010000: // Runs on the OpenGL path; closes on D3D12 (18/10/2026).
         return GameRenderer::OpenGL;
     default:
         return std::nullopt;

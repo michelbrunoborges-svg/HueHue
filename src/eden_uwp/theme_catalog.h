@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
-// NS HUEHUE theme catalog (NXZero-HueHue issue #3): beyond the three built-in themes (theme.h),
+// NS HUEHUE theme catalog: beyond the three built-in themes (theme.h),
 // themes come as packs, one folder each with a versioned manifest and its art:
 //
 //   <folder>/theme.json   {"schemaVersion": 1, "id": "ns-huehue", "name": "NS HUEHUE", "version": "1.0",

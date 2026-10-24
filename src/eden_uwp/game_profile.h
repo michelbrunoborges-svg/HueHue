@@ -13,7 +13,7 @@
 //    (the game itself keeps its speed);
 //  - shaders: how many threads build them;
 //  - renderer: the native D3D12 one, or OpenGL through Mesa's d3d12 driver (gl_window.h), slower
-//    but able to run games the D3D12 one cannot (the path NXbox / NX Zero takes).
+//    but able to run games the D3D12 one cannot.
 // Kept by launch path in LocalState/ns_profiles.tsv.
 
 #include <algorithm>
@@ -48,7 +48,7 @@ enum class FpsLimit : std::uint8_t { Auto, Fps60, Fps30, Manual };
 enum class ShaderBuild : std::uint8_t { Balanced, Fast };
 enum class GameRenderer : std::uint8_t { D3D12, OpenGL };
 /// How the OpenGL renderer hands shaders to Mesa: GLSL text (Eden's unchanged backend) or SPIR-V
-/// (NX Zero's default: about 40% less memory per program).
+/// (about 40% less memory per program).
 enum class GlShaders : std::uint8_t { Glsl, Spirv };
 /// Ampliacao da imagem for the game: Auto keeps the profile's (or the system's) choice.
 enum class TuningUpscaling : std::uint8_t { Auto, None, Bilinear, FsrSharp, FsrBalanced, FsrSoft };
@@ -71,7 +71,7 @@ enum class JitCache : std::uint8_t { Normal, Small, Large };
 /// Firmware do console: Auto uses the installed one and, when the game closes with it in its
 /// first minute, sets it to Skip (game_compat.h); Use always; Skip runs it as without firmware.
 enum class FirmwareUse : std::uint8_t { Auto, Use, Skip };
-/// 0.4.5 (the Eden 0.3.9 screens of 23/10/2026, what our core honours): the texture filtering the
+/// 0.4.5 (what our core honours): the texture filtering the
 /// sampler adds (Game: as the game asks), the picture's shape, and the engine's own accuracy
 /// switches, each "Profile" leaving the profile's choice.
 enum class Anisotropy : std::uint8_t { Game, X2, X4, X8, X16 };

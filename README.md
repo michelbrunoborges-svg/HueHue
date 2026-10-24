@@ -1,97 +1,77 @@
-# HueHue Switch
+# NS HUEHUE
 
-Emulador de Nintendo Switch para **Xbox Series X|S em Dev Mode**, com o visual HueHue:
-fundo preto com "HUE RA" na diagonal, logo HUEHUE nas cores do Brasil, destaque verde-limão
-e interface em português.
+Emulador de Nintendo Switch para **Xbox Series X|S em Dev Mode**, com a cara do HueHue,
+interface em português do Brasil e temas próprios.
 
-É um fork do [eden-xbox](https://github.com/JulianDr14/eden-xbox) (port UWP do emulador
-[Eden](https://git.eden-emu.dev/eden-emu/eden) com renderizador Direct3D 12). O motor do
-emulador é o deles. Aqui mudam o tema, o idioma, o nome do app e o build automático.
+> **Experimental.** Muitos jogos rodam, alguns ainda não abrem, e a primeira passagem por uma
+> área nova engasga enquanto os shaders são montados. O histórico de cada versão está em
+> [`docs/ns-huehue/README.md`](docs/ns-huehue/README.md).
 
-> **Experimental.** No Series X, o projeto original reporta Pokémon: Let's Go a 60 FPS,
-> Mario Strikers: Battle League a 60 FPS e Super Mario Bros. Wonder entre 55 e 60 FPS.
-> Zelda: Tears of the Kingdom ainda estoura a memória. Outros jogos podem não abrir.
-> A primeira passagem por uma área nova engasga enquanto os shaders compilam.
+## O que tem
 
+- **Biblioteca:** Jogos, Favoritos, Recentes e Traduções; capas; busca; opções por jogo (mods,
+  cheats, atualizações, DLC, Pulse, controles e desempenho).
+- **Desempenho e gráficos por jogo:** perfil, renderizador D3D12 ou OpenGL, resolução, ampliação
+  (FSR 1), filtro anisotrópico, proporção, limite de FPS, pular quadros, shaders pendentes,
+  precisão da GPU e da CPU, velocidade de 10% a 200% e opções avançadas de memória e texturas.
+- **Menu do jogo** (View + Menu por 2 s): controles, mapeamento de botões, velocidade, volume até
+  200%, silenciar, shaders pendentes e fechar o jogo.
+- **Painel de desempenho:** FPS / ms, RAM usada / limite, GPU, JIT, EMU, outro, carga da GPU e da CPU,
+  núcleos.
+- **HD externo:** backup de saves, das configurações e dos caches de shaders (sincronizados ao abrir
+  e fechar cada jogo).
+- **Temas:** HueHue Grafite, Switch Claro, Switch Escuro, o pacote NS HUEHUE e outros pelo
+  Importar temas (USB).
 
-## Visual NX Zero (layout grafite)
+## Instalar no Xbox Series X|S
 
-Desde esta versão o app aparece como **NX Zero HueHue Switch** e abre num menu inicial
-(INICIAR, JOGOS, CONFIGURAÇÕES, CONTROLES, SOBRE) com o letreiro "NX ZERO / BR HUEHUE EDITION",
-a parede de grafite verde-neon e magenta e a cara do HueHue como mascote. B na biblioteca volta ao
-menu; B no menu sai. As imagens ficam em `dist/uwp/Assets/ui` e saem de
-`tools/huehue/make_ui_assets.py` (fontes livres em `tools/huehue/fonts`). A identidade do pacote não
-mudou: instalar por cima mantém jogos, chaves e saves.
+1. **Pré-requisitos:** console em **Dev Mode**, um PC na mesma rede e **suas próprias** chaves
+   (`prod.keys`, `title.keys`), firmware e jogos, extraídos do **seu** Switch. Nada disso vem no
+   pacote nem neste repositório, e nunca deve ser colocado aqui.
+2. **Baixar:** na aba **Releases**, a versão mais recente: `huehue-switch.appx` (o app),
+   `Microsoft.VCLibs.x64.14.00.appx` (dependência obrigatória) e `huehue-switch.cer` (certificado).
+3. **Instalar:** no PC, abra o Device Portal do Xbox (`https://<ip-do-xbox>:11443`) → **Add** →
+   `huehue-switch.appx` → adicione o `Microsoft.VCLibs.x64.14.00.appx` como dependência → Start.
+4. **Modo Game (obrigatório):** no Dev Home, selecione **NS HUEHUE** → View → View details →
+   **App type: Game**.
+5. **Chaves, firmware e jogos:** Configurações → Arquivos e USB, a partir de uma pasta do HD externo
+   ou pendrive.
 
-## O que mudou em relação ao eden-xbox
+**Atualizar:** instale o `.appx` novo por cima, **sem desinstalar**: desinstalar apaga saves,
+chaves e firmware do armazenamento interno.
 
-| Área | Mudança |
-|---|---|
-| Visual | Paleta preta + verde-limão `#C8F31D`, fundo "HUE RA HUEHUE" na diagonal, logo HUEHUE colorido com etiqueta SWITCH, faixa verde/amarelo/azul |
-| Idioma | Português do Brasil (`src/eden_uwp/locales/pt.cpp`), escolhido automaticamente se o Xbox estiver em português |
-| App | Nome "HueHue Switch", pacote `HueHue.HueHueSwitch` (instala ao lado do Eden original, sem conflito) |
-| Ícones | Selo HueHue, tiles e splash (`dist/uwp/Assets`) |
-| Build | GitHub Actions compila, empacota, assina e publica o `.appx` a cada push |
-
-Arquivos do tema: `src/eden_uwp/ui_painter.h` (paleta), `src/eden_uwp/uwp_library_canvas.cpp`
-(fundo, logo, biblioteca), `src/eden_uwp/game_menu_surface.cpp` (menu durante o jogo).
-
-## Instalar no Xbox Series X
-
-### 1. Pré-requisitos
-- Xbox Series X|S em **Dev Mode** (app *Xbox Dev Mode Activation* + conta de desenvolvedor no Partner Center).
-- Um PC na mesma rede, para abrir o Device Portal.
-- **Suas próprias** chaves (`prod.keys`, `title.keys`), firmware e jogos, extraídos do **seu** Switch.
-  Nada disso vem neste repositório nem no pacote, e nunca deve ser colocado aqui.
-
-### 2. Baixar o pacote
-Na aba **Releases** deste repositório, pegue a versão mais recente. São 3 arquivos:
-- `huehue-switch.appx`: o app
-- `Microsoft.VCLibs.x64.14.00.appx`: dependência obrigatória (sem ela o app não abre)
-- `huehue-switch.cer`: certificado (use se o Device Portal pedir)
-
-### 3. Instalar pelo Device Portal
-1. No Xbox, em Dev Home, anote o endereço do **Remote Access** (algo como `https://192.168.0.20:11443`).
-2. No PC, abra esse endereço e aceite o aviso de certificado do navegador.
-3. **Add** → escolha `huehue-switch.appx` → Next.
-4. Na tela de dependências, adicione `Microsoft.VCLibs.x64.14.00.appx`. Se pedir certificado, use o `.cer`.
-5. Start e aguarde terminar.
-
-### 4. Colocar em modo Game (obrigatório)
-No Dev Home do Xbox, selecione **HueHue Switch** → botão **View** → **View details** →
-**App type: Game**. Em modo App o limite de memória é de cerca de 1 GB e os jogos não rodam.
-
-### 5. Chaves, firmware e jogos
-1. Abra o HueHue Switch.
-2. **Configurações (X)** → gerenciador de arquivos → importe chaves e firmware de uma pasta (pendrive USB).
-3. Jogos: copie `.nsp`/`.xci` pelo Device Portal em **File explorer** → LocalAppData →
-   `HueHue.HueHueSwitch_…` → `LocalState` → `games`. Ou adicione uma pasta do pendrive pela biblioteca.
-4. Na biblioteca, aperte **Menu** para atualizar a lista.
-
-### Atualizar
-Cada build publica um Release com versão maior. Instale o novo `.appx` por cima pelo Device Portal;
-chaves, jogos e configurações (em `LocalState`) são mantidos.
-
-### Se algo der errado
-Pelo Device Portal, em `LocalState`: `eden_uwp_diag.txt` e `eden\log\eden_log.txt` descrevem o que aconteceu.
-Problemas gráficos ficam em `eden\log\eden_graphics_bugs.log`.
+**Se algo der errado:** pelo Device Portal, em `LocalState`, os arquivos `eden_uwp_diag.txt` e
+`eden\log\eden_log.txt` dizem o que aconteceu.
 
 ## Build
 
-Automático: todo push na `main` (ou **Actions → Build Xbox (appx) → Run workflow**) roda
-`.github/workflows/build-xbox.yml` num runner Windows com Visual Studio 2022 e publica o Release.
-O primeiro build é o mais demorado; o Mesa (`spirv_to_dxil`) fica em cache depois disso.
+Todo build roda no GitHub Actions (`.github/workflows/build-xbox.yml`, runner Windows com
+Visual Studio 2022): compila, empacota, assina e guarda o `.appx`; o release sai pelo
+`release-from-run.yml`.
 
-Manual no Windows: veja `docs/README-eden-xbox.md` e `docs/xbox/uwp_build.md`.
+## Créditos
 
-## Licença e créditos
+Só os projetos cujo código ou dados estão no NS HUEHUE:
 
-GPL-3.0-or-later, igual ao Eden (`LICENSE.txt`). Se distribuir o app, distribua também o código-fonte.
+| Projeto | Responsável por |
+|---|---|
+| [Eden](https://git.eden-emu.dev/eden-emu/eden) | Núcleo do emulador: CPU, GPU e sistema do Switch |
+| [Jadyx (eden-xbox)](https://github.com/JulianDr14/eden-xbox) | Port para Xbox, renderizador Direct3D 12, mods, cheats e Pulse |
+| [eden-xbox](https://github.com/juanresendiz813/eden-xbox) | Base UWP original para o Xbox |
+| [NXbox](https://github.com/NspxMiguel/NXbox) | Renderizador OpenGL pelo Mesa |
+| [Mesa](https://gitlab.freedesktop.org/mesa/mesa) | Driver OpenGL d3d12 e tradução de shaders (`spirv_to_dxil`) |
+| [mesa-uwp](https://github.com/aerisarn/mesa-uwp) | Mesa compilado para UWP (Xbox) |
+| [FFmpeg](https://ffmpeg.org) | Vídeos dos jogos |
+| [libarchive](https://github.com/libarchive/libarchive) | Arquivos `.zip`, `.7z` e `.rar` dos mods |
+| [AMD FidelityFX FSR](https://github.com/GPUOpen-Effects/FidelityFX-FSR) | Ampliação da imagem FSR 1 |
+| [nx-cheats-db](https://github.com/sthetix/nx-cheats-db) | Banco de cheats |
+| [nx-links (CNX)](https://github.com/gamemoddesignbr/nx-links) | Índice de traduções e mods de fãs |
+| [GameBanana](https://gamebanana.com) | Loja de mods |
 
-- [Eden](https://git.eden-emu.dev/eden-emu/eden): o emulador.
-- [JulianDr14/eden-xbox](https://github.com/JulianDr14/eden-xbox): o port para Xbox, renderizador D3D12 e front-end.
-- [juanresendiz813/eden-xbox](https://github.com/juanresendiz813/eden-xbox): a base UWP original.
-- Mesa (`spirv_to_dxil`); yuzu, Ryujinx, Sudachi, Citron, Torzu, Suyu e Ryubing.
+## Licença
 
-O HueHue Switch é independente: não é afiliado ao Eden, à Nintendo nem à Microsoft.
-Não reporte problemas deste fork ao projeto Eden.
+GPL-3.0-or-later (`LICENSE.txt`); cada componente mantém a sua licença. Se distribuir o app,
+distribua também o código-fonte.
+
+O NS HUEHUE é independente: não é afiliado à Nintendo nem à Microsoft. Não reporte problemas
+deste projeto aos projetos acima.

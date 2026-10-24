@@ -22,7 +22,7 @@
 
   <Properties>
     <DisplayName>NS HUEHUE</DisplayName>
-    <PublisherDisplayName>HueHue (base: Eden Emulator Project)</PublisherDisplayName>
+    <PublisherDisplayName>NS HUEHUE</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -54,7 +54,7 @@
     <Application Id="App" Executable="eden-uwp.exe" EntryPoint="eden-uwp.App">
       <uap:VisualElements
           DisplayName="NS HUEHUE"
-          Description="HueHue Switch: emulador de Nintendo Switch para Xbox Series em Dev Mode (tema HueHue sobre o eden-xbox)."
+          Description="NS HUEHUE: emulador de Nintendo Switch para Xbox Series em Dev Mode."
           BackgroundColor="#071012"
           Square150x150Logo="Assets\Square150x150Logo.png"
           Square44x44Logo="Assets\Square44x44Logo.png">

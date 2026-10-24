@@ -100,7 +100,7 @@ struct LibraryView {
     const SystemPage& system;
     const GameOptionsView& game_options;
     bool missing_content{};
-    // NX Zero HueHue: the home menu in front of the library, and its About page.
+    // NS HUEHUE: the home menu in front of the library, and its About page.
     bool home{};
     unsigned home_row{};
     bool about{};

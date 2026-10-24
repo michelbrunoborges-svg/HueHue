@@ -531,7 +531,7 @@ enum class Text : std::uint16_t {
     UpscalingFsrSharp,
     UpscalingFsrBalanced,
     UpscalingFsrSoft,
-    // NX Zero HueHue: home menu and About page.
+    // NS HUEHUE: home menu and About page.
     HomeStart,
     HomeGames,
     HomeSettings,
@@ -901,6 +901,18 @@ enum class Text : std::uint16_t {
     NsShadersNothing,
     NsShadersNoFolder,
     NsShadersCopying,
+    NsCreditEden,
+    NsCreditJadyx,
+    NsCreditJuan,
+    NsCreditNxbox,
+    NsCreditMesa,
+    NsCreditFfmpeg,
+    NsCreditLibarchive,
+    NsCreditFsr,
+    NsCreditCheats,
+    NsCreditCnx,
+    NsCreditGameBanana,
+    NsCreditMesaUwp,
     Count
 };
 inline constexpr std::size_t TextCount = static_cast<std::size_t>(Text::Count);

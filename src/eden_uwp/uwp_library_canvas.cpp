@@ -476,12 +476,18 @@ private:
         target->SetAntialiasMode(mode);
     }
     void SwHeader() {
-        // The profile (the console keeps one; its name is under Sistema).
+        // NS HUEHUE 0.4.6: the logo in the top left corner over every theme (the player asked,
+        // 24/10/2026), then the profile (the console keeps one; its name is under Sistema).
+        float profile_x = 109;
+        if (ns_logo) {
+            NsImage(ns_logo.Get(), D2D1::RectF(76, 24, 286, 94), false, 1, 0, 0.5f);
+            profile_x = 338;
+        }
         brush->SetColor(D2D1::ColorF(0xcdebe0));
-        target->FillEllipse(D2D1::Ellipse(D2D1::Point2F(109, 64), 32, 32), brush.Get());
-        SwTint(SwIcon(L"user"), D2D1::RectF(91, 46, 127, 82), 0x24302c);
+        target->FillEllipse(D2D1::Ellipse(D2D1::Point2F(profile_x, 64), 32, 32), brush.Get());
+        SwTint(SwIcon(L"user"), D2D1::RectF(profile_x - 18, 46, profile_x + 18, 82), 0x24302c);
         const std::wstring name = player_name.empty() ? std::wstring{Tr(T::NsPlayer)} : player_name;
-        Text(L"NS HUEHUE — Switch  ·  " + name, 172, 44, 26, Palette::TextSecondary, 900, 40);
+        Text(ns_logo ? name : L"NS HUEHUE  ·  " + name, profile_x + 63, 44, 26, Palette::TextSecondary, 700, 40);
         // The clock and the controller, from the right edge.
         const std::wstring state{Tr(pad_connected ? T::NsSwPadConnected : T::NsSwNoPad)};
         const float state_width = MeasureText(state, 30, false) + 4;
@@ -830,8 +836,10 @@ private:
         NsBackdrop(false);
         NsHeader(2);
         static constexpr std::array<T, HomeRowCount> sections{T::NsSettingsSystem, T::NsSettingsControllers,
-                                                              T::NsSettingsFiles, T::NsSettingsSaves, T::NsOnline};
-        static constexpr std::array<const wchar_t*, HomeRowCount> icons{L"settings", L"pad", L"folder", L"usb", L"network"};
+                                                              T::NsSettingsFiles, T::NsSettingsSaves, T::NsOnline,
+                                                              T::NsCredits};
+        static constexpr std::array<const wchar_t*, HomeRowCount> icons{L"settings", L"pad", L"folder", L"usb", L"network",
+                                                                        L"info"};
         const size_t section = panel.files ? static_cast<size_t>(HomeFiles) : std::min<size_t>(panel.selected, HomeRowCount - 1);
         NsTitle(std::wstring{Tr(T::NsNavSettings)} + L" · " + std::wstring{Tr(sections[section])});
         for (size_t i = 0; i < HomeRowCount; ++i) {
@@ -848,7 +856,32 @@ private:
         }
         const float left = 521, width = 1280;
         Text(Tr(sections[section]), left, 292, 34, Palette::Text, width, 50, true);
-        if (!panel.files && section == HomeOnline && view.online) {
+        if (!panel.files && section == HomeCredits) {
+            // Creditos (0.4.6): only the projects whose code or data is in NS HUEHUE, with what each
+            // one is responsible for and where it lives.
+            struct Credit { const wchar_t* name; T role; const wchar_t* link; };
+            static constexpr std::array<Credit, 12> credits{{
+                {L"Eden", T::NsCreditEden, L"git.eden-emu.dev/eden-emu/eden"},
+                {L"Jadyx (eden-xbox)", T::NsCreditJadyx, L"github.com/JulianDr14/eden-xbox"},
+                {L"eden-xbox", T::NsCreditJuan, L"github.com/juanresendiz813/eden-xbox"},
+                {L"NXbox", T::NsCreditNxbox, L"github.com/NspxMiguel/NXbox"},
+                {L"Mesa", T::NsCreditMesa, L"gitlab.freedesktop.org/mesa/mesa"},
+                {L"mesa-uwp", T::NsCreditMesaUwp, L"github.com/aerisarn/mesa-uwp"},
+                {L"FFmpeg", T::NsCreditFfmpeg, L"ffmpeg.org"},
+                {L"libarchive", T::NsCreditLibarchive, L"github.com/libarchive/libarchive"},
+                {L"AMD FidelityFX FSR", T::NsCreditFsr, L"github.com/GPUOpen-Effects/FidelityFX-FSR"},
+                {L"nx-cheats-db", T::NsCreditCheats, L"github.com/sthetix/nx-cheats-db"},
+                {L"nx-links (CNX)", T::NsCreditCnx, L"github.com/gamemoddesignbr/nx-links"},
+                {L"GameBanana", T::NsCreditGameBanana, L"gamebanana.com"}}};
+            for (size_t i = 0; i < credits.size(); ++i) {
+                const float y = 356 + static_cast<float>(i) * 46;
+                Round(left, y, width, 42, 6, Ns::NavSelected);
+                Text(credits[i].name, left + 20, y + 5, 23, Palette::Text, 290, 34, true);
+                Text(Tr(credits[i].role), left + 320, y + 8, 19, Palette::TextSecondary, 520, 30);
+                Text(credits[i].link, left + 850, y + 8, 19, Palette::Accent, width - 870, 30);
+            }
+            Text(Tr(T::NsCreditsBody), left, 916, 19, Palette::TextSecondary, width, 70, false, true);
+        } else if (!panel.files && section == HomeOnline && view.online) {
             // Online: rooms of an Eden room server carry local wireless play between consoles.
             const auto& online = *view.online;
             const std::array<std::pair<T, std::wstring>, 4> rows{{
@@ -945,8 +978,9 @@ private:
             Text(panel.notice, left, 912, panel.notice.size() > 160 ? 20.0f : 23.0f, Palette::Warning, width, 100, false, true);
         // The license notice the GPL asks of an interactive program, in one quiet line under the
         // sections (the Creditos page was removed).
-        Text(I18n::Format(T::NsLegalLine, {version_string}), 96, 760, 17, Palette::TextSecondary, 350, 200, false, true);
-        if (view.online_page) NsFooter({{L'A', Palette::Accent, T::Change}, {L'B', Ns::Error, T::Back}});
+        Text(I18n::Format(T::NsLegalLine, {version_string}), 96, 840, 17, Palette::TextSecondary, 350, 150, false, true);
+        if (!panel.files && section == HomeCredits) NsFooter({{L'B', Ns::Error, T::Back}});
+        else if (view.online_page) NsFooter({{L'A', Palette::Accent, T::Change}, {L'B', Ns::Error, T::Back}});
         else if (view.saves && view.saves->page)
             NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, T::Back}});
         else NsFooter({{L'A', Palette::Accent, T::NsConfirm}, {L'B', Ns::Error, panel.busy ? T::Cancel : T::Back}});
